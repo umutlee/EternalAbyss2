@@ -8,9 +8,13 @@
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
+.utmp/
 
 # MemoryCaptures可以获取大量内存转储
 [Mm]emoryCaptures/
+
+# 录制文件可能会很大
+[Rr]ecordings/
 
 # 资源导入处理器的临时文件
 .import/
@@ -41,43 +45,39 @@ ExportedObj/
 # Unity3D生成的崩溃报告
 sysinfo.txt
 
+# Mono自动生成的文件
+mono_crash.*
+
 # 构建
 *.apk
 *.aab
 *.unitypackage
+*.unitypackage.meta
 *.app
+*.unity3d
+*.prefab
 
 # 崩溃转储
 *.stackdump
 
-# 自动生成的VS/MD/Consulo解决方案和项目文件
-/*.csproj
-/*.unityproj
-/*.sln
-/*.suo
-/*.tmp
-/*.user
-/*.userprefs
-/*.pidb
-/*.booproj
-/*.svd
-/*.pdb
-/*.mdb
-/*.opendb
-/*.VC.db
-
-# Unity3D生成的元文件
-*.pidb.meta
-*.pdb.meta
-*.mdb.meta
-
-# Unity3D生成的文件
-*.unitypackage
-*.unity3d
-*.prefab
-
 # Crashlytics生成的文件
 crashlytics-build.properties
+
+# TestRunner生成的文件
+InitTestScene*.unity*
+
+# Addressables默认忽略
+/ServerData
+/[Aa]ssets/StreamingAssets/aa*
+/[Aa]ssets/AddressableAssetsData/link.xml*
+/[Aa]ssets/Addressables_Temp*
+/[Aa]ssets/AddressableAssetsData/*/*.bin*
+
+# Visual Scripting自动生成的文件
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db.meta
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers
+/[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers.meta
 
 # 操作系统文件
 .DS_Store
@@ -93,7 +93,16 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.vs/
+.gradle/
 
 # 网页部署相关
 node_modules/
 package-lock.json
+
+# Blender临时文件
+*.blend1
+*.blend1.meta
+
+# 日志文件
+*.log
