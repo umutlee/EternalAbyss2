@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深渊巢穴项目文档</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .sidebar {
+            flex: 1;
+            min-width: 250px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-right: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .content {
+            flex: 3;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .sidebar ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .sidebar li {
+            margin-bottom: 10px;
+        }
+        .sidebar a {
+            display: block;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #2c3e50;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .sidebar a:hover {
+            background-color: #e0e0e0;
+        }
+        .doc-content {
+            display: none;
+        }
+        .doc-content.active {
+            display: block;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>深渊巢穴项目文档中心</h1>
+        <p>基于EARS框架和软件工程最佳实践的项目规划与实施</p>
+    </header>
+
+    <div class="container">
+        <div class="sidebar">
+            <h2>文档导航</h2>
+            <ul>
+                <li><a href="#" onclick="showDoc('blueprint')">项目开发蓝图</a></li>
+                <li><a href="#" onclick="showDoc('tech-plan')">技术实现计划</a></li>
+                <li><a href="#" onclick="showDoc('quick-start')">技术实现快速启动指南</a></li>
+                <li><a href="#" onclick="showDoc('summary')">项目分析总结报告</a></li>
+                <li><a href="#" onclick="showDoc('user-rules')">用户规则</a></li>
+                <li><a href="#" onclick="showDoc('project-rules')">项目规则</a></li>
+            </ul>
+        </div>
+
+        <div class="content">
+            <div id="welcome" class="doc-content active">
+                <h2>欢迎访问深渊巢穴项目文档中心</h2>
+                <p>这是《深渊巢穴》项目的官方文档中心，包含了项目的开发蓝图、技术实现计划、快速启动指南等重要文档。请从左侧导航栏选择要查看的文档。</p>
+                <h3>项目概述</h3>
+                <p>《深渊巢穴》是一款创新的Idle RTS游戏，融合了基因进化、菌毯扩张、母巢管理等独特玩法。本项目采用渐进式开发策略，基于现有RTS Engine进行改造，以实现游戏的核心创新功能。</p>
+                <h3>核心创新点</h3>
+                <ul>
+                    <li>基因融合与动态异变系统</li>
+                    <li>玩家驱动的基因市场</li>
+                    <li>AI辅助的内容生成与平衡</li>
+                    <li>有机的世界构建与菌毯扩张</li>
+                    <li>统御单位的深度培养系统</li>
+                </ul>
+            </div>
+
+            <div id="blueprint" class="doc-content">
+                <h2>项目开发蓝图</h2>
+                <p>加载中...</p>
+            </div>
+
+            <div id="tech-plan" class="doc-content">
+                <h2>技术实现计划</h2>
+                <p>加载中...</p>
+            </div>
+
+            <div id="quick-start" class="doc-content">
+                <h2>技术实现快速启动指南</h2>
+                <p>加载中...</p>
+            </div>
+
+            <div id="summary" class="doc-content">
+                <h2>项目分析总结报告</h2>
+                <p>加载中...</p>
+            </div>
+
+            <div id="user-rules" class="doc-content">
+                <h2>用户规则</h2>
+                <p>加载中...</p>
+            </div>
+
+            <div id="project-rules" class="doc-content">
+                <h2>项目规则</h2>
+                <p>加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 显示选定的文档
+        function showDoc(docId) {
+            // 隐藏所有文档
+            const allDocs = document.querySelectorAll('.doc-content');
+            allDocs.forEach(doc => {
+                doc.classList.remove('active');
+            });
+            
+            // 显示选定的文档
+            const selectedDoc = document.getElementById(docId);
+            if (selectedDoc) {
+                selectedDoc.classList.add('active');
+                
+                // 如果内容是"加载中..."，则加载文档内容
+                if (selectedDoc.querySelector('p').textContent === '加载中...') {
+                    loadDocContent(docId);
+                }
+            }
+        }
+        
+        // 加载文档内容
+        function loadDocContent(docId) {
+            const docElement = document.getElementById(docId);
+            let filename = '';
+            
+            switch(docId) {
+                case 'blueprint':
+                    filename = '深渊巢穴项目开发蓝图_v1.0.md';
+                    break;
+                case 'tech-plan':
+                    filename = '深渊巢穴技术实现计划.md';
+                    break;
+                case 'quick-start':
+                    filename = '技术实现快速启动指南.md';
+                    break;
+                case 'summary':
+                    filename = '项目分析总结报告.md';
+                    break;
+                case 'user-rules':
+                    filename = '用户规则.md';
+                    break;
+                case 'project-rules':
+                    filename = '项目规则.md';
+                    break;
+                default:
+                    return;
+            }
+            
+            // 使用fetch API加载文档内容
+            fetch(filename)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('文档加载失败');
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    // 简单的Markdown解析
+                    const html = parseMd(text);
+                    docElement.innerHTML = html;
+                })
+                .catch(error => {
+                    docElement.innerHTML = `<h2>加载失败</h2><p>无法加载文档: ${error.message}</p>`;
+                });
+        }
+        
+        // 简单的Markdown解析函数
+        function parseMd(md) {
+            // 替换标题
+            let html = md.replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                .replace(/^#### (.*$)/gm, '<h4>$1</h4>')
+                .replace(/^##### (.*$)/gm, '<h5>$1</h5>')
+                .replace(/^###### (.*$)/gm, '<h6>$1</h6>');
+                
+            // 替换粗体和斜体
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\_\_(.*?)\_\_/g, '<strong>$1</strong>')
+                .replace(/\_(.*?)\_/g, '<em>$1</em>');
+                
+            // 替换代码块
+            html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+                
+            // 替换行内代码
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+            // 替换列表
+            html = html.replace(/^\- (.*$)/gm, '<ul><li>$1</li></ul>')
+                .replace(/^[0-9]+\. (.*$)/gm, '<ol><li>$1</li></ol>');
+                
+            // 修复列表标签
+            html = html.replace(/<\/ul>\s*<ul>/g, '')
+                .replace(/<\/ol>\s*<ol>/g, '');
+                
+            // 替换链接
+            html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
+                
+            // 替换换行
+            html = html.replace(/\n/g, '<br>');
+                
+            return html;
+        }
+    </script>
+</body>
+</html>
