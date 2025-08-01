@@ -195,10 +195,11 @@
                     filename = '项目分析总结报告.md';
                     break;
                 case 'user-rules':
-                    filename = '用户规则.md';
-                    break;
+                    // 用户规则在设置中，无法通过文件路径直接访问
+                    docElement.innerHTML = '<h2>用户规则</h2><p>用户规则已放置在设置中的"用户规则"部分，无法通过此页面直接访问。</p>';
+                    return;
                 case 'project-rules':
-                    filename = '项目规则.md';
+                    filename = '.codebuddy/.rules/project-rule.mdc';
                     break;
                 default:
                     return;
