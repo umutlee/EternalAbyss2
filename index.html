@@ -36,7 +36,7 @@
             padding: 20px;
             border-radius: 5px;
             margin-right: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         .content {
             flex: 3;
@@ -44,7 +44,7 @@
             background-color: white;
             padding: 20px;
             border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         .sidebar ul {
             list-style-type: none;
@@ -163,36 +163,36 @@
             allDocs.forEach(doc => {
                 doc.classList.remove('active');
             });
-            
+
             // 显示选定的文档
             const selectedDoc = document.getElementById(docId);
             if (selectedDoc) {
                 selectedDoc.classList.add('active');
-                
+
                 // 如果内容是"加载中..."，则加载文档内容
                 if (selectedDoc.querySelector('p').textContent === '加载中...') {
                     loadDocContent(docId);
                 }
             }
         }
-        
+
         // 加载文档内容
         function loadDocContent(docId) {
             const docElement = document.getElementById(docId);
             let filename = '';
-            
+
             switch(docId) {
                 case 'blueprint':
-                    filename = '深渊巢穴项目开发蓝图_v1.0.md';
+                    filename = 'deep-abyss-docs/深渊巢穴项目开发蓝图_v1.0.md';
                     break;
                 case 'tech-plan':
-                    filename = '深渊巢穴技术实现计划.md';
+                    filename = 'deep-abyss-docs/深渊巢穴技术实现计划.md';
                     break;
                 case 'quick-start':
-                    filename = '技术实现快速启动指南.md';
+                    filename = 'deep-abyss-docs/技术实现快速启动指南.md';
                     break;
                 case 'summary':
-                    filename = '项目分析总结报告.md';
+                    filename = 'deep-abyss-docs/项目分析总结报告.md';
                     break;
                 case 'user-rules':
                     // 用户规则在设置中，无法通过文件路径直接访问
@@ -204,7 +204,7 @@
                 default:
                     return;
             }
-            
+
             // 使用fetch API加载文档内容
             fetch(filename)
                 .then(response => {
@@ -222,7 +222,7 @@
                     docElement.innerHTML = `<h2>加载失败</h2><p>无法加载文档: ${error.message}</p>`;
                 });
         }
-        
+
         // 简单的Markdown解析函数
         function parseMd(md) {
             // 替换标题
@@ -232,33 +232,33 @@
                 .replace(/^#### (.*$)/gm, '<h4>$1</h4>')
                 .replace(/^##### (.*$)/gm, '<h5>$1</h5>')
                 .replace(/^###### (.*$)/gm, '<h6>$1</h6>');
-                
+
             // 替换粗体和斜体
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/\_\_(.*?)\_\_/g, '<strong>$1</strong>')
                 .replace(/\_(.*?)\_/g, '<em>$1</em>');
-                
+
             // 替换代码块
             html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-                
+
             // 替换行内代码
             html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-                
+
             // 替换列表
             html = html.replace(/^\- (.*$)/gm, '<ul><li>$1</li></ul>')
                 .replace(/^[0-9]+\. (.*$)/gm, '<ol><li>$1</li></ol>');
-                
+
             // 修复列表标签
             html = html.replace(/<\/ul>\s*<ul>/g, '')
                 .replace(/<\/ol>\s*<ol>/g, '');
-                
+
             // 替换链接
             html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
-                
+
             // 替换换行
             html = html.replace(/\n/g, '<br>');
-                
+
             return html;
         }
     </script>
