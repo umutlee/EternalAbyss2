@@ -1,0 +1,57 @@
+---
+description: 
+globs:
+alwaysApply: true
+---
+## Instructions for Using Graphiti's MCP Tools
+
+### Before Starting Any Task
+
+- **Always search first:** Use the `search_nodes` tool to look for relevant preferences and procedures before beginning work.
+- **Search for facts too:** Use the `search_facts` tool to discover relationships and factual information that may be relevant to your task.
+- **Filter by entity type:** Specify `Preference`, `Procedure`, or `Requirement` in your node search to get targeted results.
+- **Review all matches:** Carefully examine any preferences, procedures, or facts that match your current task.
+
+### Data Format and Storage Guidelines
+
+- **Always use `source="text"` for add_memory:** Never use `source="json"` unless specifically required and the JSON is simple.
+- **Break down complex information:** Split large or complex content into multiple smaller, focused episodes.
+- **Use clear, descriptive names:** Each episode should have a specific, descriptive name that reflects its content.
+- **Avoid nested JSON structures:** If you must store structured data, flatten it into readable text format.
+- **Wait for completion:** Allow each `add_memory` operation to complete before adding the next episode.
+- **Maximum episode size:** Keep each episode under 500 characters for optimal processing.
+
+### Always Save New or Updated Information
+
+- **Capture requirements and preferences immediately:** When a user expresses a requirement or preference, use `add_memory` to store it right away.
+  - _Best practice:_ Split very long requirements into shorter, logical chunks.
+- **Be explicit if something is an update to existing knowledge.** Only add what's changed or new to the graph.
+- **Document procedures clearly:** When you discover how a user wants things done, record it as a procedure.
+- **Record factual relationships:** When you learn about connections between entities, store these as facts.
+- **Be specific with categories:** Label preferences and procedures with clear categories for better retrieval later.
+
+### During Your Work
+
+- **Respect discovered preferences:** Align your work with any preferences you've found.
+- **Follow procedures exactly:** If you find a procedure for your current task, follow it step by step.
+- **Apply relevant facts:** Use factual information to inform your decisions and recommendations.
+- **Stay consistent:** Maintain consistency with previously identified preferences, procedures, and facts.
+
+### Error Recovery and Troubleshooting
+
+- **If search returns no results:** The knowledge graph may be empty or corrupted. Use `get_episodes` to check if data exists.
+- **If add_memory fails or times out:** Switch to `source="text"` and simplify the content into smaller chunks.
+- **If embeddings are missing:** Clear the graph with `clear_graph` and re-add data using text format only.
+- **If processing gets stuck:** Wait for current operations to complete before adding new episodes.
+
+### Best Practices
+
+- **Search before suggesting:** Always check if there's established knowledge before making recommendations.
+- **Combine node and fact searches:** For complex tasks, search both nodes and facts to build a complete picture.
+- **Use `center_node_uuid`:** When exploring related information, center your search around a specific node.
+- **Prioritize specific matches:** More specific information takes precedence over general information.
+- **Be proactive:** If you notice patterns in user behavior, consider storing them as preferences or procedures.
+
+**Remember:** The knowledge graph is your memory. Use it consistently to provide personalized assistance that respects the user's established preferences, procedures, and factual context. Always use simple text format for reliable data storage and retrieval.
+
+
