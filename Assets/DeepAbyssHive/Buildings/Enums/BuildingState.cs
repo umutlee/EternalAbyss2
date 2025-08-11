@@ -2,42 +2,48 @@ namespace DeepAbyssHive.Buildings.Enums
 {
     /// <summary>
     /// 建筑状态枚举
+    /// 定义建筑在不同阶段的状态
     /// </summary>
     public enum BuildingState
     {
         /// <summary>
         /// 建造中
         /// </summary>
-        UnderConstruction = 0,
+        UnderConstruction,
         
         /// <summary>
-        /// 运行中
+        /// 正常运行
         /// </summary>
-        Operational = 1,
-        
-        /// <summary>
-        /// 待命中
-        /// </summary>
-        Idle = 2,
-        
-        /// <summary>
-        /// 受损中
-        /// </summary>
-        Damaged = 3,
-        
-        /// <summary>
-        /// 修复中
-        /// </summary>
-        Repairing = 4,
+        Operational,
         
         /// <summary>
         /// 升级中
         /// </summary>
-        Upgrading = 5,
+        Upgrading,
+        
+        /// <summary>
+        /// 受损
+        /// </summary>
+        Damaged,
+        
+        /// <summary>
+        /// 修理中
+        /// </summary>
+        Repairing,
         
         /// <summary>
         /// 已摧毁
         /// </summary>
-        Destroyed = 6
+        Destroyed,
+        
+        /// <summary>
+        /// 暂停/离线
+        /// </summary>
+        Paused,
+        
+        /// <summary>
+        /// 维护中
+        /// </summary>
+        Maintenance
     }
 }
