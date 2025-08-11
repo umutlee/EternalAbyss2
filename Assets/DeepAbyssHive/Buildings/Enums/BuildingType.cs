@@ -41,8 +41,8 @@ namespace DeepAbyssHive.Buildings.Enums
         EvolutionChamber = 6,
 
         /// <summary>
-        /// <summary>發電廠 - 產生能量
+        /// 生物能核心 - 产生生物能
         /// </summary>
-        PowerPlant = 7
+        BioEnergyCore = 7
     }
 }

@@ -75,14 +75,14 @@ namespace DeepAbyssHive.Buildings.Data
         public int MaxLevel = 1;
         
         /// <summary>
-        /// 电力消耗
+        /// 生物能消耗
         /// </summary>
-        public float PowerConsumption = 0f;
+        public float BioEnergyConsumption = 0f;
         
         /// <summary>
-        /// 电力产出
+        /// 生物能产出
         /// </summary>
-        public float PowerGeneration = 0f;
+        public float BioEnergyGeneration = 0f;
         
         /// <summary>
         /// 升级路径

@@ -79,14 +79,14 @@ namespace DeepAbyssHive.Buildings.Data
         public float Experience;
         
         /// <summary>
-        /// 电力消耗
+        /// 生物能消耗
         /// </summary>
-        public float PowerConsumption;
+        public float BioEnergyConsumption;
         
         /// <summary>
-        /// 电力产出
+        /// 生物能产出
         /// </summary>
-        public float PowerGeneration;
+        public float BioEnergyGeneration;
         
         /// <summary>
         /// 创建时间
