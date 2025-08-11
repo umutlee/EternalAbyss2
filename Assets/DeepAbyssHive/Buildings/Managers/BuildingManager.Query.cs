@@ -80,17 +80,6 @@ namespace DeepAbyssHive.Buildings.Managers
             return true;
         }
 
-        /// <summary>
-        /// 检查建筑放置是否有效
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="size">大小</param>
-        /// <param name="requiresCreep">是否需要菌毯</param>
-        /// <returns>是否可以放置</returns>
-        public bool IsValidPlacement(Vector3 position, Vector2Int size, bool requiresCreep)
-        {
-            return CanPlaceBuildingAt(position, size);
-        }
 
         /// <summary>
         /// 获取范围内的建筑
@@ -140,20 +129,5 @@ namespace DeepAbyssHive.Buildings.Managers
             return buildings.ToArray();
         }
 
-        /// <summary>
-        /// 获取建筑周围的菌毯扩张范围
-        /// </summary>
-        /// <param name="buildingId">建筑ID</param>
-        /// <returns>菌毯扩张范围</returns>
-        public float GetCreepExpansionRadius(int buildingId)
-        {
-            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
-            {
-                return 0f;
-            }
-            
-            // 根据建筑类型和等级返回菌毯扩张范围
-            return buildingData.Level * 5.0f; // 简化计算
-        }
     }
 }

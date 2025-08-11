@@ -2,1157 +2,522 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
-using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Data;
-using DeepAbyssHive.SpatialIndex.Interfaces;
+using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Buildings.Enums;
+using System.Linq;
 
 namespace DeepAbyssHive.Creep.Managers
 {
     /// <summary>
-    /// 菌毯管理器，负责管理菌毯系统
+    /// 菌毯管理器主类
+    /// 负责统一管理菌毯系统的所有功能模块
     /// </summary>
-    public class CreepManager : MonoBehaviour, ICreepManager, IManager
+    public partial class CreepManager : MonoBehaviour, ICreepManager
     {
-        #region 私有字段
+        #region 字段和属性
+        
+        [Header("菌毯基础设置")]
+        [SerializeField] private float _gridSize = 1f;
+        [SerializeField] private float _tileSize = 1f;
+        [SerializeField] private float _maxDensity = 100f;
+        [SerializeField] private LayerMask _terrainLayer = 1;
+        [SerializeField] private LayerMask _obstacleLayer = 2;
+        
+        [Header("性能设置")]
+        [SerializeField] private int _maxProcessingPerFrame = 100;
+        [SerializeField] private bool _enableSpatialOptimization = true;
+        [SerializeField] private bool _enableDebugVisualization = false;
+        
+        // 核心数据结构
         private Dictionary<Vector2Int, CreepData> _creepGrid = new Dictionary<Vector2Int, CreepData>();
-        private Dictionary<int, List<Vector2Int>> _playerCreepSources = new Dictionary<int, List<Vector2Int>>();
-        private Dictionary<int, CreepNetworkData> _creepNetworks = new Dictionary<int, CreepNetworkData>();
-        private Queue<Vector2Int> _expansionQueue = new Queue<Vector2Int>();
-        private ISpatialIndex<CreepData> _spatialIndex;
+        private Dictionary<Vector2Int, CreepTile> _creepTiles = new Dictionary<Vector2Int, CreepTile>();
+        private HashSet<Vector2Int> _activeCreepCells = new HashSet<Vector2Int>();
+        private ISpatialIndex _spatialIndex;
         
-        private bool _isInitialized = false;
-        private bool _isPaused = false;
-        private string _managerName = "CreepManager";
+        // 系统依赖
+        private IBuildingManager _buildingManager;
         
-        // 菌毯配置
-        private float _gridSize = 1.0f; // 菌毯网格大小
-        private float _expansionRate = 0.1f; // 菌毯扩张速率
-        private float _decayRate = 0.05f; // 菌毯衰减速率
-        private float _minDensity = 0.01f; // 最小菌毯密度
-        private float _maxDensity = 1.0f; // 最大菌毯密度
-        private int _maxExpansionsPerFrame = 50; // 每帧最大扩张数量
+        // 事件
+        public event Action<Vector2Int, CreepTile> OnCreepExpanded;
+        public event Action<Vector2Int> OnCreepRemoved;
+        public event Action<CreepTile> OnCreepTileStatusChanged;
+        public event Action<CreepStatistics> OnStatisticsUpdated;
         
-        // 性能优化
-        private float _updateTimer = 0f;
-        private float _updateInterval = 0.1f; // 更新间隔
-        private int _currentUpdateIndex = 0;
-        private List<Vector2Int> _activeCreepCells = new List<Vector2Int>();
         #endregion
-
+        
         #region Unity生命周期
-        /// <summary>
-        /// Awake方法
-        /// </summary>
+        
         private void Awake()
         {
-            // 在Awake中进行基本初始化
-            _managerName = "CreepManager";
+            InitializeCreepManager();
         }
-
-        /// <summary>
-        /// 设置空间索引
-        /// </summary>
-        /// <param name="spatialIndex">空间索引系统</param>
-        public void SetSpatialIndex(ISpatialIndex<CreepData> spatialIndex)
+        
+        private void Start()
         {
-            _spatialIndex = spatialIndex;
+            StartCreepSystem();
         }
+        
+        private void Update()
+        {
+            UpdateCreepSystem();
+            ProcessAutoExpansion();
+        }
+        
+        private void OnDestroy()
+        {
+            ShutdownCreepSystem();
+        }
+        
         #endregion
-
-        // 已移除重复的IManager接口实现，保留下方的完整实现
-
-
-        #region ICreepManager接口实现
+        
+        #region 初始化和关闭
+        
         /// <summary>
-        /// 创建菌毯节点
+        /// 初始化菌毯管理器
         /// </summary>
-        /// <param name="creepData">菌毯数据</param>
-        /// <returns>菌毯ID</returns>
-        public int CreateCreepNode(CreepData creepData)
+        private void InitializeCreepManager()
         {
-            Vector2Int gridPos = WorldToGridPosition(creepData.Position);
-            
-            // 生成新的菌毯ID
-            int creepId = _creepGrid.Count;
-            
-            // 检查是否已存在菌毯
-            if (_creepGrid.ContainsKey(gridPos))
+            // 初始化空间索引
+            if (_enableSpatialOptimization)
             {
-                Debug.LogWarning($"[{_managerName}] 尝试在已存在菌毯的位置创建节点: {creepData.Position}");
-                return -1;
+                _spatialIndex = new QuadTreeSpatialIndex();
             }
             
-            // 设置菌毯ID
-            creepData.CreepId = creepId;
+            // 获取系统依赖
+            _buildingManager = FindObjectOfType<MonoBehaviour>() as IBuildingManager;
             
-            // 添加到网格
-            _creepGrid[gridPos] = creepData;
+            Debug.Log("[CreepManager] 菌毯管理器初始化完成");
+        }
+        
+        /// <summary>
+        /// 启动菌毯系统
+        /// </summary>
+        private void StartCreepSystem()
+        {
+            // 注册建筑系统事件
+            if (_buildingManager != null)
+            {
+                _buildingManager.OnBuildingPlaced += OnBuildingPlaced;
+                _buildingManager.OnBuildingDestroyed += OnBuildingDestroyed;
+            }
+            
+            Debug.Log("[CreepManager] 菌毯系统启动完成");
+        }
+        
+        /// <summary>
+        /// 关闭菌毯系统
+        /// </summary>
+        private void ShutdownCreepSystem()
+        {
+            // 取消注册事件
+            if (_buildingManager != null)
+            {
+                _buildingManager.OnBuildingPlaced -= OnBuildingPlaced;
+                _buildingManager.OnBuildingDestroyed -= OnBuildingDestroyed;
+            }
+            
+            // 清理资源
+            _creepGrid.Clear();
+            _creepTiles.Clear();
+            _activeCreepCells.Clear();
+            
+            Debug.Log("[CreepManager] 菌毯系统关闭完成");
+        }
+        
+        #endregion
+        
+        #region 公共接口实现
+        
+        /// <summary>
+        /// 在指定位置创建菌毯源点
+        /// </summary>
+        public bool CreateCreepSource(Vector3 worldPosition, float radius, int ownerId)
+        {
+            var gridPos = WorldToGridPosition(worldPosition);
+            
+            if (_creepGrid.ContainsKey(gridPos))
+                return false;
+                
+            // 创建菌毯源点
+            var creepSource = new CreepData
+            {
+                Position = worldPosition,
+                Density = _maxDensity,
+                OwnerId = ownerId,
+                IsSource = true,
+                SourceRadius = radius,
+                LastUpdateTime = Time.time,
+                CreationTime = Time.time
+            };
+            
+            _creepGrid[gridPos] = creepSource;
             _activeCreepCells.Add(gridPos);
+            
+            // 创建对应的菌毯瓦片
+            var creepTile = CreateCreepTile(gridPos);
+            if (creepTile != null)
+            {
+                creepTile.IsNutritionSource = true;
+                creepTile.TileType = CreepTileType.Enhanced;
+                _creepTiles[gridPos] = creepTile;
+            }
             
             // 添加到空间索引
             if (_spatialIndex != null)
             {
-                _spatialIndex.Insert(creepData, creepData.Position, Vector3.one * _gridSize);
+                _spatialIndex.Insert(creepSource, worldPosition, Vector3.one * radius);
             }
             
-            // 记录玩家的菌毯源点
-            if (creepData.IsSource)
-            {
-                if (!_playerCreepSources.ContainsKey(creepData.OwnerId))
-                {
-                    _playerCreepSources[creepData.OwnerId] = new List<Vector2Int>();
-                }
-                
-                if (!_playerCreepSources[creepData.OwnerId].Contains(gridPos))
-                {
-                    _playerCreepSources[creepData.OwnerId].Add(gridPos);
-                }
-                
-                // 初始化菌毯网络
-                if (!_creepNetworks.ContainsKey(creepData.OwnerId))
-                {
-                    _creepNetworks[creepData.OwnerId] = new CreepNetworkData
-                    {
-                        OwnerId = creepData.OwnerId,
-                        TotalArea = 0f,
-                        ConnectedSources = new List<Vector3>(),
-                        NetworkEfficiency = 1.0f
-                    };
-                }
-                
-                _creepNetworks[creepData.OwnerId].ConnectedSources.Add(creepData.Position);
-                
-                // 添加到扩张队列
-                _expansionQueue.Enqueue(gridPos);
-            }
-            
-            Debug.Log($"[{_managerName}] 创建菌毯节点: ID={creepId}, 位置={creepData.Position}, 所有者={creepData.OwnerId}");
-            return creepId;
+            Debug.Log($"[CreepManager] 在位置 {worldPosition} 创建菌毯源点");
+            return true;
         }
-
+        
         /// <summary>
-        /// 获取菌毯数据
+        /// 移除指定位置的菌毯
         /// </summary>
-        /// <param name="creepId">菌毯ID</param>
-        /// <returns>菌毯数据</returns>
-        public CreepData GetCreepData(int creepId)
+        public bool RemoveCreepAt(Vector3 worldPosition)
         {
-            foreach (var pair in _creepGrid)
-            {
-                if (pair.Value.CreepId == creepId)
-                {
-                    return pair.Value;
-                }
-            }
-            
-            Debug.LogWarning($"[{_managerName}] 尝试获取不存在的菌毯数据: ID={creepId}");
-            return new CreepData();
+            var gridPos = WorldToGridPosition(worldPosition);
+            return RemoveCreepTile(gridPos);
         }
-
+        
         /// <summary>
-        /// 更新菌毯数据
+        /// 检查指定位置是否有菌毯
         /// </summary>
-        /// <param name="creepData">菌毯数据</param>
-        public void UpdateCreep(CreepData creepData)
+        public bool HasCreepAt(Vector3 worldPosition)
         {
-            Vector2Int gridPos = WorldToGridPosition(creepData.Position);
-            
-            if (_creepGrid.ContainsKey(gridPos))
-            {
-                _creepGrid[gridPos] = creepData;
-                
-                // 更新空间索引
-                if (_spatialIndex != null)
-                {
-                    _spatialIndex.Update(creepData, creepData.Position, creepData.Position, Vector3.one * _gridSize);
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试更新不存在的菌毯: 位置={creepData.Position}");
-            }
+            var gridPos = WorldToGridPosition(worldPosition);
+            return _creepTiles.ContainsKey(gridPos) && _creepTiles[gridPos].IsActive;
         }
-
+        
         /// <summary>
-        /// 删除菌毯节点
+        /// 检查位置是否可以放置建筑
         /// </summary>
-        /// <param name="creepId">菌毯ID</param>
-        public void RemoveCreepNode(int creepId)
+        public bool CanPlaceBuildingAt(Vector3 worldPosition, BuildingType buildingType)
         {
-            Vector2Int gridPosToRemove = Vector2Int.zero;
-            CreepData creepToRemove = new CreepData();
-            bool found = false;
+            var gridPos = WorldToGridPosition(worldPosition);
             
-            foreach (var pair in _creepGrid)
+            // 检查是否需要菌毯支持
+            if (RequiresCreepSupport(buildingType))
             {
-                if (pair.Value.CreepId == creepId)
-                {
-                    gridPosToRemove = pair.Key;
-                    creepToRemove = pair.Value;
-                    found = true;
-                    break;
-                }
+                return HasCreepAt(gridPos);
             }
-            
-            if (!found)
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试删除不存在的菌毯节点: ID={creepId}");
-                return;
-            }
-            
-            // 从玩家源点列表中移除
-            if (creepToRemove.IsSource && _playerCreepSources.ContainsKey(creepToRemove.OwnerId))
-            {
-                _playerCreepSources[creepToRemove.OwnerId].Remove(gridPosToRemove);
-            }
-            
-            // 从菌毯网络中移除
-            if (_creepNetworks.ContainsKey(creepToRemove.OwnerId))
-            {
-                _creepNetworks[creepToRemove.OwnerId].ConnectedSources.Remove(creepToRemove.Position);
-            }
-            
-            // 移除菌毯
-            RemoveCreepAtPosition(gridPosToRemove);
-            
-            Debug.Log($"[{_managerName}] 删除菌毯节点: ID={creepId}, 位置={creepToRemove.Position}");
-        }
-
-        /// <summary>
-        /// 检查位置是否有菌毯覆盖
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="ownerId">所有者ID（可选）</param>
-        /// <returns>是否有菌毯覆盖</returns>
-        public bool HasCreepCoverage(Vector3 position, int ownerId = -1)
-        {
-            Vector2Int gridPos = WorldToGridPosition(position);
-            
-            if (!_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-                return false;
-            
-            if (creepData.Density < _minDensity)
-                return false;
-            
-            if (ownerId >= 0 && creepData.OwnerId != ownerId)
-                return false;
             
             return true;
         }
-
+        
         /// <summary>
-        /// 获取位置处的菌毯强度
+        /// 获取菌毯密度
         /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="ownerId">所有者ID（可选）</param>
-        /// <returns>菌毯强度（0-1）</returns>
-        public float GetCreepStrength(Vector3 position, int ownerId = -1)
+        public float GetCreepDensityAt(Vector3 worldPosition)
         {
-            Vector2Int gridPos = WorldToGridPosition(position);
+            var gridPos = WorldToGridPosition(worldPosition);
             
-            if (_creepGrid.TryGetValue(gridPos, out CreepData creepData))
+            if (_creepGrid.TryGetValue(gridPos, out var creepData))
             {
-                if (ownerId >= 0 && creepData.OwnerId != ownerId)
-                    return 0f;
-                    
                 return creepData.Density;
             }
             
             return 0f;
         }
-
+        
         /// <summary>
-        /// 扩张菌毯
+        /// 强制更新菌毯系统
         /// </summary>
-        /// <param name="creepId">菌毯ID</param>
-        /// <param name="expansionAmount">扩张量</param>
-        public void ExpandCreep(int creepId, float expansionAmount)
+        public void ForceUpdate()
         {
-            CreepData creepData = GetCreepData(creepId);
-            if (creepData.CreepId != creepId)
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试扩张不存在的菌毯: ID={creepId}");
-                return;
-            }
-            
-            Vector2Int centerGrid = WorldToGridPosition(creepData.Position);
-            int gridRadius = Mathf.CeilToInt(expansionAmount / _gridSize);
-            
-            // 在半径范围内扩张菌毯
-            for (int x = -gridRadius; x <= gridRadius; x++)
-            {
-                for (int y = -gridRadius; y <= gridRadius; y++)
-                {
-                    Vector2Int gridPos = centerGrid + new Vector2Int(x, y);
-                    Vector3 worldPos = GridToWorldPosition(gridPos);
-                    
-                    // 检查距离
-                    float distance = Vector3.Distance(creepData.Position, worldPos);
-                    if (distance > expansionAmount)
-                        continue;
-                    
-                    // 计算扩张强度（距离越近，扩张越强）
-                    float expansionStrength = _expansionRate * (1f - distance / expansionAmount);
-                    
-                    // 扩张菌毯
-                    ExpandCreepAtPosition(gridPos, worldPos, expansionStrength, creepData.OwnerId);
-                }
-            }
+            UpdateCreepSystem();
+            ProcessCreepMaintenance();
         }
-
+        
+        #endregion
+        
+        #region 建筑系统集成
+        
         /// <summary>
-        /// 收缩菌毯
+        /// 建筑放置事件处理
         /// </summary>
-        /// <param name="creepId">菌毯ID</param>
-        /// <param name="shrinkAmount">收缩量</param>
-        public void ShrinkCreep(int creepId, float shrinkAmount)
+        private void OnBuildingPlaced(BuildingData building)
         {
-            CreepData creepData = GetCreepData(creepId);
-            if (creepData.CreepId != creepId)
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试收缩不存在的菌毯: ID={creepId}");
-                return;
-            }
+            if (building == null) return;
             
-            Vector2Int gridPos = WorldToGridPosition(creepData.Position);
-            
-            if (_creepGrid.TryGetValue(gridPos, out CreepData existingCreep))
+            // 如果是菌毯生产建筑，自动扩张菌毯
+            if (IsCreepProducingBuilding(building.BuildingType))
             {
-                existingCreep.Density = Mathf.Max(0f, existingCreep.Density - shrinkAmount);
-                existingCreep.LastUpdateTime = Time.time;
+                var gridPos = WorldToGridPosition(building.Position);
+                CreateCreepSource(building.Position, GetBuildingCreepRadius(building.BuildingType), building.OwnerId);
                 
-                if (existingCreep.Density <= _minDensity && !existingCreep.IsSource)
-                {
-                    // 移除菌毯
-                    RemoveCreepAtPosition(gridPos);
-                }
-                else
-                {
-                    _creepGrid[gridPos] = existingCreep;
-                }
+                // 扩张到建筑周围
+                ExpandAroundBuilding(building, GetBuildingCreepRadius(building.BuildingType));
             }
-        }
-
-        /// <summary>
-        /// 损坏菌毯
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="radius">半径</param>
-        /// <param name="damageAmount">损坏量</param>
-        public void DamageCreep(Vector3 position, float radius, float damageAmount)
-        {
-            Vector2Int centerGrid = WorldToGridPosition(position);
-            int gridRadius = Mathf.CeilToInt(radius / _gridSize);
-            
-            // 在半径范围内损坏菌毯
-            for (int x = -gridRadius; x <= gridRadius; x++)
-            {
-                for (int y = -gridRadius; y <= gridRadius; y++)
-                {
-                    Vector2Int gridPos = centerGrid + new Vector2Int(x, y);
-                    Vector3 worldPos = GridToWorldPosition(gridPos);
-                    
-                    // 检查距离
-                    float distance = Vector3.Distance(position, worldPos);
-                    if (distance > radius)
-                        continue;
-                    
-                    if (!_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-                        continue;
-                    
-                    // 计算损坏强度（距离越近，损坏越强）
-                    float damageStrength = damageAmount * (1f - distance / radius);
-                    
-                    // 损坏菌毯
-                    creepData.Density = Mathf.Max(0f, creepData.Density - damageStrength);
-                    creepData.LastUpdateTime = Time.time;
-                    
-                    if (creepData.Density <= _minDensity && !creepData.IsSource)
-                    {
-                        // 移除菌毯
-                        RemoveCreepAtPosition(gridPos);
-                    }
-                    else
-                    {
-                        _creepGrid[gridPos] = creepData;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// 修复菌毯
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="radius">半径</param>
-        /// <param name="healAmount">修复量</param>
-        /// <param name="ownerId">所有者ID</param>
-        public void HealCreep(Vector3 position, float radius, float healAmount, int ownerId)
-        {
-            Vector2Int centerGrid = WorldToGridPosition(position);
-            int gridRadius = Mathf.CeilToInt(radius / _gridSize);
-            
-            // 在半径范围内修复菌毯
-            for (int x = -gridRadius; x <= gridRadius; x++)
-            {
-                for (int y = -gridRadius; y <= gridRadius; y++)
-                {
-                    Vector2Int gridPos = centerGrid + new Vector2Int(x, y);
-                    Vector3 worldPos = GridToWorldPosition(gridPos);
-                    
-                    // 检查距离
-                    float distance = Vector3.Distance(position, worldPos);
-                    if (distance > radius)
-                        continue;
-                    
-                    if (!_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-                        continue;
-                    
-                    if (creepData.OwnerId != ownerId)
-                        continue;
-                    
-                    // 计算修复强度（距离越近，修复越强）
-                    float healStrength = healAmount * (1f - distance / radius);
-                    
-                    // 修复菌毯
-                    creepData.Density = Mathf.Min(_maxDensity, creepData.Density + healStrength);
-                    creepData.LastUpdateTime = Time.time;
-                    _creepGrid[gridPos] = creepData;
-                }
-            }
-        }
-
-        /// <summary>
-        /// 获取菌毯网络数据
-        /// </summary>
-        /// <param name="networkId">网络ID</param>
-        /// <returns>菌毯网络数据</returns>
-        public CreepNetworkData GetCreepNetworkData(int networkId)
-        {
-            if (_creepNetworks.TryGetValue(networkId, out CreepNetworkData networkData))
-            {
-                return networkData;
-            }
-            
-            Debug.LogWarning($"[{_managerName}] 尝试获取不存在的菌毯网络数据: ID={networkId}");
-            return new CreepNetworkData
-            {
-                OwnerId = networkId,
-                TotalArea = 0f,
-                ConnectedSources = new List<Vector3>(),
-                NetworkEfficiency = 0f
-            };
-        }
-
-        /// <summary>
-        /// 合并菌毯网络
-        /// </summary>
-        /// <param name="networkId1">网络ID1</param>
-        /// <param name="networkId2">网络ID2</param>
-        /// <returns>合并后的网络ID</returns>
-        public int MergeCreepNetworks(int networkId1, int networkId2)
-        {
-            if (!_creepNetworks.TryGetValue(networkId1, out CreepNetworkData network1))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试合并不存在的菌毯网络: ID={networkId1}");
-                return -1;
-            }
-            
-            if (!_creepNetworks.TryGetValue(networkId2, out CreepNetworkData network2))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试合并不存在的菌毯网络: ID={networkId2}");
-                return -1;
-            }
-            
-            // 合并网络数据
-            network1.TotalArea += network2.TotalArea;
-            network1.ConnectedSources.AddRange(network2.ConnectedSources);
-            network1.NetworkEfficiency = (network1.NetworkEfficiency + network2.NetworkEfficiency) / 2f;
-            
-            // 更新网络
-            _creepNetworks[networkId1] = network1;
-            _creepNetworks.Remove(networkId2);
-            
-            Debug.Log($"[{_managerName}] 合并菌毯网络: {networkId1} + {networkId2} = {networkId1}");
-            return networkId1;
-        }
-
-        /// <summary>
-        /// 分割菌毯网络
-        /// </summary>
-        /// <param name="networkId">网络ID</param>
-        /// <param name="position">分割位置</param>
-        /// <param name="radius">分割半径</param>
-        /// <returns>分割后的网络ID数组</returns>
-        public int[] SplitCreepNetwork(int networkId, Vector3 position, float radius)
-        {
-            if (!_creepNetworks.TryGetValue(networkId, out CreepNetworkData originalNetwork))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试分割不存在的菌毯网络: ID={networkId}");
-                return new int[0];
-            }
-            
-            // 简化实现：创建两个新网络
-            int newNetworkId1 = networkId;
-            int newNetworkId2 = _creepNetworks.Count;
-            
-            // 分割连接的源点
-            List<Vector3> sources1 = new List<Vector3>();
-            List<Vector3> sources2 = new List<Vector3>();
-            
-            foreach (var source in originalNetwork.ConnectedSources)
-            {
-                float distance = Vector3.Distance(source, position);
-                if (distance <= radius)
-                {
-                    sources1.Add(source);
-                }
-                else
-                {
-                    sources2.Add(source);
-                }
-            }
-            
-            // 更新原网络
-            originalNetwork.ConnectedSources = sources1;
-            originalNetwork.TotalArea *= 0.5f; // 简化：假设面积平分
-            originalNetwork.NetworkEfficiency *= 0.8f; // 分割会降低效率
-            _creepNetworks[newNetworkId1] = originalNetwork;
-            
-            // 创建新网络
-            if (sources2.Count > 0)
-            {
-                CreepNetworkData newNetwork = new CreepNetworkData
-                {
-                    OwnerId = originalNetwork.OwnerId,
-                    TotalArea = originalNetwork.TotalArea,
-                    ConnectedSources = sources2,
-                    NetworkEfficiency = originalNetwork.NetworkEfficiency
-                };
-                _creepNetworks[newNetworkId2] = newNetwork;
-                
-                Debug.Log($"[{_managerName}] 分割菌毯网络: {networkId} -> {newNetworkId1}, {newNetworkId2}");
-                return new int[] { newNetworkId1, newNetworkId2 };
-            }
-            
-            Debug.Log($"[{_managerName}] 菌毯网络分割失败，源点不足: {networkId}");
-            return new int[] { newNetworkId1 };
-        }
-
-        /// <summary>
-        /// 添加菌毯源点
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="ownerId">所有者ID</param>
-        /// <param name="initialRadius">初始半径</param>
-        public void AddCreepSource(Vector3 position, int ownerId, float initialRadius)
-        {
-            Vector2Int gridPos = WorldToGridPosition(position);
-            
-            // 检查是否已存在菌毯
-            if (_creepGrid.ContainsKey(gridPos))
-            {
-                // 如果已存在，增强密度
-                CreepData existingCreep = _creepGrid[gridPos];
-                if (existingCreep.OwnerId == ownerId)
-                {
-                    existingCreep.Density = Mathf.Min(_maxDensity, existingCreep.Density + 0.5f);
-                    existingCreep.LastUpdateTime = Time.time;
-                    _creepGrid[gridPos] = existingCreep;
-                }
-                else
-                {
-                    Debug.LogWarning($"[{_managerName}] 尝试在敌方菌毯上添加源点: {position}");
-                    return;
-                }
-            }
-            else
-            {
-                // 创建新的菌毯源点
-                CreepData creepData = new CreepData
-                {
-                    Position = position,
-                    Density = _maxDensity,
-                    OwnerId = ownerId,
-                    IsSource = true,
-                    SourceRadius = initialRadius,
-                    LastUpdateTime = Time.time,
-                    CreationTime = Time.time
-                };
-                
-                _creepGrid[gridPos] = creepData;
-                _activeCreepCells.Add(gridPos);
-                
-                // 添加到空间索引
-                if (_spatialIndex != null)
-                {
-                    _spatialIndex.Insert(creepData, position, Vector3.one * _gridSize);
-                }
-            }
-            
-            // 记录玩家的菌毯源点
-            if (!_playerCreepSources.ContainsKey(ownerId))
-            {
-                _playerCreepSources[ownerId] = new List<Vector2Int>();
-            }
-            
-            if (!_playerCreepSources[ownerId].Contains(gridPos))
-            {
-                _playerCreepSources[ownerId].Add(gridPos);
-            }
-            
-            // 初始化菌毯网络
-            if (!_creepNetworks.ContainsKey(ownerId))
-            {
-                _creepNetworks[ownerId] = new CreepNetworkData
-                {
-                    OwnerId = ownerId,
-                    TotalArea = 0f,
-                    ConnectedSources = new List<Vector3>(),
-                    NetworkEfficiency = 1.0f
-                };
-            }
-            
-            _creepNetworks[ownerId].ConnectedSources.Add(position);
-            
-            // 添加到扩张队列
-            _expansionQueue.Enqueue(gridPos);
-            
-            Debug.Log($"[{_managerName}] 添加菌毯源点: 位置={position}, 所有者={ownerId}, 半径={initialRadius}");
-        }
-
-        /// <summary>
-        /// 移除菌毯源点
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="ownerId">所有者ID</param>
-        public void RemoveCreepSource(Vector3 position, int ownerId)
-        {
-            Vector2Int gridPos = WorldToGridPosition(position);
-            
-            if (!_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试移除不存在的菌毯源点: {position}");
-                return;
-            }
-            
-            if (creepData.OwnerId != ownerId)
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试移除其他玩家的菌毯源点: {position}");
-                return;
-            }
-            
-            // 标记为非源点
-            creepData.IsSource = false;
-            creepData.SourceRadius = 0f;
-            _creepGrid[gridPos] = creepData;
-            
-            // 从玩家源点列表中移除
-            if (_playerCreepSources.ContainsKey(ownerId))
-            {
-                _playerCreepSources[ownerId].Remove(gridPos);
-            }
-            
-            // 从菌毯网络中移除
-            if (_creepNetworks.ContainsKey(ownerId))
-            {
-                _creepNetworks[ownerId].ConnectedSources.Remove(position);
-            }
-            
-            Debug.Log($"[{_managerName}] 移除菌毯源点: 位置={position}, 所有者={ownerId}");
-        }
-
-        /// <summary>
-        /// 获取范围内的菌毯数据
-        /// </summary>
-        /// <param name="position">中心位置</param>
-        /// <param name="radius">半径</param>
-        /// <returns>菌毯数据列表</returns>
-        public List<CreepData> QueryCreepInRange(Vector3 position, float radius)
-        {
-            if (_spatialIndex != null)
-            {
-                // 使用空间索引查询
-                return _spatialIndex.QueryRange(position, new Vector3(radius * 2, radius * 2, radius * 2));
-            }
-            
-            // 如果没有空间索引，使用暴力搜索
-            List<CreepData> creepInRange = new List<CreepData>();
-            Vector2Int centerGrid = WorldToGridPosition(position);
-            int gridRadius = Mathf.CeilToInt(radius / _gridSize);
-            
-            for (int x = -gridRadius; x <= gridRadius; x++)
-            {
-                for (int y = -gridRadius; y <= gridRadius; y++)
-                {
-                    Vector2Int gridPos = centerGrid + new Vector2Int(x, y);
-                    
-                    if (_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-                    {
-                        if (Vector3.Distance(creepData.Position, position) <= radius)
-                        {
-                            creepInRange.Add(creepData);
-                        }
-                    }
-                }
-            }
-            
-            return creepInRange;
         }
         
         /// <summary>
-        /// 获取范围内的菌毯数据（兼容旧API）
+        /// 建筑销毁事件处理
         /// </summary>
-        /// <param name="position">中心位置</param>
-        /// <param name="radius">半径</param>
-        /// <returns>菌毯数据数组</returns>
-        public CreepData[] GetCreepInRange(Vector3 position, float radius)
+        private void OnBuildingDestroyed(BuildingData building)
         {
-            return QueryCreepInRange(position, radius).ToArray();
-        }
-
-        /// <summary>
-        /// 清除指定所有者的所有菌毯
-        /// </summary>
-        /// <param name="ownerId">所有者ID</param>
-        public void ClearCreepForPlayer(int ownerId)
-        {
-            List<Vector2Int> cellsToRemove = new List<Vector2Int>();
+            if (building == null) return;
             
-            foreach (var pair in _creepGrid)
+            // 如果是菌毯源建筑，移除对应的菌毯源
+            if (IsCreepProducingBuilding(building.BuildingType))
             {
-                if (pair.Value.OwnerId == ownerId)
+                var gridPos = WorldToGridPosition(building.Position);
+                if (_creepGrid.TryGetValue(gridPos, out var creepData) && creepData.IsSource)
                 {
-                    cellsToRemove.Add(pair.Key);
+                    RemoveCreepTile(gridPos);
                 }
             }
-            
-            foreach (var gridPos in cellsToRemove)
-            {
-                RemoveCreepAtPosition(gridPos);
-            }
-            
-            // 清除玩家数据
-            _playerCreepSources.Remove(ownerId);
-            _creepNetworks.Remove(ownerId);
-            
-            Debug.Log($"[{_managerName}] 清除玩家菌毯: 所有者={ownerId}, 清除数量={cellsToRemove.Count}");
         }
+        
         #endregion
-
-        #region IManager接口实现
+        
+        #region 辅助方法
+        
         /// <summary>
-        /// 初始化管理器
+        /// 创建菌毯瓦片
         /// </summary>
-        public void Initialize()
+        private CreepTile CreateCreepTile(Vector2Int position)
         {
-            if (_isInitialized)
-                return;
-                
-            Debug.Log($"[{_managerName}] 初始化菌毯管理器");
+            var worldPos = GridToWorldPosition(position);
             
-            // 初始化数据结构
-            _creepGrid = new Dictionary<Vector2Int, CreepData>();
-            _playerCreepSources = new Dictionary<int, List<Vector2Int>>();
-            _creepNetworks = new Dictionary<int, CreepNetworkData>();
-            _expansionQueue = new Queue<Vector2Int>();
-            _activeCreepCells = new List<Vector2Int>();
-            
-            // 重置计时器
-            _updateTimer = 0f;
-            _currentUpdateIndex = 0;
-            
-            _isInitialized = true;
-            Debug.Log($"[{_managerName}] 菌毯管理器初始化完成");
-        }
-
-        /// <summary>
-        /// 更新管理器
-        /// </summary>
-        /// <param name="deltaTime">时间增量</param>
-        private void Update()
-        {
-            if (!_isInitialized || _isPaused)
-                return;
-            
-            _updateTimer += Time.deltaTime;
-            
-            if (_updateTimer >= _updateInterval)
+            var tile = new CreepTile
             {
-                _updateTimer = 0f;
-                UpdateCreepSystem();
+                Position = position,
+                WorldPosition = worldPos,
+                TileType = CreepTileType.Basic,
+                Status = CreepTileStatus.Growing,
+                Health = 100f,
+                MaxHealth = 100f,
+                GrowthLevel = 0f,
+                MaxGrowthLevel = 1f,
+                GrowthRate = 0.1f,
+                IsActive = true,
+                IsNutritionSource = false,
+                ConnectedTiles = new List<CreepTile>(),
+                CreationTime = Time.time,
+                LastUpdateTime = Time.time,
+                NeedsUpdate = true,
+                TotalResourcesGenerated = 0f
+            };
+            
+            return tile;
+        }
+        
+        /// <summary>
+        /// 移除菌毯瓦片
+        /// </summary>
+        private bool RemoveCreepTile(Vector2Int position)
+        {
+            if (!_creepTiles.ContainsKey(position))
+                return false;
+                
+            var tile = _creepTiles[position];
+            
+            // 断开与其他瓦片的连接
+            foreach (var connectedTile in tile.ConnectedTiles)
+            {
+                connectedTile.ConnectedTiles.Remove(tile);
+            }
+            
+            // 从数据结构中移除
+            _creepTiles.Remove(position);
+            _creepGrid.Remove(position);
+            _activeCreepCells.Remove(position);
+            
+            // 从空间索引中移除
+            if (_spatialIndex != null && _creepGrid.TryGetValue(position, out var creepData))
+            {
+                _spatialIndex.Remove(creepData, creepData.Position, Vector3.one * _gridSize);
+            }
+            
+            // 触发事件
+            OnCreepRemoved?.Invoke(position);
+            
+            return true;
+        }
+        
+        /// <summary>
+        /// 获取相邻位置
+        /// </summary>
+        private List<Vector2Int> GetNeighborPositions(Vector2Int position)
+        {
+            return new List<Vector2Int>
+            {
+                position + Vector2Int.up,
+                position + Vector2Int.down,
+                position + Vector2Int.left,
+                position + Vector2Int.right,
+                position + new Vector2Int(1, 1),
+                position + new Vector2Int(-1, 1),
+                position + new Vector2Int(1, -1),
+                position + new Vector2Int(-1, -1)
+            };
+        }
+        
+        /// <summary>
+        /// 检查地形是否有效
+        /// </summary>
+        private bool IsValidTerrain(Vector2Int position)
+        {
+            var worldPos = GridToWorldPosition(position);
+            return Physics.CheckSphere(worldPos, _gridSize * 0.4f, _terrainLayer);
+        }
+        
+        /// <summary>
+        /// 检查是否有障碍物
+        /// </summary>
+        private bool HasObstacle(Vector2Int position)
+        {
+            var worldPos = GridToWorldPosition(position);
+            return Physics.CheckSphere(worldPos, _gridSize * 0.4f, _obstacleLayer);
+        }
+        
+        /// <summary>
+        /// 检查建筑类型是否需要菌毯支持
+        /// </summary>
+        private bool RequiresCreepSupport(BuildingType buildingType)
+        {
+            return buildingType switch
+            {
+                BuildingType.Hatchery => false,
+                BuildingType.Extractor => false,
+                _ => true
+            };
+        }
+        
+        /// <summary>
+        /// 检查建筑是否产生菌毯
+        /// </summary>
+        private bool IsCreepProducingBuilding(BuildingType buildingType)
+        {
+            return buildingType switch
+            {
+                BuildingType.Hatchery => true,
+                BuildingType.CreepTumor => true,
+                _ => false
+            };
+        }
+        
+        /// <summary>
+        /// 获取建筑的菌毯半径
+        /// </summary>
+        private float GetBuildingCreepRadius(BuildingType buildingType)
+        {
+            return buildingType switch
+            {
+                BuildingType.Hatchery => 8f,
+                BuildingType.CreepTumor => 4f,
+                _ => 2f
+            };
+        }
+        
+        /// <summary>
+        /// 获取附近建筑
+        /// </summary>
+        private List<BuildingData> GetNearbyBuildings(Vector2Int position, float radius)
+        {
+            // 这里需要调用建筑管理器的查询方法
+            // 暂时返回空列表
+            return new List<BuildingData>();
+        }
+        
+        /// <summary>
+        /// 获取附近资源
+        /// </summary>
+        private List<object> GetNearbyResources(Vector2Int position, float radius)
+        {
+            // 这里需要调用资源管理器的查询方法
+            // 暂时返回空列表
+            return new List<object>();
+        }
+        
+        /// <summary>
+        /// 获取营养消费者
+        /// </summary>
+        private List<CreepTile> GetNutritionConsumers()
+        {
+            return _creepTiles.Values.Where(tile => 
+                !tile.IsNutritionSource && tile.IsActive).ToList();
+        }
+        
+        /// <summary>
+        /// 计算营养流动
+        /// </summary>
+        private void CalculateNutritionFlow(List<CreepTile> sources, List<CreepTile> consumers)
+        {
+            // 实现营养分配算法
+            // 这里可以实现复杂的营养流动计算
+        }
+        
+        /// <summary>
+        /// 检测孤立区域
+        /// </summary>
+        private List<List<CreepTile>> DetectIsolatedRegions()
+        {
+            return GetIsolatedRegions();
+        }
+        
+        /// <summary>
+        /// 尝试重新连接区域
+        /// </summary>
+        private void TryReconnectRegion(List<CreepTile> region)
+        {
+            // 实现区域重连逻辑
+            // 寻找最近的主要菌毯网络并尝试连接
+        }
+        
+        /// <summary>
+        /// 更新菌毯统计信息
+        /// </summary>
+        private void UpdateCreepStatistics()
+        {
+            var stats = GetCreepStatistics();
+            OnStatisticsUpdated?.Invoke(stats);
+        }
+        
+        /// <summary>
+        /// 优化内存使用
+        /// </summary>
+        private void OptimizeMemoryUsage()
+        {
+            // 执行垃圾回收优化
+            if (Time.frameCount % 300 == 0) // 每5秒执行一次
+            {
+                System.GC.Collect();
             }
         }
-
-        /// <summary>
-        /// 暂停管理器
-        /// </summary>
-        public void Pause()
-        {
-            _isPaused = true;
-            Debug.Log($"[{_managerName}] 菌毯管理器已暂停");
-        }
-
-        /// <summary>
-        /// 恢复管理器
-        /// </summary>
-        public void Resume()
-        {
-            _isPaused = false;
-            Debug.Log($"[{_managerName}] 菌毯管理器已恢复");
-        }
-
-        /// <summary>
-        /// 固定更新管理器
-        /// </summary>
-        /// <param name="fixedDeltaTime">固定时间增量</param>
-        public void FixedUpdate()
-        {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 在这里可以添加物理相关的更新逻辑
-        }
-
-        // 2) 顯式介面實作，滿足 IManager
-        void IManager.Update(float deltaTime)
-        {
-            if (!_isInitialized || _isPaused) return;
-
-            _updateTimer += deltaTime;
-            if (_updateTimer >= _updateInterval)
-            {
-                _updateTimer = 0f;
-                UpdateCreepSystem();
-            }
-        }
-
-        void IManager.FixedUpdate(float fixedDeltaTime)
-        {
-            if (!_isInitialized || _isPaused) return;
-            // 需要時處理物理相關更新
-        }
-        /// <summary>
-        /// 后更新管理器
-        /// </summary>
-        public void LateUpdate()
-        {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 在这里可以添加后更新逻辑
-        }
-
-        /// <summary>
-        /// 清理管理器
-        /// </summary>
-        public void Cleanup()
-        {
-            if (!_isInitialized)
-                return;
-            
-            Debug.Log($"[{_managerName}] 销毁菌毯管理器");
-            
-            // 清理数据
-            _creepGrid?.Clear();
-            _playerCreepSources?.Clear();
-            _creepNetworks?.Clear();
-            _expansionQueue?.Clear();
-            _activeCreepCells?.Clear();
-            
-            _isInitialized = false;
-            Debug.Log($"[{_managerName}] 菌毯管理器销毁完成");
-        }
-
-        /// <summary>
-        /// 获取管理器名称
-        /// </summary>
-        public string GetManagerName()
-        {
-            return _managerName;
-        }
-
-        /// <summary>
-        /// 检查管理器是否已初始化
-        /// </summary>
-        public bool IsInitialized()
-        {
-            return _isInitialized;
-        }
-
-        /// <summary>
-        /// 检查管理器是否已暂停
-        /// </summary>
-        public bool IsPaused()
-        {
-            return _isPaused;
-        }
+        
         #endregion
-
-        #region 私有方法
-        /// <summary>
-        /// 更新菌毯系统
-        /// </summary>
-        private void UpdateCreepSystem()
+        
+        #region 调试和可视化
+        
+        private void OnDrawGizmos()
         {
-            // 处理菌毯扩张
-            ProcessCreepExpansion();
+            if (!_enableDebugVisualization) return;
             
-            // 处理菌毯衰减
-            ProcessCreepDecay();
-            
-            // 更新菌毯网络
-            UpdateCreepNetworks();
-        }
-
-        /// <summary>
-        /// 处理菌毯扩张
-        /// </summary>
-        private void ProcessCreepExpansion()
-        {
-            int expansionsThisFrame = 0;
-            
-            while (_expansionQueue.Count > 0 && expansionsThisFrame < _maxExpansionsPerFrame)
+            // 绘制菌毯网格
+            Gizmos.color = Color.green;
+            foreach (var position in _creepTiles.Keys)
             {
-                Vector2Int sourceGrid = _expansionQueue.Dequeue();
+                var worldPos = GridToWorldPosition(position);
+                var tile = _creepTiles[position];
                 
-                if (!_creepGrid.TryGetValue(sourceGrid, out CreepData sourceCreep))
-                    continue;
-                
-                if (!sourceCreep.IsSource)
-                    continue;
-                
-                // 向相邻格子扩张
-                Vector2Int[] directions = {
-                    Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right,
-                    Vector2Int.up + Vector2Int.left, Vector2Int.up + Vector2Int.right,
-                    Vector2Int.down + Vector2Int.left, Vector2Int.down + Vector2Int.right
+                // 根据瓦片状态设置颜色
+                Gizmos.color = tile.Status switch
+                {
+                    CreepTileStatus.Healthy => Color.green,
+                    CreepTileStatus.Growing => Color.yellow,
+                    CreepTileStatus.Starving => Color.orange,
+                    CreepTileStatus.Dying => Color.red,
+                    _ => Color.gray
                 };
                 
-                foreach (var direction in directions)
-                {
-                    Vector2Int targetGrid = sourceGrid + direction;
-                    Vector3 targetWorldPos = GridToWorldPosition(targetGrid);
-                    
-                    // 检查距离是否在源点半径内
-                    float distance = Vector3.Distance(sourceCreep.Position, targetWorldPos);
-                    if (distance > sourceCreep.SourceRadius)
-                        continue;
-                    
-                    // 计算扩张强度
-                    float expansionStrength = _expansionRate * (1f - distance / sourceCreep.SourceRadius);
-                    
-                    // 扩张菌毯
-                    ExpandCreepAtPosition(targetGrid, targetWorldPos, expansionStrength, sourceCreep.OwnerId);
-                    
-                    expansionsThisFrame++;
-                    if (expansionsThisFrame >= _maxExpansionsPerFrame)
-                        break;
-                }
-                
-                // 重新加入队列以继续扩张
-                _expansionQueue.Enqueue(sourceGrid);
+                Gizmos.DrawWireCube(worldPos, Vector3.one * _tileSize);
             }
         }
-
-        /// <summary>
-        /// 处理菌毯衰减
-        /// </summary>
-        private void ProcessCreepDecay()
-        {
-            List<Vector2Int> cellsToRemove = new List<Vector2Int>();
-            
-            // 分帧处理活跃菌毯格子
-            int cellsPerFrame = Mathf.Max(1, _activeCreepCells.Count / 10);
-            int endIndex = Mathf.Min(_currentUpdateIndex + cellsPerFrame, _activeCreepCells.Count);
-            
-            for (int i = _currentUpdateIndex; i < endIndex; i++)
-            {
-                Vector2Int gridPos = _activeCreepCells[i];
-                
-                if (!_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-                {
-                    cellsToRemove.Add(gridPos);
-                    continue;
-                }
-                
-                // 源点不衰减
-                if (creepData.IsSource)
-                    continue;
-                
-                // 计算衰减量
-                float timeSinceUpdate = Time.time - creepData.LastUpdateTime;
-                float decayAmount = _decayRate * timeSinceUpdate;
-                
-                // 应用衰减
-                creepData.Density = Mathf.Max(0f, creepData.Density - decayAmount);
-                creepData.LastUpdateTime = Time.time;
-                
-                if (creepData.Density <= _minDensity)
-                {
-                    cellsToRemove.Add(gridPos);
-                }
-                else
-                {
-                    _creepGrid[gridPos] = creepData;
-                }
-            }
-            
-            // 移除衰减完的菌毯
-            foreach (var gridPos in cellsToRemove)
-            {
-                RemoveCreepAtPosition(gridPos);
-            }
-            
-            // 更新索引
-            _currentUpdateIndex = endIndex;
-            if (_currentUpdateIndex >= _activeCreepCells.Count)
-            {
-                _currentUpdateIndex = 0;
-            }
-        }
-
-        /// <summary>
-        /// 更新菌毯网络
-        /// </summary>
-        private void UpdateCreepNetworks()
-        {
-            foreach (var networkPair in _creepNetworks)
-            {
-                int ownerId = networkPair.Key;
-                CreepNetworkData networkData = networkPair.Value;
-                
-                // 计算总面积
-                float totalArea = 0f;
-                foreach (var pair in _creepGrid)
-                {
-                    if (pair.Value.OwnerId == ownerId)
-                    {
-                        totalArea += pair.Value.Density * _gridSize * _gridSize;
-                    }
-                }
-                
-                networkData.TotalArea = totalArea;
-                
-                // 计算网络效率（基于连接的源点数量和总面积）
-                float sourceCount = networkData.ConnectedSources.Count;
-                if (sourceCount > 0 && totalArea > 0)
-                {
-                    networkData.NetworkEfficiency = Mathf.Min(1.0f, totalArea / (sourceCount * 100f));
-                }
-                else
-                {
-                    networkData.NetworkEfficiency = 0f;
-                }
-                
-                _creepNetworks[ownerId] = networkData;
-            }
-        }
-
-        /// <summary>
-        /// 在指定位置扩张菌毯
-        /// </summary>
-        /// <param name="gridPos">网格位置</param>
-        /// <param name="worldPos">世界位置</param>
-        /// <param name="expansionStrength">扩张强度</param>
-        /// <param name="ownerId">所有者ID</param>
-        private void ExpandCreepAtPosition(Vector2Int gridPos, Vector3 worldPos, float expansionStrength, int ownerId)
-        {
-            if (_creepGrid.TryGetValue(gridPos, out CreepData existingCreep))
-            {
-                // 如果是同一所有者，增强密度
-                if (existingCreep.OwnerId == ownerId)
-                {
-                    existingCreep.Density = Mathf.Min(_maxDensity, existingCreep.Density + expansionStrength);
-                    existingCreep.LastUpdateTime = Time.time;
-                    _creepGrid[gridPos] = existingCreep;
-                }
-                // 如果是敌方菌毯，进行竞争
-                else
-                {
-                    float competitionResult = expansionStrength - existingCreep.Density * 0.5f;
-                    if (competitionResult > 0)
-                    {
-                        // 覆盖敌方菌毯
-                        existingCreep.OwnerId = ownerId;
-                        existingCreep.Density = competitionResult;
-                        existingCreep.LastUpdateTime = Time.time;
-                        _creepGrid[gridPos] = existingCreep;
-                    }
-                }
-            }
-            else
-            {
-                // 创建新的菌毯
-                CreepData newCreep = new CreepData
-                {
-                    Position = worldPos,
-                    Density = expansionStrength,
-                    OwnerId = ownerId,
-                    IsSource = false,
-                    SourceRadius = 0f,
-                    LastUpdateTime = Time.time,
-                    CreationTime = Time.time
-                };
-                
-                _creepGrid[gridPos] = newCreep;
-                _activeCreepCells.Add(gridPos);
-                
-                // 添加到空间索引
-                if (_spatialIndex != null)
-                {
-                    _spatialIndex.Insert(newCreep, worldPos, Vector3.one * _gridSize);
-                }
-            }
-        }
-
-        /// <summary>
-        /// 移除指定位置的菌毯
-        /// </summary>
-        /// <param name="gridPos">网格位置</param>
-        private void RemoveCreepAtPosition(Vector2Int gridPos)
-        {
-            if (_creepGrid.TryGetValue(gridPos, out CreepData creepData))
-            {
-                // 从空间索引中移除
-                if (_spatialIndex != null)
-                {
-                    // ★ 修正點：介面需要 obj + position + size
-                    _spatialIndex.Remove(creepData, creepData.Position, Vector3.one * _gridSize);
-                }
-                
-                // 从网格中移除
-                _creepGrid.Remove(gridPos);
-                _activeCreepCells.Remove(gridPos);
-            }
-        }
-
-        /// <summary>
-        /// 世界坐标转网格坐标
-        /// </summary>
-        /// <param name="worldPosition">世界坐标</param>
-        /// <returns>网格坐标</returns>
-        private Vector2Int WorldToGridPosition(Vector3 worldPosition)
-        {
-            return new Vector2Int(
-                Mathf.FloorToInt(worldPosition.x / _gridSize),
-                Mathf.FloorToInt(worldPosition.z / _gridSize)
-            );
-        }
-
-        /// <summary>
-        /// 网格坐标转世界坐标
-        /// </summary>
-        /// <param name="gridPosition">网格坐标</param>
-        /// <returns>世界坐标</returns>
-        private Vector3 GridToWorldPosition(Vector2Int gridPosition)
-        {
-            return new Vector3(
-                gridPosition.x * _gridSize + _gridSize * 0.5f,
-                0f,
-                gridPosition.y * _gridSize + _gridSize * 0.5f
-            );
-        }
+        
         #endregion
     }
 }

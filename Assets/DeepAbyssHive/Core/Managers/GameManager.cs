@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Units.Interfaces;
-using DeepAbyssHive.Buildings.Interfaces;
-using DeepAbyssHive.Terrain.Interfaces;
-using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 
 namespace DeepAbyssHive.Core.Managers

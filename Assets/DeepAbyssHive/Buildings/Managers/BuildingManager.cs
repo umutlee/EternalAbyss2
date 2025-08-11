@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
-using DeepAbyssHive.Buildings.Interfaces;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
