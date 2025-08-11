@@ -14,6 +14,30 @@ namespace DeepAbyssHive.Buildings.Managers
     /// </summary>
     public partial class BuildingManager : IBuildingManager, IManager
     {
+        #region 事件
+        
+        /// <summary>
+        /// 建筑放置事件
+        /// </summary>
+        public event Action<BuildingData> OnBuildingPlaced;
+        
+        /// <summary>
+        /// 建筑销毁事件
+        /// </summary>
+        public event Action<BuildingData> OnBuildingDestroyed;
+        
+        /// <summary>
+        /// 建筑状态变化事件
+        /// </summary>
+        public event Action<BuildingData> OnBuildingStatusChanged;
+        
+        /// <summary>
+        /// 建筑升级完成事件
+        /// </summary>
+        public event Action<BuildingData> OnBuildingUpgraded;
+        
+        #endregion
+        
         #region 私有字段
         private Dictionary<int, BuildingData> _buildings = new Dictionary<int, BuildingData>();
         private Dictionary<int, GameObject> _buildingGameObjects = new Dictionary<int, GameObject>();
@@ -159,6 +183,12 @@ namespace DeepAbyssHive.Buildings.Managers
                 _buildingGameObjects.Remove(buildingId);
             }
             
+            // 处理菌毯集成
+            HandleBuildingDestroyedCreepIntegration(buildingData);
+            
+            // 触发建筑销毁事件
+            OnBuildingDestroyed?.Invoke(buildingData);
+            
             // 移除建筑数据
             _buildings.Remove(buildingId);
             
@@ -269,6 +299,9 @@ namespace DeepAbyssHive.Buildings.Managers
             
             // 添加到更新队列
             _buildingUpdateQueue.Enqueue(buildingData);
+            
+            // 触发建筑状态变化事件
+            OnBuildingStatusChanged?.Invoke(buildingData);
             
             Debug.Log($"[{_managerName}] 开始升级建筑: ID={buildingId}, 当前等级={buildingData.Level}");
             
@@ -449,6 +482,88 @@ namespace DeepAbyssHive.Buildings.Managers
         {
             return _managerName;
         }
+        
+        /// <summary>
+        /// 扩展接口方法 - 放置建筑
+        /// </summary>
+        public bool PlaceBuilding(BuildingType buildingType, Vector3 position, int ownerId)
+        {
+            return CreateBuilding(buildingType, position, ownerId) != -1;
+        }
+        
+        /// <summary>
+        /// 扩展接口方法 - 检查是否可以放置建筑
+        /// </summary>
+        public bool CanPlaceBuilding(BuildingType buildingType, Vector3 position)
+        {
+            if (!_buildingTemplates.TryGetValue(buildingType, out var template))
+                return false;
+                
+            bool requiresCreep = RequiresCreepSupport(buildingType);
+            return IsValidPlacement(position, template.Size, requiresCreep);
+        }
+        
+        /// <summary>
+        /// 获取指定位置的建筑
+        /// </summary>
+        public BuildingData GetBuildingAt(Vector3 position)
+        {
+            foreach (var building in _buildings.Values)
+            {
+                if (Vector3.Distance(building.Position, position) < 1f)
+                    return building;
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// 获取指定区域内的建筑
+        /// </summary>
+        public List<BuildingData> GetBuildingsInArea(Vector3 center, float radius)
+        {
+            var result = new List<BuildingData>();
+            
+            foreach (var building in _buildings.Values)
+            {
+                if (Vector3.Distance(building.Position, center) <= radius)
+                    result.Add(building);
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 获取指定类型的所有建筑
+        /// </summary>
+        public List<BuildingData> GetBuildingsByType(BuildingType buildingType)
+        {
+            var result = new List<BuildingData>();
+            
+            foreach (var building in _buildings.Values)
+            {
+                if (building.BuildingType == buildingType)
+                    result.Add(building);
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 获取玩家的所有建筑
+        /// </summary>
+        public List<BuildingData> GetPlayerBuildings(int playerId)
+        {
+            var result = new List<BuildingData>();
+            
+            foreach (var building in _buildings.Values)
+            {
+                if (building.OwnerId == playerId)
+                    result.Add(building);
+            }
+            
+            return result;
+        }
+
         #endregion
 
         #region 私有方法
