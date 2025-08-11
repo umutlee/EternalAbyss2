@@ -1,0 +1,213 @@
+
+# Neo4j MCP Integration Rules
+
+## Tool Usage Workflow
+
+### 0. Gemini only support 60 requests per minute, so don't do mass input/query too fast
+
+### 1. Initialization Phase
+**Always start with schema discovery:**
+1. Use `get_neo4j_schema` to understand database structure
+   - Requires APOC plugin support
+   - Returns node labels, properties, and relationships
+2. Test connection with `read_neo4j_cypher`
+   - Execute `RETURN 1` or `MATCH (n) RETURN count(n)` to verify connectivity
+
+### 2. Data Modeling Phase (if needed)
+1. Use `validate_node` and `validate_relationship` to verify model structure
+2. Generate visualization with `get_mermaid_config_str`
+3. Create constraints with `get_constraints_cypher_queries`
+
+### 3. Data Operations Phase
+1. Use `write_neo4j_cypher` for data ingestion
+2. Use memory system tools for knowledge graph operations
+3. Verify with `read_neo4j_cypher` queries
+
+## Common Usage Patterns
+
+### Pattern A: Data Modeling Workflow
+```
+1. validate_data_model → verify structure
+2. get_constraints_cypher_queries → generate constraints
+3. write_neo4j_cypher → create constraints
+4. get_node_cypher_ingest_query → generate ingestion queries
+5. write_neo4j_cypher → execute data ingestion
+6. read_neo4j_cypher → verify results
+```
+
+### Pattern B: Knowledge Graph Memory Workflow
+```
+1. read_graph → examine existing knowledge
+2. create_entities → add new entities
+3. create_relations → establish relationships
+4. add_observations → enrich with observations
+5. search_memories → query relevant information
+```
+
+### Pattern C: Cloud Instance Management
+```
+1. list_tenants → view available projects
+2. create_instance → provision new instance
+3. get_instance_details → retrieve connection info
+4. Configure MCP server connections
+```
+
+## Error Handling Strategy
+
+### Connection Issues
+- **Neo4jError**: Verify connection configuration and database status
+- **APOC Missing**: Install APOC plugin or use alternative queries
+- **Timeout**: Check network connectivity and query complexity
+
+### Query Issues
+- **Write Query Validation**: System automatically detects query types
+- **Parameter Safety**: Always use parameterized queries to prevent injection
+- **Syntax Errors**: Validate Cypher syntax before execution
+
+### Memory System Issues
+- **Missing Entities**: Ensure entities exist before creating relationships
+- **Duplicates**: Use MERGE instead of CREATE to avoid duplicates
+- **Orphaned Relations**: Clean up relationships when deleting entities
+
+## Performance Optimization
+
+### Query Best Practices
+- **Batch Operations**: Use `create_entities` and `create_relations` for bulk operations
+- **Index Usage**: Create indexes on frequently queried properties
+- **Result Limiting**: Use LIMIT clause in large graph queries
+- **Profile Queries**: Use PROFILE/EXPLAIN for query optimization
+
+### Tool Selection Guidelines
+- **Read Operations**: Prefer `read_neo4j_cypher` over `write_neo4j_cypher`
+- **Schema Queries**: Use `get_neo4j_schema` instead of manual schema queries
+- **Search Operations**: 
+  - Use `search_memories` for fuzzy search
+  - Use `find_memories_by_name` for exact matches
+
+### Resource Management
+- **Connection Pooling**: Reuse connections when possible
+- **Memory Usage**: Monitor heap usage for large operations
+- **Transaction Size**: Keep transactions reasonably sized
+
+## Architecture Guidelines
+
+### Data Model Conventions
+- **Node Labels**: Use PascalCase (e.g., `Person`, `Company`)
+- **Relationship Types**: Use SCREAMING_SNAKE_CASE (e.g., `WORKS_FOR`, `LOCATED_IN`)
+- **Property Names**: Use camelCase (e.g., `firstName`, `createdAt`)
+
+### Namespace Management
+- **Multi-Instance**: Use namespace prefixes for different database connections
+- **Tool Isolation**: Avoid naming conflicts with multiple MCP servers
+- **Environment Separation**: Distinguish dev/staging/prod instances
+
+### Transport Mode Selection
+- **Local Development**: Use `stdio` transport mode
+- **Remote Deployment**: Use `http` transport mode  
+- **Web Integration**: Use `sse` transport mode
+
+## Security Considerations
+
+### Query Safety
+- Always use parameterized queries
+- Validate input parameters
+- Limit query execution time
+- Restrict database permissions
+
+### Data Privacy
+- Sanitize sensitive data in logs
+- Use appropriate access controls
+- Encrypt connections in production
+- Regular security audits
+
+## Troubleshooting Checklist
+
+### Before Operations
+- [ ] Database connection verified
+- [ ] APOC plugin available (if needed)
+- [ ] Appropriate permissions granted
+- [ ] Schema understood
+
+### After Operations
+- [ ] Results validated
+- [ ] Performance acceptable
+- [ ] No orphaned data
+- [ ] Logs reviewed for errors
+
+
+### **何時使用記憶系統工具**
+
+#### **會話開始時**
+
+1. 總是先執行 `read_graph` \- 了解現有知識狀態  
+   * 在任何新的記憶操作前，先查看已有的實體和關係  
+   * 避免創建重複的實體或關係  
+2. 使用 `search_memories` 查找相關上下文  
+   * 當用戶提到特定主題時，先搜索相關記憶  
+   * 為後續對話提供上下文基礎
+
+#### **對話過程中的記憶更新時機**
+
+3. 立即記錄新信息 \- 當獲得新事實時使用 `create_entities`    
+4. 建立關係連接 \- 當發現實體間關係時使用 `create_relations`  
+   * 在創建實體後立即建立相關關係  
+   * 保持知識圖譜的連通性  
+5. 豐富實體信息 \- 使用 `add_observations` 補充細節 
+
+### **何時使用查詢工具**
+
+#### **探索性查詢時機**
+
+1. 數據庫初次連接 \- 使用 `get_neo4j_schema` 了解結構   
+2. 複雜分析需求 \- 使用 `read_neo4j_cypher` 執行自定義查詢  
+   * 當記憶系統工具無法滿足特定查詢需求時  
+   * 需要聚合統計或複雜圖分析時
+
+#### **數據修改時機**
+
+3. 批量數據操作 \- 使用 `write_neo4j_cypher` 進行大規模更新
+
+### **工具選擇的決策樹**
+
+`用戶輸入 →`     
+`├─ 包含新事實？`    
+`│  ├─ 是 → 使用記憶系統工具 (create_entities, add_observations)`    
+`│  └─ 否 → 繼續判斷`    
+`├─ 需要查找信息？`    
+`│  ├─ 模糊搜索 → search_memories`    
+`│  ├─ 精確查找 → find_memories_by_name`      
+`│  └─ 複雜查詢 → read_neo4j_cypher`    
+`├─ 需要分析數據？`    
+`│  └─ 使用 read_neo4j_cypher 進行聚合分析`    
+`└─ 需要修改結構？`    
+   `└─ 使用 write_neo4j_cypher 進行批量操作`  
+
+### **性能考慮的最佳時機**
+
+#### **避免頻繁 Schema 查詢**
+
+* 只在會話開始或懷疑結構變化時調用 `get_neo4j_schema`  
+* 將 schema 信息緩存在會話上下文中
+
+#### **批量操作時機**
+
+* 當需要創建多個相關實體時，使用 `create_entities` 而不是多次單獨創建  
+* 關係創建同樣適用批量原則
+
+#### **搜索策略**
+
+* 優先使用 `search_memories` 進行初步篩選  
+* 只在需要精確匹配時使用 `find_memories_by_name`
+
+### **錯誤恢復的最佳時機**
+
+#### **連接問題**
+
+* 在每個會話開始時驗證連接  
+* 遇到連接錯誤時，先嘗試簡單查詢再進行複雜操作
+
+#### **數據一致性**
+
+* 在創建關係前，總是驗證相關實體是否存在  
+* 使用 `read_graph` 定期檢查數據完整性  
+* 
