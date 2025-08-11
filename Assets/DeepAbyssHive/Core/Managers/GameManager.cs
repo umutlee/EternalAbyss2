@@ -1,4 +1,4 @@
-using System;
+a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a ausing System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
@@ -32,7 +32,6 @@ namespace DeepAbyssHive.Core.Managers
         // 子系统引用
         private IUnitManager _unitManager;
         private IBuildingManager _buildingManager;
-        private ITerrainManager _terrainManager;
         private ICreepManager _creepManager;
         private ISpatialIndex<object> _spatialIndex;
         

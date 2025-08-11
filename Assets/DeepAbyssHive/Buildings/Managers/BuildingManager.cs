@@ -160,12 +160,12 @@ namespace DeepAbyssHive.Buildings.Managers
         /// 销毁建筑
         /// </summary>
         /// <param name="buildingId">建筑ID</param>
-        public void DestroyBuilding(int buildingId)
+        public bool DestroyBuilding(int buildingId)
         {
             if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
             {
                 Debug.LogWarning($"[{_managerName}] 尝试销毁不存在的建筑: {buildingId}");
-                return;
+                return false;
             }
             
             // 从空间索引中移除
@@ -192,6 +192,7 @@ namespace DeepAbyssHive.Buildings.Managers
             _buildings.Remove(buildingId);
             
             Debug.Log($"[{_managerName}] 销毁建筑: ID={buildingId}");
+            return true;
         }
 
         // 注意：研究相关方法已迁移到 BuildingManager.Research.cs
