@@ -102,28 +102,28 @@ namespace DeepAbyssHive.Creep.Managers
 
         private void Update()
         {
-            // Unity Update - 调用显式接口方法
+            // Unity Update - 调用IManager方法
             if (IsInitialized && !IsPaused)
             {
-                ((IManager)this).Update(Time.deltaTime);
+                UpdateCreepTiles(Time.deltaTime);
             }
         }
 
         private void FixedUpdate()
         {
-            // Unity FixedUpdate - 调用显式接口方法
+            // Unity FixedUpdate - 调用IManager方法
             if (IsInitialized && !IsPaused)
             {
-                ((IManager)this).FixedUpdate(Time.fixedDeltaTime);
+                // 固定更新逻辑在这里执行
             }
         }
 
         private void LateUpdate()
         {
-            // Unity LateUpdate - 调用显式接口方法
+            // Unity LateUpdate - 调用IManager方法
             if (IsInitialized && !IsPaused)
             {
-                ((IManager)this).LateUpdate(Time.deltaTime);
+                // 延迟更新逻辑在这里执行
             }
         }
 
