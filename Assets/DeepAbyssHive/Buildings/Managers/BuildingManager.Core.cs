@@ -17,6 +17,21 @@ namespace DeepAbyssHive.Buildings.Managers
     /// </summary>
     public partial class BuildingManager
     {
+        // 私有字段定义
+        private readonly Dictionary<int, BuildingData> _buildings = new Dictionary<int, BuildingData>();
+        private readonly Dictionary<int, GameObject> _buildingGameObjects = new Dictionary<int, GameObject>();
+        private readonly Dictionary<BuildingType, string> _buildingPrefabPaths = new Dictionary<BuildingType, string>();
+        private readonly Dictionary<BuildingType, BuildingTemplate> _buildingTemplates = new Dictionary<BuildingType, BuildingTemplate>();
+        private readonly Dictionary<string, ResearchTemplate> _researchTemplates = new Dictionary<string, ResearchTemplate>();
+        private readonly Dictionary<int, HashSet<string>> _playerResearch = new Dictionary<int, HashSet<string>>();
+        private readonly Queue<int> _buildingUpdateQueue = new Queue<int>();
+        
+        private float _buildingUpdateTimer = 0f;
+        private float _buildingUpdateInterval = 0.1f;
+        private int _maxBuildingUpdatesPerFrame = 10;
+        private float _buildingPlacementGridSize = 1f;
+        private string _managerName = "BuildingManager";
+
         /// <summary>
         /// 实例化建筑游戏对象
         /// </summary>

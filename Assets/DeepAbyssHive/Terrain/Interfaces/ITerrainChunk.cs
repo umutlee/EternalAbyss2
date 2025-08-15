@@ -84,10 +84,17 @@ namespace DeepAbyssHive.Terrain.Interfaces
         void SetCreepDensity(Vector2Int localPosition, float density, int ownerId);
         
         /// <summary>
+        /// <summary>
         /// 更新地形
         /// </summary>
         /// <param name="deltaTime">时间增量</param>
         void UpdateTerrain(float deltaTime);
+        
+        /// <summary>
+        /// 更新地形数据
+        /// </summary>
+        /// <param name="terrainData">地形数据</param>
+        void UpdateTerrainData(TerrainType[,] terrainData);
         
         /// <summary>
         /// 清理地形块资源

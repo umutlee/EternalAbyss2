@@ -29,31 +29,4 @@ namespace DeepAbyssHive.Core.Interfaces
         void Clear();
     }
     
-    /// <summary>
-    /// 四叉树空间索引实现
-    /// </summary>
-    public class QuadTreeSpatialIndex : ISpatialIndex
-    {
-        public void Insert(object obj, Vector3 position, Vector3 bounds)
-        {
-            // 四叉树插入实现
-            // 这里是简化版本，实际项目中需要完整实现
-        }
-        
-        public void Remove(object obj, Vector3 position, Vector3 bounds)
-        {
-            // 四叉树移除实现
-        }
-        
-        public System.Collections.Generic.List<object> Query(Vector3 center, Vector3 bounds)
-        {
-            // 四叉树查询实现
-            return new System.Collections.Generic.List<object>();
-        }
-        
-        public void Clear()
-        {
-            // 清空四叉树
-        }
-    }
 }

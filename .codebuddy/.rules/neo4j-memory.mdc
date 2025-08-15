@@ -1,146 +1,148 @@
 ---
-description: Eternal Abyss 專案的 Neo4j MCP 整合規則（專案化；固定工作流程與查詢模板）
+description: "Eternal Abyss 專案｜Neo4j MCP 規則（事件驅動｜不重複初始化｜工作目錄守則）"
 globs:
 alwaysApply: true
 ---
 
-# Neo4j MCP Integration Rules — Eternal Abyss
+# Neo4j MCP Rules — Eternal Abyss（事件驅動版）
+**常數**
+- PROJECT_NAME = `Eternal Abyss`
+- WORKDIR      = `Eternal Abyss 2/`
+- 速率上限     = 60 req/min（請節流，避免連續大量呼叫）
 
-> 固定常數（請勿更改）  
-> - **PROJECT_NAME** = `Eternal Abyss`  
-> - **WORKDIR** = `Eternal Abyss 2/`（所有檔案路徑都以此為相對根）  
-> - **最小原則**：每次改動必須依序：①讀記憶 → ②5–10 行中文總結 → ③「最小」unified diff → ④寫回 Change → ⑤（選）更新 Task
-
-## 可用工具（Tool Names）
-- `get_neo4j_schema`
-- `read_neo4j_cypher`
-- `write_neo4j_cypher`
-- 記憶工具（輔助）：`search_memories`、`find_memories_by_name`、`read_graph`（**工程依據以 Neo4j 的 Spec/Task/Change 為主**）
-
----
-
-## 0) 限流提示
-- Neo4j 使用 Gemini 來進行寫入及讀取，約 60 req/min，避免短時間大量呼叫。
-
-## 1) Initialization Phase（每個新會話起手式）
-1. `get_neo4j_schema`：快速了解 schema（需要 APOC）。  
-2. 連線自檢（擇一）：
-   - `read_neo4j_cypher`：`RETURN 1`
-   - 或 `read_neo4j_cypher`：`MATCH (n) RETURN count(n)`
-
-> **避免頻繁查 schema**：只在會話啟動或懷疑結構改動時呼叫 `get_neo4j_schema`。
+**總原則**
+- 僅可使用：Neo4j 快照 + 本規則檔 的資訊；**禁止引用任意舊對話**。
+- 任何代碼改動前，**必須**先回覆 5–10 行中文「總結計畫」，待使用者回覆「OK」後才能產生最小 unified diff。
+- 檔案操作**僅允許**位於 `WORKDIR` 底下；新建檔案前需使用者明確同意。
+- 任何寫入（初始化/變更）都必須是**冪等**的；禁止重覆建立已存在的結構。
 
 ---
 
-## 2) 一次性初始化（建約束/索引 + 預置規範）
-> 第一次使用或需要修復索引時執行。用 `write_neo4j_cypher` 跑下列語句與參數。
+## 事件規則（WHEN → THEN）
 
-### 2.1 Schema（唯一鍵與索引）
+### R0. 會話啟動
+**WHEN** 新會話開始（首次需要上下文）  
+**THEN**
+1) 執行 **Boot Check**（模板 Q0），獲得 `boot.needInit`。  
+2) 若 `boot.needInit=false`：**停止**所有初始化動作，只允許讀快照與一般工作流。  
+3) 若 `boot.needInit=true`：**不得自行初始化**；先回覆一句話：「偵測到尚未初始化，是否執行初始化？（yes/no）」並等待明確同意。
+
+### R1. 接到「初始化允許」指令
+**WHEN** 使用者明確同意初始化（例如回覆：yes / 初始化允許）  
+**THEN**
+- 以 **Q1（APOC）** 執行一次性初始化；若 APOC 不可用則按 **Q1b（逐條）** 執行。
+- 初始化後不再重複執行；`Project.initializedAt`、`mcpRulesVersion` 將作為旗標。
+
+### R2. 需要專案現況
+**WHEN** 需要專案上下文或在改動前  
+**THEN** 執行 **Q2（容錯快照）**，產生 `{project,specs,tasks,recentChanges}`。
+
+### R3. 準備改動
+**WHEN** 使用者要求修改檔案 / 重構 / 拆分  
+**THEN**
+1) 先回覆 **「總結計畫（5–10 行）」**，包含：目標、依據的 Spec、影響檔案（必須位於 WORKDIR）、相容性/回滾、驗證方式。  
+2) **等待使用者回 OK**。  
+3) 產生 **最小 unified diff**（**禁止整檔重寫**；所有路徑以 `WORKDIR/` 開頭）。
+
+### R4. 記錄變更
+**WHEN** diff 產生並完成套用  
+**THEN** 使用 **Q3（記錄 Change）** 寫入 Neo4j；`taskId` 需來自現有子任務。
+
+### R5. 更新任務狀態（選）
+**WHEN** 使用者要求更新 Task 狀態（InProgress/Done 等）  
+**THEN** 使用 **Q4（更新 Task）**。
+
+### R6. 防亂建檔
+**WHEN** 需要新建檔案或目錄  
+**THEN** 僅允許在 `WORKDIR/Assets/Scripts/`、`WORKDIR/Assets/Tests/` 等白名單下新建；否則先詢問使用者。
+
+### R7. 目錄清單／定位（可選）
+**WHEN** 使用者要求「重掃目錄、建立清單、避免誤放檔案」  
+**THEN** 先回「總結計畫」，再依使用者同意執行清單建立與分批寫入（可參考 Inventory 流程卡；此處只定義觸發條件）。
+
+---
+
+## 模板（Queries / Params）
+> 下列為**可直接使用**的查詢模板；由規則決定**何時**使用。請依照「事件規則」觸發，而非每次會話都執行。
+
+### Q0. Boot Check（讀；判斷是否需要初始化）
+**Query**
 ```cypher
-// Unique constraints
-CREATE CONSTRAINT project_name_unique IF NOT EXISTS
-FOR (p:Project) REQUIRE p.name IS UNIQUE;
-
-CREATE CONSTRAINT task_id_unique IF NOT EXISTS
-FOR (t:Task) REQUIRE t.id IS UNIQUE;
-
-CREATE CONSTRAINT file_path_unique IF NOT EXISTS
-FOR (f:File) REQUIRE f.path IS UNIQUE;
-
-CREATE CONSTRAINT change_id_unique IF NOT EXISTS
-FOR (c:Change) REQUIRE c.id IS UNIQUE;
-
-// Helpful indexes
-CREATE INDEX task_status_idx IF NOT EXISTS
-FOR (t:Task) ON (t.status);
-
-CREATE INDEX change_ts_idx IF NOT EXISTS
-FOR (c:Change) ON (c.ts);
-
-CREATE INDEX spec_kind_idx IF NOT EXISTS
-FOR (s:Spec) ON (s.kind);
+WITH $project AS pname
+OPTIONAL MATCH (p:Project {name:pname})
+WITH pname, p, coalesce(p.initializedAt,0) AS initializedAt
+CALL { WITH 1 AS _
+  SHOW CONSTRAINTS YIELD name
+  WITH collect(name) AS names
+  RETURN all(x IN ['project_name_unique','task_id_unique','file_path_unique','change_id_unique'] WHERE x IN names) AS haveUniques
+}
+CALL { WITH 1 AS _
+  SHOW INDEXES YIELD name
+  WITH collect(name) AS idxnames
+  RETURN all(x IN ['task_status_idx','change_ts_idx','spec_kind_idx'] WHERE x IN idxnames) AS haveIndexes
+}
+OPTIONAL MATCH (p)-[:HAS_SPEC]->(s:Spec)
+WITH pname, p, initializedAt, haveUniques, haveIndexes, count(s) AS specCount
+RETURN {
+  project: coalesce(p.name, pname),
+  initializedAt: initializedAt,
+  checks: {haveUniques:haveUniques, haveIndexes:haveIndexes, specCount:specCount},
+  needInit: (p IS NULL) OR (NOT(haveUniques AND haveIndexes)) OR specCount=0 OR initializedAt=0
+} AS boot;
 ```
+**Params** `{"project":"Eternal Abyss"}`
 
-### 2.2 預置專案規範（Spec）
-**Cypher（write）**
+---
+
+### Q1. 初始化（有 APOC：一次跑完；執行前需使用者同意）
+**Query**
 ```cypher
-MERGE (p:Project {name:$project})
-WITH p, $specs AS specs
-UNWIND specs AS s
-MERGE (sp:Spec {kind:s.kind})
-SET sp.content = s.content,
-    sp.updatedAt = timestamp()
-MERGE (p)-[:HAS_SPEC]->(sp)
-RETURN p.name AS project, count(sp) AS specs_upserted;
+CALL apoc.cypher.runMany($cypher, {project:$project, specs:$specs})
 ```
-**Params（JSON）**
+**Params**
 ```json
 {
   "project": "Eternal Abyss",
   "specs": [
-    {
-      "kind": "CONSTRAINTS",
-      "content": "禁止移除現有公共 API；命名：類/結構/列舉用 PascalCase，方法/欄位用 camelCase；避免全域狀態與不必要單例；破壞性改動需先提出遷移方案。"
-    },
-    {
-      "kind": "STYLE",
-      "content": "C# 依 .editorconfig；Unity 腳本一檔一類；非 MonoBehaviour 邏輯分離；每支腳本 1000 行以內；測試檔與被測檔同名＋Tests 後綴。"
-    },
-    {
-      "kind": "PROCESS",
-      "content": "每次修改必須：①讀專案快照 → ②5–10 行中文總結 → ③只產生最小 unified diff（作用在『Eternal Abyss 2/』） → ④寫回 Change（summary/reason/diff/files） → ⑤必要時更新 Task。"
-    }
-  ]
+    {"kind":"CONSTRAINTS","content":"禁止移除公共 API；類/結構/列舉 PascalCase；方法/欄位 camelCase；避免不必要單例；破壞性改動需有兼容層。"},
+    {"kind":"STYLE","content":"C# 依 .editorconfig；Unity 一檔一類；非 MonoBehaviour 邏輯分離；單檔 ≤400 行；Tests 後綴。"},
+    {"kind":"PROCESS","content":"每次修改：讀快照→5–10 行總結→最小 diff（Eternal Abyss 2/）→寫回 Change→（選）更新 Task。"}
+  ],
+  "cypher": "CREATE CONSTRAINT project_name_unique IF NOT EXISTS FOR (p:Project) REQUIRE p.name IS UNIQUE;\nCREATE CONSTRAINT task_id_unique IF NOT EXISTS FOR (t:Task) REQUIRE t.id IS UNIQUE;\nCREATE CONSTRAINT file_path_unique IF NOT EXISTS FOR (f:File) REQUIRE f.path IS UNIQUE;\nCREATE CONSTRAINT change_id_unique IF NOT EXISTS FOR (c:Change) REQUIRE c.id IS UNIQUE;\nCREATE INDEX task_status_idx IF NOT EXISTS FOR (t:Task) ON (t.status);\nCREATE INDEX change_ts_idx IF NOT EXISTS FOR (c:Change) ON (c.ts);\nCREATE INDEX spec_kind_idx IF NOT EXISTS FOR (s:Spec) ON (s.kind);\nMERGE (p:Project {name:$project})\nSET p.initializedAt = coalesce(p.initializedAt, timestamp()), p.mcpRulesVersion = 1\nWITH p, $specs AS specs\nUNWIND specs AS s\nMERGE (sp:Spec {kind:s.kind})\nSET sp.content = s.content, sp.updatedAt = timestamp()\nMERGE (p)-[:HAS_SPEC]->(sp);"
 }
 ```
+**無 APOC 時**：改為逐條執行（每次只送一條）建立約束/索引，接著寫入 Spec 並 `SET p.initializedAt`。
 
 ---
 
-## 3) 日常工作流程（**每次改檔必走**）
-
-### 步驟 1：讀「專案快照」
-**工具**：`read_neo4j_cypher`  
-**Cypher（read）**
+### Q2. 讀「專案快照」（容錯）
+**Query**
 ```cypher
-MATCH (p:Project {name:$project})
+WITH $project AS pname
+OPTIONAL MATCH (p:Project {name:pname})
 OPTIONAL MATCH (p)-[:HAS_SPEC]->(s:Spec)
-WITH p, collect(s{.kind,.content,.updatedAt}) AS specs
+WITH pname, p, collect(s{.kind,.content,.updatedAt}) AS specs
 OPTIONAL MATCH (p)-[:HAS_TASK]->(t:Task)
-WHERE coalesce($openOnly,true) = false OR t.status IN ['Open','InProgress']
-WITH p, specs, collect(t{.id,.status,.goal,.priority,.updatedAt}) AS tasks
+WHERE p IS NOT NULL AND (coalesce($openOnly,true) = false OR t.status IN ['Open','InProgress'])
+WITH pname, p, specs, collect(CASE WHEN t IS NULL THEN null ELSE t{.id,.status,.goal,.priority,.updatedAt} END) AS tasks_raw
+WITH pname, p, specs, [x IN tasks_raw WHERE x IS NOT NULL] AS tasks
 OPTIONAL MATCH (p)<-[:IN_PROJECT]-(c:Change)
-WITH p,specs,tasks,c
+WITH pname, p, specs, tasks, c
 ORDER BY c.ts DESC
+WITH pname, p, specs, tasks, collect(c{.id,.ts,.summary,.reason}) AS changes
 RETURN {
-  project: p.name,
+  project: coalesce(p.name, pname),
   specs: specs,
   tasks: tasks,
-  recentChanges: collect(c{.id,.ts,.summary,.reason})[0..10]
+  recentChanges: changes[0..10]
 } AS snapshot;
 ```
-**Params（JSON）**
-```json
-{ "project": "Eternal Abyss", "openOnly": true }
-```
+**Params** `{"project":"Eternal Abyss","openOnly":true}`
 
-### 步驟 2：**先總結再動手**
-- 用 **5–10 行中文**說明：要改什麼、為什麼（請引用 Spec）、要動到哪些 `WORKDIR` 下的檔案。  
-- 等我回「OK/繼續」後才能產生 diff。
+---
 
-### 步驟 3：產生 **最小 unified diff**
-- 禁止整檔重寫；只修改必要行。  
-- 檔案路徑一律相對於 `Eternal Abyss 2/`。  
-**範例（diff 標頭示意）**
-```diff
---- a/Eternal Abyss 2/Assets/Scripts/Player/PlayerMovement.cs
-+++ b/Eternal Abyss 2/Assets/Scripts/Player/PlayerMovement.cs
-@@ -12,6 +12,9 @@
-（變更內容…）
-```
-
-### 步驟 4：寫回「這次變更」（Change）
-**工具**：`write_neo4j_cypher`  
-**Cypher（write）**
+### Q3. 記錄本次變更（Change）
+**Query**
 ```cypher
 MERGE (p:Project {name:$project})
 MERGE (t:Task {id:$taskId})
@@ -162,26 +164,24 @@ MERGE (c)-[:FOR_TASK]->(t)
 FOREACH(f IN files | MERGE (c)-[:MODIFIES]->(f))
 RETURN c.id AS changeId, c.ts AS ts;
 ```
-**典型 Params（JSON）**
+**Params（示例）**
 ```json
 {
   "project":"Eternal Abyss",
-  "taskId":"（當前任務 ID）",
-  "files":[
-    "Eternal Abyss 2/Assets/Scripts/Player/PlayerMovement.cs",
-    "Eternal Abyss 2/Assets/Tests/PlayerMovementTests.cs"
-  ],
-  "summary":"修正斜坡運動時的速度分解與地面檢測；新增測試",
-  "reason":"遵守 Spec 的 CONSTRAINTS/STYLE；避免滑動異常；關聯 issue #123",
-  "diff":"（你的 unified diff 全文；過長會自動截斷）",
+  "taskId":"<現有子任務 id>",
+  "files":["Eternal Abyss 2/Assets/Scripts/..."],
+  "summary":"（一句話摘要）",
+  "reason":"（依 Spec/設計書的理由）",
+  "diff":"（unified diff 全文）",
   "author":"CodeBuddy",
-  "model":"（實際使用的模型名）"
+  "model":"（實際模型名）"
 }
 ```
 
-### 步驟 5：（選）更新任務狀態
-**工具**：`write_neo4j_cypher`  
-**Cypher（write）**
+---
+
+### Q4. 更新任務狀態（選）
+**Query**
 ```cypher
 MATCH (t:Task {id:$taskId})
 SET t.status=$status,
@@ -189,46 +189,87 @@ SET t.status=$status,
     t.updatedAt=timestamp()
 RETURN t;
 ```
-**Params（JSON）**
-```json
-{ "taskId":"同上", "status":"InProgress" }
-```
-或
-```json
-{ "taskId":"同上", "status":"Done" }
-```
+**Params（示例）** `{"taskId":"<id>","status":"InProgress"}` 或 `{"taskId":"<id>","status":"Done"}`
 
 ---
 
-## 4) 常用輔助查詢
+## MCP 工具調用格式規範
 
-### 4.1 建立/啟動任務（write）
-```cypher
-// params: {project, goal, priority?, id?}
-MERGE (p:Project {name:$project})
-WITH p, coalesce($id, toString(randomUUID())) AS tid
-MERGE (t:Task {id: tid})
-ON CREATE SET t.status='Open', t.goal=$goal, t.priority=coalesce($priority,'P3'), t.createdAt=timestamp(), t.updatedAt=timestamp()
-ON MATCH  SET t.updatedAt=timestamp(), t.goal=coalesce($goal, t.goal)
-MERGE (p)-[:HAS_TASK]->(t)
-RETURN t;
+### neo4j-memory 工具正確格式
+
+#### create_entities 格式
+```json
+{
+  "entities": [
+    {
+      "name": "實體名稱",
+      "type": "實體類型",  // 必須字段，不是 entityType
+      "observations": [
+        "觀察1",
+        "觀察2"
+      ]
+    }
+  ]
+}
 ```
 
-### 4.2 查某檔案最近變更（read）
-```cypher
-// params: {project, file, limit: 5}
-MATCH (p:Project {name:$project})<-[:IN_PROJECT]-(c:Change)-[:MODIFIES]->(f:File {path:$file})
-RETURN c{.id,.ts,.summary,.reason}
-ORDER BY c.ts DESC
-LIMIT coalesce($limit,5);
+#### create_relations 格式
+```json
+{
+  "relations": [
+    {
+      "source": "源實體名稱",      // 必須字段，不是 from
+      "target": "目標實體名稱",   // 必須字段，不是 to  
+      "relationType": "關係類型"  // 必須字段，不是 relationship
+    }
+  ]
+}
 ```
+
+#### add_observations 格式
+```json
+{
+  "observations": [
+    {
+      "entityName": "實體名稱",
+      "observation": "新觀察內容"
+    }
+  ]
+}
+```
+
+### neo4j-cypher 工具格式
+
+#### read_neo4j_cypher 格式
+```json
+{
+  "query": "MATCH (n) RETURN n LIMIT 10",
+  "params": {
+    "paramName": "paramValue"
+  }
+}
+```
+
+#### write_neo4j_cypher 格式  
+```json
+{
+  "query": "CREATE (n:Node {name: $name})",
+  "params": {
+    "name": "節點名稱"
+  }
+}
+```
+
+### 常見錯誤避免
+- ❌ 使用 `entityType` → ✅ 使用 `type`
+- ❌ 使用 `from` → ✅ 使用 `source`  
+- ❌ 使用 `to` → ✅ 使用 `target`
+- ❌ 使用 `relationship` → ✅ 使用 `relationType`
 
 ---
 
-## 5) 錯誤處理與效能（重點簡版）
-- **連線/權限**：`Neo4jError`、APOC 缺失、Timeout → 先跑連線自檢與簡單查詢。  
-- **參數化**：所有寫入查詢均使用 `$param`，避免注入；大量變更請分批。  
-- **避免覆蓋**：改檔前先查「檔案最近變更」。  
-- **索引**：請先執行 2.1；大量查詢時使用 `LIMIT`。  
-- **工具授權**：把你自家 Neo4j MCP 設為信任（Always allow），只對高風險工具維持逐次確認。
-
+## 安全／路徑規則
+- 僅允許存取 `WORKDIR` 下的檔案與路徑；不得越級到其他專案目錄。
+- 產生 diff 時，路徑必須以 `Eternal Abyss 2/` 為前綴。
+- 新建檔案需使用者同意；否則僅允許修改既有檔案。
+- 嚴格遵守最小變更與兼容性（不改 public API 與序列化）。

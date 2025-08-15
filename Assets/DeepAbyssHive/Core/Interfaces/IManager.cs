@@ -1,9 +1,11 @@
+using DeepAbyssHive.Core.Interfaces;
+
 namespace DeepAbyssHive.Core.Interfaces
 {
     /// <summary>
     /// 管理器基础接口
     /// </summary>
-    public interface IManager
+    public interface IManager : IUpdatable, IFixedUpdatable, ILateUpdatable
     {
         /// <summary>
         /// 初始化管理器
@@ -11,21 +13,22 @@ namespace DeepAbyssHive.Core.Interfaces
         void Initialize();
         
         /// <summary>
-        /// 更新管理器
+        /// 更新管理器 (继承自IUpdatable)
         /// </summary>
         /// <param name="deltaTime">时间增量</param>
-        void Update(float deltaTime);
+        new void Update(float deltaTime);
         
         /// <summary>
-        /// 固定更新管理器
+        /// 固定更新管理器 (继承自IFixedUpdatable)
         /// </summary>
         /// <param name="fixedDeltaTime">固定时间增量</param>
-        void FixedUpdate(float fixedDeltaTime);
+        new void FixedUpdate(float fixedDeltaTime);
         
         /// <summary>
-        /// 后更新管理器
+        /// 后更新管理器 (继承自ILateUpdatable)
         /// </summary>
-        void LateUpdate();
+        /// <param name="deltaTime">时间增量</param>
+        new void LateUpdate(float deltaTime);
         
         /// <summary>
         /// 清理管理器

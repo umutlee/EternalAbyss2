@@ -3,144 +3,128 @@ using UnityEngine;
 namespace DeepAbyssHive.Creep.Data
 {
     /// <summary>
-    /// 菌毯数据结构
+    /// 菌毯数据类
     /// </summary>
+    [System.Serializable]
     public class CreepData
     {
-        /// <summary>
-        /// 菌毯ID
-        /// </summary>
-        public int CreepId;
+        [SerializeField] private Vector3 _position;
+        [SerializeField] private float _density;
+        [SerializeField] private float _radius;
+        [SerializeField] private int _ownerId;
+        [SerializeField] private float _creationTime;
         
         /// <summary>
-        /// 所有者ID
+        /// 菌毯位置
         /// </summary>
-        public int OwnerId;
+        public Vector3 Position 
+        { 
+            get => _position; 
+            set => _position = value; 
+        }
         
         /// <summary>
-        /// 位置
+        /// 菌毯密度
         /// </summary>
-        public Vector3 Position;
+        public float Density 
+        { 
+            get => _density; 
+            set => _density = Mathf.Clamp01(value); 
+        }
         
         /// <summary>
-        /// 源点位置
+        /// 菌毯半径
         /// </summary>
-        public Vector3 SourcePosition;
+        public float Radius 
+        { 
+            get => _radius; 
+            set => _radius = Mathf.Max(0f, value); 
+        }
         
         /// <summary>
-        /// 菌毯密度（0-1）
+        /// 拥有者ID
         /// </summary>
-        public float Density;
-        
-        /// <summary>
-        /// 是否为源点
-        /// </summary>
-        public bool IsSource;
-        
-        /// <summary>
-        /// 源点半径
-        /// </summary>
-        public float SourceRadius;
-        
-        /// <summary>
-        /// 最后更新时间
-        /// </summary>
-        public float LastUpdateTime;
+        public int OwnerId 
+        { 
+            get => _ownerId; 
+            set => _ownerId = value; 
+        }
         
         /// <summary>
         /// 创建时间
         /// </summary>
-        public float CreationTime;
+        public float CreationTime 
+        { 
+            get => _creationTime; 
+            set => _creationTime = value; 
+        }
         
         /// <summary>
-        /// 当前扩张半径
-        /// </summary>
-        public float CurrentRadius;
+        [SerializeField] private bool _isSource;
+        [SerializeField] private float _sourceRadius;
+        [SerializeField] private float _lastUpdateTime;
         
         /// <summary>
-        /// 最大扩张半径
+        /// 是否为菌毯源点
         /// </summary>
-        public float MaxRadius;
+        public bool IsSource 
+        { 
+            get => _isSource; 
+            set => _isSource = value; 
+        }
         
         /// <summary>
-        /// 扩张速度
+        /// 源点半径
         /// </summary>
-        public float ExpansionSpeed;
+        public float SourceRadius 
+        { 
+            get => _sourceRadius; 
+            set => _sourceRadius = Mathf.Max(0f, value); 
+        }
         
         /// <summary>
-        /// 菌毯强度（0-1）
+        /// 最后更新时间
         /// </summary>
-        public float Strength;
+        public float LastUpdateTime 
+        { 
+            get => _lastUpdateTime; 
+            set => _lastUpdateTime = value; 
+        }
         
         /// <summary>
-        /// 菌毯健康度（0-1）
+        /// 构造函数
         /// </summary>
-        public float Health;
+        public CreepData(Vector3 position, float density = 1f, float radius = 5f, int ownerId = 0)
+        {
+            _position = position;
+            _density = Mathf.Clamp01(density);
+            _radius = Mathf.Max(0f, radius);
+            _ownerId = ownerId;
+            _creationTime = Time.time;
+            _isSource = false;
+            _sourceRadius = radius;
+            _lastUpdateTime = Time.time;
+        }
         
         /// <summary>
-        /// 是否连接到主菌毯网络
+        /// 检查指定位置是否在菌毯范围内
         /// </summary>
-        public bool IsConnectedToMainNetwork;
+        public bool ContainsPosition(Vector3 position)
+        {
+            return Vector3.Distance(_position, position) <= _radius;
+        }
         
         /// <summary>
-        /// 源建筑ID（如果有）
+        /// 获取指定位置的菌毯密度
         /// </summary>
-        public int SourceBuildingId;
-        
-        /// <summary>
-        /// 菌毯网络ID
-        /// </summary>
-        public int NetworkId;
-    }
-    
-    /// <summary>
-    /// 菌毯网络数据结构
-    /// </summary>
-    public class CreepNetworkData
-    {
-        /// <summary>
-        /// 网络ID
-        /// </summary>
-        public int NetworkId;
-        
-        /// <summary>
-        /// 所有者ID
-        /// </summary>
-        public int OwnerId;
-        
-        /// <summary>
-        /// 网络中的菌毯节点ID列表
-        /// </summary>
-        public int[] CreepNodeIds;
-        
-        /// <summary>
-        /// 网络中的建筑ID列表
-        /// </summary>
-        public int[] BuildingIds;
-        
-        /// <summary>
-        /// 网络总面积
-        /// </summary>
-        public float TotalArea;
-        
-        /// <summary>
-        /// 网络平均强度
-        /// </summary>
-        public float AverageStrength;
-        
-        /// <summary>
-        /// 网络平均健康度
-        /// </summary>
-        public float AverageHealth;
-        
-        /// <summary>
-        /// 连接的源点列表
-        /// </summary>
-        public System.Collections.Generic.List<Vector3> ConnectedSources;
-        
-        /// <summary>
-        /// 网络效率
-        /// </summary>
-        public float NetworkEfficiency;
+        public float GetDensityAt(Vector3 position)
+        {
+            float distance = Vector3.Distance(_position, position);
+            if (distance > _radius) return 0f;
+            
+            // 根据距离计算密度衰减
+            float normalizedDistance = distance / _radius;
+            return _density * (1f - normalizedDistance);
+        }
     }
 }

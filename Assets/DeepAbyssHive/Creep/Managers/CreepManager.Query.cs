@@ -197,13 +197,6 @@ namespace DeepAbyssHive.Creep.Managers
         }
         
         /// <summary>
-        /// 获取营养源菌毯瓦片
-        /// </summary>
-        public List<CreepTile> GetNutritionSources()
-        {
-            return _creepTiles.Values.Where(tile => 
-                tile.IsNutritionSource && tile.IsActive).ToList();
-        }
         
         /// <summary>
         /// 获取特化菌毯瓦片
@@ -462,36 +455,72 @@ namespace DeepAbyssHive.Creep.Managers
             // 根据建筑类型返回所需的菌毯覆盖半径
             return buildingType switch
             {
-                BuildingType.Hatchery => 2,
-                BuildingType.SpawningPool => 1,
-                BuildingType.EvolutionChamber => 1,
-                BuildingType.Extractor => 0,
+                BuildingType.SpawningPool => 2,        // 孵化池需求半径2 (包含Hatchery别名)
+                BuildingType.EvolutionChamber => 1,    // 进化腔需求半径1
+                BuildingType.ResourceProcessor => 0,   // 资源处理器需求半径0 (包含Extractor别名)
+                BuildingType.CreepNode => 0,           // 菌毯节点需求半径0 (包含CreepTumor别名)
                 _ => 1
             };
+        }
+        
+        /// <summary>
+        /// 获取指定半径内的所有位置
+        /// </summary>
+        private List<Vector2Int> GetPositionsInRadius(Vector2Int center, float radius)
+        {
+            var positions = new List<Vector2Int>();
+            int intRadius = Mathf.CeilToInt(radius);
+            
+            for (int x = -intRadius; x <= intRadius; x++)
+            {
+                for (int y = -intRadius; y <= intRadius; y++)
+                {
+                    var pos = center + new Vector2Int(x, y);
+                    if (Vector2.Distance(center, pos) <= radius)
+                    {
+                        positions.Add(pos);
+                    }
+                }
+            }
+            
+            return positions;
+        }
+        
+        /// <summary>
+        /// 获取附近的建筑
+        /// </summary>
+        private List<BuildingData> GetNearbyBuildings(Vector2Int position, float radius)
+        {
+            var buildings = new List<BuildingData>();
+            
+            if (_buildingManager != null)
+            {
+                var worldPos = GridToWorldPosition(position);
+                // 这里需要调用建筑管理器的方法来获取附近建筑
+                // buildings = _buildingManager.GetBuildingsInRadius(worldPos, radius);
+            }
+            
+            return buildings;
+        }
+        
+        /// <summary>
+        /// 获取附近的资源点
+        /// </summary>
+        private List<Vector3> GetNearbyResources(Vector2Int position, float radius)
+        {
+            var resources = new List<Vector3>();
+            
+            if (_resourceManager != null)
+            {
+                var worldPos = GridToWorldPosition(position);
+                // 这里需要调用资源管理器的方法来获取附近资源
+                // resources = _resourceManager.GetResourcesInRadius(worldPos, radius);
+            }
+            
+            return resources;
         }
         
         #endregion
     }
     
-    /// <summary>
-    /// 菌毯统计信息
-    /// </summary>
-    public class CreepStatistics
-    {
-        public int TotalTiles;
-        public float TotalArea;
-        public float TotalHealth;
-        public float AverageHealth;
-        public float TotalResourcesGenerated;
-        public int ConnectedRegions;
-        
-        public int HealthyTiles;
-        public int GrowingTiles;
-        public int StarvingTiles;
-        public int DyingTiles;
-        
-        public int BasicTiles;
-        public int EnhancedTiles;
-        public int SpecializedTiles;
-    }
 }

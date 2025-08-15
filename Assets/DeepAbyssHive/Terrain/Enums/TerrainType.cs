@@ -6,6 +6,11 @@ namespace DeepAbyssHive.Terrain.Enums
     public enum TerrainType
     {
         /// <summary>
+        /// 未知地形
+        /// </summary>
+        Unknown = -1,
+        
+        /// <summary>
         /// 岩石地形
         /// </summary>
         Rock = 0,
@@ -48,6 +53,21 @@ namespace DeepAbyssHive.Terrain.Enums
         /// <summary>
         /// 冰冻地形
         /// </summary>
-        Ice = 7
+        Ice = 7,
+        
+        /// <summary>
+        /// 草地地形
+        /// </summary>
+        Grass = 8,
+        
+        /// <summary>
+        /// 森林地形
+        /// </summary>
+        Forest = 9,
+        
+        /// <summary>
+        /// 山地地形
+        /// </summary>
+        Mountain = 10
     }
 }
