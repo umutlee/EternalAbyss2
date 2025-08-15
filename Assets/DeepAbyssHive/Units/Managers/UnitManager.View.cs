@@ -11,26 +11,11 @@ namespace DeepAbyssHive.Units.Managers
     public partial class UnitManager
     {
         /// <summary>
-        /// 销毁单位 - IUnitManager接口实现
+        /// 销毁单位视图 - 处理游戏对象和视觉效果的销毁
         /// </summary>
         /// <param name="unitId">单位ID</param>
-        public void DestroyUnit(int unitId)
+        public void DestroyUnitView(int unitId)
         {
-            if (!_unitColdData.ContainsKey(unitId))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试销毁不存在的单位: {unitId}");
-                return;
-            }
-            
-            // 从空间索引中移除
-            if (_spatialIndex != null && _unitSpatialNodes.TryGetValue(unitId, out SpatialNode spatialNode))
-            {
-                UnitColdData coldData = _unitColdData[unitId];
-                UnitHotData hotData = _unitHotData[unitId];
-                _spatialIndex.Remove(spatialNode, hotData.Position, Vector3.one * coldData.BaseAttributes.SightRange);
-                _unitSpatialNodes.Remove(unitId);
-            }
-            
             // 销毁游戏对象
             if (_unitGameObjects.TryGetValue(unitId, out GameObject unitObject) && unitObject != null)
             {
@@ -38,11 +23,7 @@ namespace DeepAbyssHive.Units.Managers
                 _unitGameObjects.Remove(unitId);
             }
             
-            // 移除数据
-            _unitColdData.Remove(unitId);
-            _unitHotData.Remove(unitId);
-            
-            Debug.Log($"[{_managerName}] 销毁单位: ID={unitId}");
+            Debug.Log($"[{_managerName}] 销毁单位视图: ID={unitId}");
         }
 
         /// <summary>

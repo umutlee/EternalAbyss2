@@ -359,7 +359,7 @@ namespace DeepAbyssHive.Units.Managers
                 return;
                 
             // 更新单位状态
-            switch (hotData.CurrentState)
+            switch (hotData.State)
             {
                 case UnitState.Moving:
                     // 移动逻辑在Movement模块中处理
@@ -374,9 +374,10 @@ namespace DeepAbyssHive.Units.Managers
         }
         
         /// <summary>
-        /// 销毁单位
+        /// 销毁单位 - IUnitManager接口实现
         /// </summary>
-        private void DestroyUnit(int unitId)
+        /// <param name="unitId">单位ID</param>
+        public void DestroyUnit(int unitId)
         {
             if (_unitGameObjects.TryGetValue(unitId, out var gameObject))
             {

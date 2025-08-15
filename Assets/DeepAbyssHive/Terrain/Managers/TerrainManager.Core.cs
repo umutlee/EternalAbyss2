@@ -274,7 +274,12 @@ namespace DeepAbyssHive.Terrain.Managers
             GameObject chunkObject = new GameObject($"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}");
             chunkObject.transform.position = worldPosition;
             
-            return new SimpleTerrainChunk(chunkCoord, _chunkSize, _tileSize, terrainData, chunkObject);
+            // TODO: 需要实现TerrainChunk类或使用现有的地形块实现
+            // return new TerrainChunk(chunkCoord, _chunkSize, _tileSize, terrainData, chunkObject);
+            
+            // 临时返回null，等待TerrainChunk类实现
+            Debug.LogWarning($"[{_managerName}] TerrainChunk类型未找到，返回null");
+            return null;
         }
 
         /// <summary>

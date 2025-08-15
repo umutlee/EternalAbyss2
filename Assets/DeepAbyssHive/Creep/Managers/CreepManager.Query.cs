@@ -510,12 +510,10 @@ namespace DeepAbyssHive.Creep.Managers
         {
             var resources = new List<Vector3>();
             
-            if (_resourceManager != null)
-            {
-                var worldPos = GridToWorldPosition(position);
-                // 这里需要调用资源管理器的方法来获取附近资源
-                // resources = _resourceManager.GetResourcesInRadius(worldPos, radius);
-            }
+            // TODO: 实现资源管理器集成
+            // 暂时返回空列表，待资源管理器实现后修复
+            var worldPos = GridToWorldPosition(position);
+            // resources = ResourceManager.Instance?.GetResourcesInRadius(worldPos, radius) ?? new List<Vector3>();
             
             return resources;
         }

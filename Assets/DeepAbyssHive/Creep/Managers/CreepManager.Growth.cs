@@ -198,7 +198,8 @@ namespace DeepAbyssHive.Creep.Managers
         private bool CanAffordExpansion(Vector2Int position)
         {
             var cost = CalculateExpansionCost(position);
-            return _resourceManager?.CanAfford(cost) ?? true;
+            // TODO: 实现资源管理器集成
+            return true; // 暂时返回 true，待资源管理器实现后修复
         }
         
         /// <summary>
@@ -246,8 +247,9 @@ namespace DeepAbyssHive.Creep.Managers
             if (consumeResources)
             {
                 var cost = CalculateExpansionCost(position);
-                if (!_resourceManager?.ConsumeResources(cost) ?? false)
-                    return false;
+                // TODO: 实现资源消耗逻辑
+                // if (!_resourceManager?.ConsumeResources(cost) ?? false)
+                //     return false;
             }
             
             // 创建新的菌毯瓦片
@@ -484,7 +486,8 @@ namespace DeepAbyssHive.Creep.Managers
             // 生产资源
             foreach (var resource in resourceGeneration)
             {
-                _resourceManager?.AddResource(resource.Key, resource.Value * Time.deltaTime);
+                // TODO: 实现资源添加逻辑
+                // _resourceManager?.AddResource(resource.Key, resource.Value * Time.deltaTime);
             }
             
             // 更新累计生产统计

@@ -32,7 +32,9 @@ namespace DeepAbyssHive.Creep.Managers
             _activeCreepCells.Clear();
             
             // 获取其他管理器引用
-            _buildingManager = FindObjectOfType<BuildingManager>();
+            // TODO: 需要通过依赖注入或其他方式获取BuildingManager引用
+            // _buildingManager = GameManager.Instance.GetManager<BuildingManager>();
+            Debug.Log("[CreepManager] BuildingManager引用暂时禁用，等待依赖注入实现");
             
             IsInitialized = true;
             Debug.Log("[CreepManager] 菌毯管理器初始化完成");
@@ -142,7 +144,6 @@ namespace DeepAbyssHive.Creep.Managers
         private string _managerName = "CreepManager";
         
         // 事件定义
-        public System.Action<Vector3, float> OnCreepExpanded;
         public System.Action<CreepStatistics> OnStatisticsUpdated;
 
         #endregion
@@ -218,7 +219,7 @@ namespace DeepAbyssHive.Creep.Managers
             if (tile.Health <= 0f)
             {
                 tile.IsActive = false;
-                _activeCreepCells.Remove(tile.GridPosition);
+                _activeCreepCells.Remove(tile.Position);
             }
         }
 
@@ -264,15 +265,24 @@ namespace DeepAbyssHive.Creep.Managers
         private CreepTile CreateCreepTile(Vector2Int position)
         {
             Vector3 worldPos = GridToWorldPosition(position);
-            return new CreepTile(worldPos, position)
+            var tile = new CreepTile
             {
+                Position = position,
+                WorldPosition = worldPos,
                 IsNutritionSource = false,
                 TileType = CreepTileType.Basic,
                 Status = CreepTileStatus.Growing,
                 Health = 50f,
                 MaxHealth = 100f,
+                GrowthLevel = 0f,
+                MaxGrowthLevel = 100f,
+                GrowthRate = 1f,
+                NeedsUpdate = true,
+                IsActive = true,
+                CreationTime = Time.time,
                 LastUpdateTime = Time.time
             };
+            return tile;
         }
 
         /// <summary>
@@ -315,53 +325,6 @@ namespace DeepAbyssHive.Creep.Managers
     }
 
     #region 数据结构定义
-
-    /// <summary>
-    /// 菌毯瓦片数据
-    /// </summary>
-    [System.Serializable]
-    public class CreepTile
-    {
-        public Vector3 Position;
-        public Vector2Int GridPosition;
-        public bool IsActive = true;
-        public float Health = 100f;
-        public float MaxHealth = 100f;
-        public CreepTileStatus Status = CreepTileStatus.Healthy;
-        public CreepTileType TileType = CreepTileType.Basic;
-        public bool IsNutritionSource = false;
-        public float TotalResourcesGenerated = 0f;
-        public float LastUpdateTime;
-        public List<CreepTile> ConnectedTiles = new List<CreepTile>();
-
-        public CreepTile(Vector3 position, Vector2Int gridPosition)
-        {
-            Position = position;
-            GridPosition = gridPosition;
-            LastUpdateTime = Time.time;
-        }
-    }
-
-    /// <summary>
-    /// 菌毯瓦片状态
-    /// </summary>
-    public enum CreepTileStatus
-    {
-        Healthy,    // 健康
-        Growing,    // 成长中
-        Starving,   // 饥饿
-        Dying       // 死亡中
-    }
-
-    /// <summary>
-    /// 菌毯瓦片类型
-    /// </summary>
-    public enum CreepTileType
-    {
-        Basic,      // 基础
-        Enhanced,   // 增强
-        Specialized // 特化
-    }
 
     /// <summary>
     /// 菌毯统计信息

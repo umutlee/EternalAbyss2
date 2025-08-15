@@ -36,16 +36,16 @@ namespace DeepAbyssHive.Buildings.Managers
             int updatedCount = 0;
             while (_buildingUpdateQueue.Count > 0 && updatedCount < _maxBuildingUpdatesPerFrame)
             {
-                BuildingData buildingData = _buildingUpdateQueue.Dequeue();
+                int buildingId = _buildingUpdateQueue.Dequeue();
                 
-                if (_buildings.ContainsKey(buildingData.BuildingId))
+                if (_buildings.ContainsKey(buildingId) && _buildings.TryGetValue(buildingId, out BuildingData buildingData))
                 {
                     UpdateBuilding(buildingData, _buildingUpdateInterval);
                     
                     // 如果建筑仍需要更新，重新加入队列
                     if (NeedsContinuousUpdate(buildingData))
                     {
-                        _buildingUpdateQueue.Enqueue(buildingData);
+                        _buildingUpdateQueue.Enqueue(buildingId);
                     }
                 }
                 
@@ -195,7 +195,7 @@ namespace DeepAbyssHive.Buildings.Managers
         /// <param name="buildingData">建筑数据</param>
         private void ApplyUpgradeEffects(BuildingData buildingData)
         {
-            if (!_buildingTemplates.TryGetValue(buildingData.Type, out BuildingTemplate template))
+            if (!_buildingTemplates.TryGetValue(buildingData.BuildingType, out BuildingTemplate template))
                 return;
                 
             // 根据等级应用属性加成

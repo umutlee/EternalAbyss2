@@ -96,7 +96,7 @@ namespace DeepAbyssHive.Buildings.Managers
         /// <returns>是否完成</returns>
         public bool IsResearchCompleted(string researchId, int playerId)
         {
-            if (!_playerResearch.TryGetValue(playerId, out List<string> completedResearch))
+            if (!_playerResearch.TryGetValue(playerId, out HashSet<string> completedResearch))
             {
                 return false;
             }
@@ -111,12 +111,14 @@ namespace DeepAbyssHive.Buildings.Managers
         /// <returns>已完成的研究ID数组</returns>
         public string[] GetCompletedResearch(int playerId)
         {
-            if (!_playerResearch.TryGetValue(playerId, out List<string> completedResearch))
+            if (!_playerResearch.TryGetValue(playerId, out HashSet<string> completedResearch))
             {
                 return new string[0];
             }
             
-            return completedResearch.ToArray();
+            var result = new string[completedResearch.Count];
+            completedResearch.CopyTo(result);
+            return result;
         }
 
         /// <summary>
@@ -146,13 +148,10 @@ namespace DeepAbyssHive.Buildings.Managers
         {
             if (!_playerResearch.ContainsKey(playerId))
             {
-                _playerResearch[playerId] = new List<string>();
+                _playerResearch[playerId] = new HashSet<string>();
             }
             
-            if (!_playerResearch[playerId].Contains(researchId))
-            {
-                _playerResearch[playerId].Add(researchId);
-            }
+            _playerResearch[playerId].Add(researchId);
         }
     }
 }

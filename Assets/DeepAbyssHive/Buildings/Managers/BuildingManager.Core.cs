@@ -147,5 +147,30 @@ namespace DeepAbyssHive.Buildings.Managers
             }
             return 1.0f; // 默认半径
         }
+
+        /// <summary>
+        /// 销毁建筑
+        /// </summary>
+        /// <param name="buildingId">建筑ID</param>
+        public void DestroyBuilding(int buildingId)
+        {
+            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
+            {
+                Debug.LogWarning($"[{_managerName}] 尝试销毁不存在的建筑: {buildingId}");
+                return;
+            }
+
+            // 销毁游戏对象
+            if (_buildingGameObjects.TryGetValue(buildingId, out GameObject buildingObject) && buildingObject != null)
+            {
+                UnityEngine.Object.Destroy(buildingObject);
+                _buildingGameObjects.Remove(buildingId);
+            }
+
+            // 移除建筑数据
+            _buildings.Remove(buildingId);
+
+            Debug.Log($"[{_managerName}] 销毁建筑: ID={buildingId}");
+        }
     }
 }

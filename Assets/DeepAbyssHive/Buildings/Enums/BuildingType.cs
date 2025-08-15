@@ -46,18 +46,18 @@ namespace DeepAbyssHive.Buildings.Enums
         BioEnergyCore = 7,
         
         /// <summary>
-        /// 孵化场 - 兼容别名，指向孵化池
+        /// 孵化场 - 兼容别名，使用独立值
         /// </summary>
-        Hatchery = 1,
+        Hatchery = 8,
         
         /// <summary>
-        /// 提取器 - 兼容别名，指向资源处理器
+        /// 提取器 - 兼容别名，使用独立值
         /// </summary>
-        Extractor = 5,
+        Extractor = 9,
         
         /// <summary>
-        /// 菌毯肿瘤 - 兼容别名，指向菌毯节点
+        /// 菌毯肿瘤 - 兼容别名，使用独立值
         /// </summary>
-        CreepTumor = 3
+        CreepTumor = 10
     }
 }

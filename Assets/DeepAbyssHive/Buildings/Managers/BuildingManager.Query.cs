@@ -85,15 +85,21 @@ namespace DeepAbyssHive.Buildings.Managers
         /// </summary>
         private bool RequiresCreepSupport(BuildingType buildingType)
         {
-            return buildingType switch
+            switch (buildingType)
             {
-                BuildingType.Hatchery => false,        // 孵化场不需要菌毯
-                BuildingType.Extractor => false,       // 提取器不需要菌毯
-                BuildingType.CreepTumor => false,      // 菌毯肿瘤不需要菌毯
-                BuildingType.SpawningPool => true,     // 孵化池需要菌毯
-                BuildingType.EvolutionChamber => true, // 进化腔需要菌毯
-                _ => true                               // 其他建筑都需要菌毯
-            };
+                case BuildingType.Hatchery:
+                    return false;        // 孵化场不需要菌毯
+                case BuildingType.Extractor:
+                    return false;       // 提取器不需要菌毯
+                case BuildingType.CreepTumor:
+                    return false;      // 菌毯肿瘤不需要菌毯
+                case BuildingType.SpawningPool:
+                    return true;     // 孵化池需要菌毯
+                case BuildingType.EvolutionChamber:
+                    return true; // 进化腔需要菌毯
+                default:
+                    return true;                               // 其他建筑都需要菌毯
+            }
         }
         
         /// <summary>
@@ -124,13 +130,19 @@ namespace DeepAbyssHive.Buildings.Managers
         /// </summary>
         private float GetCreepExpansionRadius(BuildingType buildingType)
         {
-            return buildingType switch
+            switch (buildingType)
             {
-                BuildingType.SpawningPool => 8f,       // 孵化池扩张半径8格 (包含Hatchery别名)
-                BuildingType.CreepNode => 4f,          // 菌毯节点扩张半径4格 (包含CreepTumor别名)
-                BuildingType.EvolutionChamber => 2f,   // 进化腔扩张半径2格
-                _ => 0f                                 // 其他建筑不扩张菌毯
-            };
+                case BuildingType.Hatchery:
+                    return 8f;           // 孵化场扩张半径8格
+                case BuildingType.SpawningPool:
+                    return 8f;           // 孵化池扩张半径8格
+                case BuildingType.CreepTumor:
+                    return 4f;           // 菌毯肿瘤扩张半径4格
+                case BuildingType.EvolutionChamber:
+                    return 2f;           // 进化腔扩张半径2格
+                default:
+                    return 0f;           // 其他建筑不扩张菌毯
+            }
         }
         
         /// <summary>
@@ -160,8 +172,6 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     // 恢复建筑运行
                     building.State = BuildingState.Operational;
-                    UpdateBuilding(building);
-                    
                     Debug.Log($"[BuildingManager] 建筑 {building.BuildingId} 因菌毯扩张恢复运行");
                 }
             }
@@ -182,8 +192,6 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     // 暂停建筑运行
                     building.State = BuildingState.Paused;
-                    UpdateBuilding(building);
-                    
                     Debug.Log($"[BuildingManager] 建筑 {building.BuildingId} 因菌毯移除暂停运行");
                 }
             }
@@ -255,14 +263,14 @@ namespace DeepAbyssHive.Buildings.Managers
         }
 
         /// <summary>
-        /// 检查建筑是否重叠
+        /// 检查建筑是否重叠（Vector3版本）
         /// </summary>
         /// <param name="pos1">位置1</param>
         /// <param name="size1">大小1</param>
         /// <param name="pos2">位置2</param>
         /// <param name="size2">大小2</param>
         /// <returns>是否重叠</returns>
-        private bool IsBuildingOverlapping(Vector3 pos1, Vector3 size1, Vector3 pos2, Vector3 size2)
+        private bool IsBuildingOverlappingVector3(Vector3 pos1, Vector3 size1, Vector3 pos2, Vector3 size2)
         {
             Bounds bounds1 = new Bounds(pos1, size1);
             Bounds bounds2 = new Bounds(pos2, size2);
@@ -291,7 +299,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 Vector3 buildingSize = new Vector3(size.x, size.y, size.x);
                 Vector3 existingSize = new Vector3(existingBuilding.Size.x, existingBuilding.Size.y, existingBuilding.Size.x);
                 
-                if (IsBuildingOverlapping(position, buildingSize, existingBuilding.Position, existingSize))
+                if (IsBuildingOverlappingVector3(position, buildingSize, existingBuilding.Position, existingSize))
                 {
                     return false;
                 }
