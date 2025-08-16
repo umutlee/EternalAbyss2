@@ -1,4 +1,5 @@
 using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
@@ -6,6 +7,8 @@ using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
+using DeepAbyssHive.Terrain.Config;
+using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.Terrain.Managers
 {
@@ -25,44 +28,58 @@ namespace DeepAbyssHive.Terrain.Managers
         private string _managerName = "TerrainManager";
         
         // 地形配置
-        private int _chunkSize = 64; // 每个地形块的大小
-        private float _tileSize = 1.0f; // 每个地形瓦片的大小
-        private int _loadRadius = 3; // 加载半径（以地形块为单位）
+        // 配置引用
+        private TerrainConfigSO _config;
         private Vector2Int _currentCenterChunk = Vector2Int.zero;
         
-        // 地形生成参数
-        private float _noiseScale = 0.1f;
-        private float _heightScale = 10.0f;
-        private int _seed = 12345;
-        
         // 性能优化
-        private int _maxModificationsPerFrame = 10;
         private float _modificationProcessTimer = 0f;
         private float _modificationProcessInterval = 0.1f; // 每0.1秒处理一批修改
+        
+        // 配置属性访问器（向后兼容）
+        private int ConfigChunkSize => _config?.chunkSize ?? 64;
+        private float ConfigTileSize => _config?.tileSize ?? 1.0f;
+        private int ConfigLoadRadius => _config?.loadRadius ?? 3;
+        private float ConfigNoiseScale => _config?.noiseScale ?? 0.1f;
+        private float ConfigHeightScale => _config?.heightScale ?? 10.0f;
+        private int ConfigSeed => _config?.seed ?? 12345;
+        private int ConfigMaxModificationsPerFrame => _config?.maxModificationsPerFrame ?? 10;
         #endregion
 
         #region 构造函数
+        /// <summary>
         /// <summary>
         /// 构造函数
         /// </summary>
         public TerrainManager()
         {
+            // 加载配置
+            LoadConfiguration();
+            
             // 初始化随机种子
-            UnityEngine.Random.InitState(_seed);
+            UnityEngine.Random.InitState(ConfigSeed);
         }
 
         /// <summary>
-        /// 构造函数
+        /// 构造函数（向后兼容）
         /// </summary>
         /// <param name="chunkSize">地形块大小</param>
         /// <param name="tileSize">瓦片大小</param>
         /// <param name="loadRadius">加载半径</param>
         public TerrainManager(int chunkSize, float tileSize, int loadRadius)
         {
-            _chunkSize = chunkSize;
-            _tileSize = tileSize;
-            _loadRadius = loadRadius;
-            UnityEngine.Random.InitState(_seed);
+            // 加载配置
+            LoadConfiguration();
+            
+            // 如果传入了参数，覆盖配置值（向后兼容）
+            if (_config != null)
+            {
+                _config.chunkSize = chunkSize;
+                _config.tileSize = tileSize;
+                _config.loadRadius = loadRadius;
+            }
+            
+            UnityEngine.Random.InitState(ConfigSeed);
         }
         #endregion
 
@@ -181,9 +198,10 @@ namespace DeepAbyssHive.Terrain.Managers
         }
 
         /// <summary>
+        /// <summary>
         /// 地形块大小
         /// </summary>
-        public int ChunkSize => _chunkSize;
+        public int ChunkSize => ConfigChunkSize;
 
         /// <summary>
         /// 最大LOD级别
@@ -195,24 +213,44 @@ namespace DeepAbyssHive.Terrain.Managers
         /// </summary>
         public float ViewDistance 
         { 
-            get => _loadRadius * _chunkSize * _tileSize;
-            set => _loadRadius = Mathf.Max(1, Mathf.RoundToInt(value / (_chunkSize * _tileSize)));
+            get => ConfigLoadRadius * ConfigChunkSize * ConfigTileSize;
+            set 
+            {
+                if (_config != null)
+                {
+                    _config.loadRadius = Mathf.Max(1, Mathf.RoundToInt(value / (ConfigChunkSize * ConfigTileSize)));
+                }
+            }
         }
         #endregion
+
+        /// <summary>
+        /// <summary>
+        /// 加载配置
+        /// </summary>
+        private void LoadConfiguration()
+        {
+            _config = ConfigManager.Instance.GetConfig<TerrainConfigSO>("TerrainConfig");
+            
+            if (_config == null)
+            {
+                Debug.LogWarning($"[{_managerName}] 未找到TerrainConfig配置文件，使用默认值");
+            }
+            else
+            {
+                Debug.Log($"[{_managerName}] 成功加载地形配置: {_config.name}");
+            }
+        }
 
         /// <summary>
         /// 初始化地形生成参数
         /// </summary>
         private void InitializeTerrainGeneration()
         {
-            // 在实际实现中，这些参数可以从配置文件或编辑器中加载
-            _noiseScale = 0.1f;
-            _heightScale = 10.0f;
-            _seed = 12345;
+            // 从配置加载参数
+            UnityEngine.Random.InitState(ConfigSeed);
             
-            UnityEngine.Random.InitState(_seed);
-            
-            Debug.Log($"[{_managerName}] 地形生成参数初始化完成: 噪声缩放={_noiseScale}, 高度缩放={_heightScale}, 种子={_seed}");
+            Debug.Log($"[{_managerName}] 地形生成参数初始化完成: 噪声缩放={ConfigNoiseScale}, 高度缩放={ConfigHeightScale}, 种子={ConfigSeed}");
         }
 
         /// <summary>
@@ -283,13 +321,14 @@ namespace DeepAbyssHive.Terrain.Managers
         }
 
         /// <summary>
+        /// <summary>
         /// 世界坐标转地形块坐标
         /// </summary>
         /// <param name="worldPosition">世界坐标</param>
         /// <returns>地形块坐标</returns>
         private Vector2Int WorldToChunkCoord(Vector3 worldPosition)
         {
-            float chunkWorldSize = _chunkSize * _tileSize;
+            float chunkWorldSize = ConfigChunkSize * ConfigTileSize;
             int chunkX = Mathf.FloorToInt(worldPosition.x / chunkWorldSize);
             int chunkY = Mathf.FloorToInt(worldPosition.z / chunkWorldSize);
             return new Vector2Int(chunkX, chunkY);
@@ -306,8 +345,8 @@ namespace DeepAbyssHive.Terrain.Managers
             Vector3 chunkWorldPos = ChunkToWorldPosition(chunkCoord);
             
             Vector3 localPos = worldPosition - chunkWorldPos;
-            int localX = Mathf.FloorToInt(localPos.x / _tileSize);
-            int localY = Mathf.FloorToInt(localPos.z / _tileSize);
+            int localX = Mathf.FloorToInt(localPos.x / ConfigTileSize);
+            int localY = Mathf.FloorToInt(localPos.z / ConfigTileSize);
             
             return new Vector2Int(localX, localY);
         }
@@ -319,7 +358,7 @@ namespace DeepAbyssHive.Terrain.Managers
         /// <returns>世界坐标</returns>
         private Vector3 ChunkToWorldPosition(Vector2Int chunkCoord)
         {
-            float chunkWorldSize = _chunkSize * _tileSize;
+            float chunkWorldSize = ConfigChunkSize * ConfigTileSize;
             float worldX = chunkCoord.x * chunkWorldSize;
             float worldZ = chunkCoord.y * chunkWorldSize;
             return new Vector3(worldX, 0, worldZ);

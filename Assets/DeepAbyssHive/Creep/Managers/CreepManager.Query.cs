@@ -197,8 +197,6 @@ namespace DeepAbyssHive.Creep.Managers
         }
         
         /// <summary>
-        
-        /// <summary>
         /// 获取特化菌毯瓦片
         /// </summary>
         public List<CreepTile> GetSpecializedCreepTiles()
@@ -306,57 +304,6 @@ namespace DeepAbyssHive.Creep.Managers
         
         #region 统计查询
         
-        /// <summary>
-        /// 获取菌毯统计信息
-        /// </summary>
-        public CreepStatistics GetCreepStatistics()
-        {
-            var stats = new CreepStatistics();
-            
-            foreach (var tile in _creepTiles.Values)
-            {
-                if (!tile.IsActive) continue;
-                
-                stats.TotalTiles++;
-                stats.TotalArea += _tileSize * _tileSize;
-                stats.TotalHealth += tile.Health;
-                stats.TotalResourcesGenerated += tile.TotalResourcesGenerated;
-                
-                switch (tile.Status)
-                {
-                    case CreepTileStatus.Healthy:
-                        stats.HealthyTiles++;
-                        break;
-                    case CreepTileStatus.Growing:
-                        stats.GrowingTiles++;
-                        break;
-                    case CreepTileStatus.Starving:
-                        stats.StarvingTiles++;
-                        break;
-                    case CreepTileStatus.Dying:
-                        stats.DyingTiles++;
-                        break;
-                }
-                
-                switch (tile.TileType)
-                {
-                    case CreepTileType.Basic:
-                        stats.BasicTiles++;
-                        break;
-                    case CreepTileType.Enhanced:
-                        stats.EnhancedTiles++;
-                        break;
-                    case CreepTileType.Specialized:
-                        stats.SpecializedTiles++;
-                        break;
-                }
-            }
-            
-            stats.AverageHealth = stats.TotalTiles > 0 ? stats.TotalHealth / stats.TotalTiles : 0f;
-            stats.ConnectedRegions = GetConnectedRegions().Count;
-            
-            return stats;
-        }
         
         #endregion
         

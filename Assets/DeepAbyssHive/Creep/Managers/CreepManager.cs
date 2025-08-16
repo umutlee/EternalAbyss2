@@ -16,10 +16,6 @@ namespace DeepAbyssHive.Creep.Managers
     {
         #region ICreepManager接口实现
         
-        /// <summary>
-        /// 菌毯扩张事件
-        /// </summary>
-        public event Action<Vector3, float> OnCreepExpanded;
         
         /// <summary>
         /// 菌毯移除事件
@@ -45,7 +41,7 @@ namespace DeepAbyssHive.Creep.Managers
             if (_creepTiles.ContainsKey(gridPos))
             {
                 RemoveCreepTile(gridPos);
-                OnCreepRemoved?.Invoke(position, _gridSize);
+                OnCreepRemoved?.Invoke(position, _gridCellSize);
                 return true;
             }
             return false;

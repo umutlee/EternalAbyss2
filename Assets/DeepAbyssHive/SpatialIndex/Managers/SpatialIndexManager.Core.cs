@@ -1,9 +1,12 @@
 using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Implementations;
+using DeepAbyssHive.SpatialIndex.Config;
+using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
 {
@@ -55,20 +58,24 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         public string ManagerName => "SpatialIndexManager";
 
         /// <summary>
+        /// <summary>
         /// 初始化管理器
         /// </summary>
         public void Initialize()
         {
             if (IsInitialized) return;
 
+            // 加载配置
+            LoadConfiguration();
+
             // 创建主空间索引
-            if (_useOctree)
+            if (UseOctree)
             {
-                _spatialIndex = new OctreeSpatialIndex(_worldBounds, _maxDepth, _maxObjectsPerNode);
+                _spatialIndex = new OctreeSpatialIndex(WorldBounds, MaxDepth, MaxObjectsPerNode);
             }
             else
             {
-                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds.size.x, _maxDepth, _maxObjectsPerNode) as ISpatialIndex<SpatialNode>;
+                _spatialIndex = new QuadTreeSpatialIndex(WorldBounds.size.x, MaxDepth, MaxObjectsPerNode) as ISpatialIndex<SpatialNode>;
             }
 
             // 初始化数据结构
@@ -79,13 +86,30 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             _pendingRemovals = new Queue<SpatialNode>();
 
             // 启动更新协程
-            if (_enableBatching)
+            if (EnableBatching)
             {
                 StartCoroutine(BatchUpdateCoroutine());
             }
 
             IsInitialized = true;
-            Debug.Log($"[{ManagerName}] 初始化完成 - 使用{(_useOctree ? "八叉树" : "四叉树")}索引");
+            Debug.Log($"[{ManagerName}] 初始化完成 - 使用{(UseOctree ? "八叉树" : "四叉树")}索引");
+        }
+
+        /// <summary>
+        /// 加载配置
+        /// </summary>
+        private void LoadConfiguration()
+        {
+            _config = ConfigManager.Instance.GetConfig<SpatialIndexConfigSO>("SpatialIndexConfig");
+            
+            if (_config == null)
+            {
+                Debug.LogWarning($"[{ManagerName}] 未找到SpatialIndexConfig配置文件，使用默认值");
+            }
+            else
+            {
+                Debug.Log($"[{ManagerName}] 成功加载空间索引配置: {_config.name}");
+            }
         }
 
         /// <summary>
@@ -208,13 +232,14 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         }
 
         /// <summary>
+        /// <summary>
         /// 处理待处理的操作
         /// </summary>
         private void ProcessPendingOperations()
         {
             // 处理插入
             int insertCount = 0;
-            while (_pendingInserts.Count > 0 && insertCount < _batchSize)
+            while (_pendingInserts.Count > 0 && insertCount < BatchSize)
             {
                 var node = _pendingInserts.Dequeue();
                 InsertNodeImmediate(node);
@@ -223,7 +248,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
 
             // 处理更新
             int updateCount = 0;
-            while (_pendingUpdates.Count > 0 && updateCount < _batchSize)
+            while (_pendingUpdates.Count > 0 && updateCount < BatchSize)
             {
                 var node = _pendingUpdates.Dequeue();
                 UpdateNodeImmediate(node, node.Position); // 简化处理
@@ -232,7 +257,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
 
             // 处理移除
             int removeCount = 0;
-            while (_pendingRemovals.Count > 0 && removeCount < _batchSize)
+            while (_pendingRemovals.Count > 0 && removeCount < BatchSize)
             {
                 var node = _pendingRemovals.Dequeue();
                 RemoveNodeImmediate(node);
@@ -248,7 +273,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             while (IsInitialized)
             {
                 ProcessPendingOperations();
-                yield return new WaitForSeconds(_updateInterval);
+                yield return new WaitForSeconds(UpdateInterval);
             }
         }
 
@@ -264,17 +289,18 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         }
 
         // Unity生命周期
+        // Unity生命周期
         private void OnDrawGizmos()
         {
-            if (!_showBounds || !IsInitialized) return;
+            if (!ShowBounds || !IsInitialized) return;
 
-            Gizmos.color = _boundsColor;
-            Gizmos.DrawWireCube(_worldBounds.center, _worldBounds.size);
+            Gizmos.color = BoundsColor;
+            Gizmos.DrawWireCube(WorldBounds.center, WorldBounds.size);
         }
 
         private void OnGUI()
         {
-            if (!_showDebugInfo || !IsInitialized) return;
+            if (!ShowDebugInfo || !IsInitialized) return;
 
             GUILayout.BeginArea(new Rect(10, 10, 300, 200));
             GUILayout.Label(GetPerformanceStats());

@@ -5,6 +5,8 @@ using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.Buildings.Managers;
+using DeepAbyssHive.Creep.Config;
+using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -25,6 +27,9 @@ namespace DeepAbyssHive.Creep.Managers
             if (IsInitialized) return;
 
             Debug.Log("[CreepManager] 初始化菌毯管理器");
+            
+            // 加载配置
+            LoadConfiguration();
             
             // 初始化数据结构
             _creepGrid.Clear();
@@ -102,7 +107,7 @@ namespace DeepAbyssHive.Creep.Managers
 
         private void Update()
         {
-            // Unity Update - 调用IManager方法
+            // Unity Update - 直接执行更新逻辑
             if (IsInitialized && !IsPaused)
             {
                 UpdateCreepTiles(Time.deltaTime);
@@ -111,7 +116,7 @@ namespace DeepAbyssHive.Creep.Managers
 
         private void FixedUpdate()
         {
-            // Unity FixedUpdate - 调用IManager方法
+            // Unity FixedUpdate - 直接执行固定更新逻辑
             if (IsInitialized && !IsPaused)
             {
                 // 固定更新逻辑在这里执行
@@ -120,7 +125,7 @@ namespace DeepAbyssHive.Creep.Managers
 
         private void LateUpdate()
         {
-            // Unity LateUpdate - 调用IManager方法
+            // Unity LateUpdate - 直接执行延迟更新逻辑
             if (IsInitialized && !IsPaused)
             {
                 // 延迟更新逻辑在这里执行
@@ -137,14 +142,72 @@ namespace DeepAbyssHive.Creep.Managers
         private readonly HashSet<Vector2Int> _activeCreepCells = new HashSet<Vector2Int>();
         private ISpatialIndex<CreepData> _spatialIndex;
         private BuildingManager _buildingManager;
+        private CreepConfigSO _config;
         
-        private float _gridSize = 1f;
-        private float _tileSize = 1f;
-        private float _maxDensity = 1f;
+        // 配置参数（从配置加载或使用默认值）
+        private float _gridCellSize = 1f;
+        private int _gridWidth = 100;
+        private int _gridHeight = 100;
+        private float _expansionRate = 1f;
+        private float _decayRate = 0.05f;
+        private float _expansionThreshold = 0.8f;
+        private float _minDecayDensity = 0.1f;
+        private int _batchSize = 100;
+        private float _updateInterval = 0.1f;
+        private float _networkCheckInterval = 2f;
+        
         private string _managerName = "CreepManager";
+        private float _lastUpdateTime = 0f;
+        private float _lastNetworkCheckTime = 0f;
         
         // 事件定义
         public System.Action<CreepStatistics> OnStatisticsUpdated;
+        public System.Action<Vector3, float> OnCreepExpanded;
+
+        #endregion
+
+        #region 配置加载
+
+        /// <summary>
+        /// 加载配置
+        /// </summary>
+        private void LoadConfiguration()
+        {
+            _config = ConfigManager.Instance.GetConfig<CreepConfigSO>("CreepConfig");
+            
+            if (_config != null)
+            {
+                // 从配置加载参数
+                _gridCellSize = _config.gridCellSize;
+                _gridWidth = _config.gridWidth;
+                _gridHeight = _config.gridHeight;
+                _expansionRate = _config.expansionRate;
+                _decayRate = _config.decayRate;
+                _expansionThreshold = _config.expansionThreshold;
+                _minDecayDensity = _config.minDecayDensity;
+                _batchSize = _config.batchSize;
+                _updateInterval = _config.updateInterval;
+                _networkCheckInterval = _config.networkCheckInterval;
+                
+                Debug.Log($"[{_managerName}] 从配置加载菌毯参数：网格({_gridWidth}x{_gridHeight})，单元格大小({_gridCellSize})");
+            }
+            else
+            {
+                // 使用默认值
+                _gridCellSize = 1f;
+                _gridWidth = 100;
+                _gridHeight = 100;
+                _expansionRate = 1f;
+                _decayRate = 0.05f;
+                _expansionThreshold = 0.8f;
+                _minDecayDensity = 0.1f;
+                _batchSize = 100;
+                _updateInterval = 0.1f;
+                _networkCheckInterval = 2f;
+                
+                Debug.LogWarning($"[{_managerName}] 未找到CreepConfig配置，使用默认参数");
+            }
+        }
 
         #endregion
 
@@ -155,12 +218,32 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void UpdateCreepTiles(float deltaTime)
         {
+            // 检查更新间隔
+            if (_updateInterval > 0f && Time.time - _lastUpdateTime < _updateInterval)
+                return;
+                
+            _lastUpdateTime = Time.time;
+            
+            // 批量处理瓦片更新
+            int processedCount = 0;
             foreach (var tile in _creepTiles.Values)
             {
                 if (tile.IsActive)
                 {
                     UpdateTileStatus(tile, deltaTime);
+                    processedCount++;
+                    
+                    // 批量处理限制
+                    if (processedCount >= _batchSize)
+                        break;
                 }
+            }
+            
+            // 定期检查网络连接
+            if (Time.time - _lastNetworkCheckTime >= _networkCheckInterval)
+            {
+                CheckNetworkConnections();
+                _lastNetworkCheckTime = Time.time;
             }
         }
 
@@ -187,11 +270,21 @@ namespace DeepAbyssHive.Creep.Managers
         }
 
         /// <summary>
+        /// 检查网络连接
+        /// </summary>
+        private void CheckNetworkConnections()
+        {
+            // 网络连接检查逻辑（使用配置参数）
+            // 这里可以实现网络修复、分割检测等功能
+        }
+
+        /// <summary>
         /// 更新成长中的瓦片
         /// </summary>
         private void UpdateGrowingTile(CreepTile tile, float deltaTime)
         {
-            tile.Health = Mathf.Min(tile.MaxHealth, tile.Health + 10f * deltaTime);
+            float growthRate = _expansionRate * 10f; // 使用配置的扩张速度
+            tile.Health = Mathf.Min(tile.MaxHealth, tile.Health + growthRate * deltaTime);
             if (tile.Health >= tile.MaxHealth)
             {
                 tile.Status = CreepTileStatus.Healthy;
@@ -203,8 +296,9 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void UpdateStarvingTile(CreepTile tile, float deltaTime)
         {
-            tile.Health = Mathf.Max(0f, tile.Health - 5f * deltaTime);
-            if (tile.Health <= 0f)
+            float starvationRate = _decayRate * 100f; // 使用配置的衰减速度
+            tile.Health = Mathf.Max(0f, tile.Health - starvationRate * deltaTime);
+            if (tile.Health <= _minDecayDensity * tile.MaxHealth)
             {
                 tile.Status = CreepTileStatus.Dying;
             }
@@ -215,12 +309,32 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void UpdateDyingTile(CreepTile tile, float deltaTime)
         {
-            tile.Health = Mathf.Max(0f, tile.Health - 20f * deltaTime);
+            float deathRate = _decayRate * 400f; // 使用配置的衰减速度（加速死亡）
+            tile.Health = Mathf.Max(0f, tile.Health - deathRate * deltaTime);
             if (tile.Health <= 0f)
             {
                 tile.IsActive = false;
                 _activeCreepCells.Remove(tile.Position);
             }
+        }
+
+        /// <summary>
+        /// 网格位置转世界位置
+        /// </summary>
+        private Vector3 GridToWorldPosition(Vector2Int gridPosition)
+        {
+            return new Vector3(gridPosition.x * _gridCellSize, 0, gridPosition.y * _gridCellSize);
+        }
+
+        /// <summary>
+        /// 世界位置转网格位置
+        /// </summary>
+        private Vector2Int WorldToGridPosition(Vector3 worldPosition)
+        {
+            return new Vector2Int(
+                Mathf.RoundToInt(worldPosition.x / _gridCellSize),
+                Mathf.RoundToInt(worldPosition.z / _gridCellSize)
+            );
         }
 
         /// <summary>
@@ -297,28 +411,73 @@ namespace DeepAbyssHive.Creep.Managers
                 
                 if (_spatialIndex != null && _creepGrid.TryGetValue(position, out CreepData creepData))
                 {
-                    _spatialIndex.Remove(creepData, creepData.Position, Vector3.one * _gridSize);
+                    _spatialIndex.Remove(creepData, creepData.Position, Vector3.one * _gridCellSize);
                 }
             }
         }
 
         /// <summary>
-        /// 网格位置转世界位置
+        /// 获取菌毯统计信息
         /// </summary>
-        private Vector3 GridToWorldPosition(Vector2Int gridPosition)
+        public CreepStatistics GetCreepStatistics()
         {
-            return new Vector3(gridPosition.x * _gridSize, 0, gridPosition.y * _gridSize);
-        }
-
-        /// <summary>
-        /// 世界位置转网格位置
-        /// </summary>
-        private Vector2Int WorldToGridPosition(Vector3 worldPosition)
-        {
-            return new Vector2Int(
-                Mathf.RoundToInt(worldPosition.x / _gridSize),
-                Mathf.RoundToInt(worldPosition.z / _gridSize)
-            );
+            var stats = new CreepStatistics();
+            
+            stats.TotalTiles = _creepTiles.Count;
+            stats.ActiveTiles = _activeCreepCells.Count;
+            
+            float totalHealth = 0f;
+            int healthyCount = 0, growingCount = 0, starvingCount = 0, dyingCount = 0;
+            int basicCount = 0, enhancedCount = 0, specializedCount = 0;
+            
+            foreach (var tile in _creepTiles.Values)
+            {
+                if (tile.IsActive)
+                {
+                    totalHealth += tile.Health;
+                    
+                    // 按状态统计
+                    switch (tile.Status)
+                    {
+                        case CreepTileStatus.Healthy: healthyCount++; break;
+                        case CreepTileStatus.Growing: growingCount++; break;
+                        case CreepTileStatus.Starving: starvingCount++; break;
+                        case CreepTileStatus.Dying: dyingCount++; break;
+                    }
+                    
+                    // 按类型统计
+                    switch (tile.TileType)
+                    {
+                        case CreepTileType.Basic: basicCount++; break;
+                        case CreepTileType.Enhanced: enhancedCount++; break;
+                        case CreepTileType.Specialized: specializedCount++; break;
+                    }
+                    
+                    stats.TotalResourcesGenerated += tile.TotalResourcesGenerated;
+                }
+            }
+            
+            stats.TotalHealth = totalHealth;
+            stats.AverageHealth = stats.ActiveTiles > 0 ? totalHealth / stats.ActiveTiles : 0f;
+            stats.TotalCoverage = stats.ActiveTiles * _gridCellSize * _gridCellSize;
+            stats.TotalArea = _gridWidth * _gridHeight * _gridCellSize * _gridCellSize;
+            
+            // 状态统计
+            stats.HealthyTiles = healthyCount;
+            stats.GrowingTiles = growingCount;
+            stats.StarvingTiles = starvingCount;
+            stats.DyingTiles = dyingCount;
+            
+            // 类型统计
+            stats.BasicTiles = basicCount;
+            stats.EnhancedTiles = enhancedCount;
+            stats.SpecializedTiles = specializedCount;
+            
+            // 连接区域数量（需要调用Query模块的方法）
+            var isolatedRegions = GetIsolatedRegions();
+            stats.ConnectedRegions = isolatedRegions?.Count ?? 0;
+            
+            return stats;
         }
 
         #endregion

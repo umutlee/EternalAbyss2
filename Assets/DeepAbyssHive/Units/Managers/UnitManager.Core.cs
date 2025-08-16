@@ -7,6 +7,8 @@ using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.Units.Config;
+using DeepAbyssHive.Core.Config;
 using IUnitManager = DeepAbyssHive.Units.Interfaces.IUnitManager;
 
 namespace DeepAbyssHive.Units.Managers
@@ -26,6 +28,7 @@ namespace DeepAbyssHive.Units.Managers
         private bool _isInitialized = false;
         private bool _isPaused = false;
         private string _managerName = "UnitManager";
+        private UnitConfigSO _config;
         private Dictionary<UnitType, string> _unitPrefabPaths = new Dictionary<UnitType, string>();
         private Dictionary<string, EvolutionPath> _evolutionPaths = new Dictionary<string, EvolutionPath>();
         private Dictionary<string, EnvironmentAdaptation> _environmentAdaptations = new Dictionary<string, EnvironmentAdaptation>();
@@ -47,6 +50,9 @@ namespace DeepAbyssHive.Units.Managers
                 return;
                 
             Debug.Log($"[{_managerName}] 初始化单位管理器");
+            
+            // 加载配置
+            LoadConfiguration();
             
             // 初始化单位预制体路径
             InitializeUnitPrefabPaths();
@@ -171,22 +177,45 @@ namespace DeepAbyssHive.Units.Managers
 
         #region 私有初始化方法
         /// <summary>
+        /// 加载配置
+        /// </summary>
+        private void LoadConfiguration()
+        {
+            _config = ConfigManager.Instance.GetConfig<UnitConfigSO>("UnitConfig");
+            if (_config == null)
+            {
+                Debug.LogWarning($"[{_managerName}] 未找到UnitConfig配置，将使用默认配置");
+            }
+        }
+
+        /// <summary>
         /// 初始化单位预制体路径
         /// </summary>
         private void InitializeUnitPrefabPaths()
         {
-            // 在实际实现中，应该从配置文件或数据库中加载预制体路径
-            // 这里简化处理，直接设置硬编码的路径
-            
             _unitPrefabPaths.Clear();
             
-            _unitPrefabPaths[UnitType.Worker] = "Prefabs/Units/Worker";
-            _unitPrefabPaths[UnitType.Warrior] = "Prefabs/Units/Warrior";
-            _unitPrefabPaths[UnitType.AcidSprayer] = "Prefabs/Units/AcidSprayer";
-            _unitPrefabPaths[UnitType.Tank] = "Prefabs/Units/Tank";
-            _unitPrefabPaths[UnitType.Scout] = "Prefabs/Units/Scout";
-            _unitPrefabPaths[UnitType.Flyer] = "Prefabs/Units/Flyer";
-            _unitPrefabPaths[UnitType.Queen] = "Prefabs/Units/Queen";
+            if (_config != null && _config.unitPrefabPaths != null)
+            {
+                // 从配置加载预制体路径
+                foreach (var prefabPath in _config.unitPrefabPaths)
+                {
+                    _unitPrefabPaths[prefabPath.unitType] = prefabPath.prefabPath;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_unitPrefabPaths.Count} 个单位预制体路径");
+            }
+            else
+            {
+                // 使用默认硬编码路径作为后备
+                _unitPrefabPaths[UnitType.Worker] = "Prefabs/Units/Worker";
+                _unitPrefabPaths[UnitType.Warrior] = "Prefabs/Units/Warrior";
+                _unitPrefabPaths[UnitType.AcidSprayer] = "Prefabs/Units/AcidSprayer";
+                _unitPrefabPaths[UnitType.Tank] = "Prefabs/Units/Tank";
+                _unitPrefabPaths[UnitType.Scout] = "Prefabs/Units/Scout";
+                _unitPrefabPaths[UnitType.Flyer] = "Prefabs/Units/Flyer";
+                _unitPrefabPaths[UnitType.Queen] = "Prefabs/Units/Queen";
+                Debug.Log($"[{_managerName}] 使用默认预制体路径配置");
+            }
         }
 
         /// <summary>
@@ -194,11 +223,59 @@ namespace DeepAbyssHive.Units.Managers
         /// </summary>
         private void InitializeEvolutionPaths()
         {
-            // 在实际实现中，应该从配置文件或数据库中加载进化路径
-            // 这里简化处理，直接创建硬编码的进化路径
-            
             _evolutionPaths.Clear();
             
+            if (_config != null && _config.evolutionPaths != null)
+            {
+                // 从配置加载进化路径
+                foreach (var evolutionConfig in _config.evolutionPaths)
+                {
+                    EvolutionPath evolutionPath = new EvolutionPath
+                    {
+                        PathId = evolutionConfig.pathId,
+                        RequiredUnitType = evolutionConfig.requiredUnitType,
+                        MaxLevel = evolutionConfig.maxLevel,
+                        EvolutionTime = evolutionConfig.evolutionTime
+                    };
+                    
+                    // 转换等级配置
+                    foreach (var levelConfig in evolutionConfig.levelConfigs)
+                    {
+                        // 转换属性修改器
+                        var modifiers = new List<AttributeModifier>();
+                        foreach (var modifierConfig in levelConfig.attributeModifiers)
+                        {
+                            modifiers.Add(new AttributeModifier
+                            {
+                                AttributeName = modifierConfig.attributeName,
+                                Type = modifierConfig.modifierType == AttributeModifierType.Add ? 
+                                       AttributeModifier.ModifierType.Add : AttributeModifier.ModifierType.Multiply,
+                                Value = modifierConfig.value
+                            });
+                        }
+                        evolutionPath.AttributeModifiersByLevel[levelConfig.level] = modifiers.ToArray();
+                        
+                        // 设置解锁能力
+                        evolutionPath.UnlockedAbilitiesByLevel[levelConfig.level] = levelConfig.unlockedAbilities;
+                    }
+                    
+                    _evolutionPaths[evolutionConfig.pathId] = evolutionPath;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_evolutionPaths.Count} 个进化路径");
+            }
+            else
+            {
+                // 使用默认硬编码进化路径作为后备
+                CreateDefaultEvolutionPaths();
+                Debug.Log($"[{_managerName}] 使用默认进化路径配置");
+            }
+        }
+
+        /// <summary>
+        /// 创建默认进化路径（后备方案）
+        /// </summary>
+        private void CreateDefaultEvolutionPaths()
+        {
             // 工蚁进化路径
             EvolutionPath workerPath = new EvolutionPath
             {
@@ -208,30 +285,12 @@ namespace DeepAbyssHive.Units.Managers
                 EvolutionTime = 10f
             };
             
-            // 设置工蚁进化路径的属性修改器
             workerPath.AttributeModifiersByLevel[1] = new AttributeModifier[]
             {
                 new AttributeModifier { AttributeName = "ResourceGatherRate", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
                 new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
             };
-            
-            workerPath.AttributeModifiersByLevel[2] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "ResourceGatherRate", Type = AttributeModifier.ModifierType.Multiply, Value = 1.3f },
-                new AttributeModifier { AttributeName = "BuildSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f }
-            };
-            
-            workerPath.AttributeModifiersByLevel[3] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "ResourceGatherRate", Type = AttributeModifier.ModifierType.Multiply, Value = 1.5f },
-                new AttributeModifier { AttributeName = "BuildSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.5f },
-                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f }
-            };
-            
-            // 设置工蚁进化路径的解锁能力
             workerPath.UnlockedAbilitiesByLevel[1] = new string[] { "fast_gather" };
-            workerPath.UnlockedAbilitiesByLevel[2] = new string[] { "fast_gather", "efficient_build" };
-            workerPath.UnlockedAbilitiesByLevel[3] = new string[] { "fast_gather", "efficient_build", "resource_sense" };
             
             _evolutionPaths["worker_efficiency"] = workerPath;
             
@@ -244,36 +303,14 @@ namespace DeepAbyssHive.Units.Managers
                 EvolutionTime = 15f
             };
             
-            // 设置战蚁进化路径的属性修改器
             warriorPath.AttributeModifiersByLevel[1] = new AttributeModifier[]
             {
                 new AttributeModifier { AttributeName = "AttackDamage", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
                 new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
             };
-            
-            warriorPath.AttributeModifiersByLevel[2] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "AttackDamage", Type = AttributeModifier.ModifierType.Multiply, Value = 1.4f },
-                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
-                new AttributeModifier { AttributeName = "AttackSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
-            };
-            
-            warriorPath.AttributeModifiersByLevel[3] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "AttackDamage", Type = AttributeModifier.ModifierType.Multiply, Value = 1.6f },
-                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.4f },
-                new AttributeModifier { AttributeName = "AttackSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
-                new AttributeModifier { AttributeName = "AttackRange", Type = AttributeModifier.ModifierType.Add, Value = 0.5f }
-            };
-            
-            // 设置战蚁进化路径的解锁能力
             warriorPath.UnlockedAbilitiesByLevel[1] = new string[] { "power_strike" };
-            warriorPath.UnlockedAbilitiesByLevel[2] = new string[] { "power_strike", "tough_carapace" };
-            warriorPath.UnlockedAbilitiesByLevel[3] = new string[] { "power_strike", "tough_carapace", "battle_frenzy" };
             
             _evolutionPaths["warrior_strength"] = warriorPath;
-            
-            // 添加更多进化路径...
         }
 
         /// <summary>
@@ -281,11 +318,56 @@ namespace DeepAbyssHive.Units.Managers
         /// </summary>
         private void InitializeEnvironmentAdaptations()
         {
-            // 在实际实现中，应该从配置文件或数据库中加载环境适应
-            // 这里简化处理，直接创建硬编码的环境适应
-            
             _environmentAdaptations.Clear();
             
+            if (_config != null && _config.environmentAdaptations != null)
+            {
+                // 从配置加载环境适应
+                foreach (var adaptationConfig in _config.environmentAdaptations)
+                {
+                    EnvironmentAdaptation adaptation = new EnvironmentAdaptation
+                    {
+                        TraitId = adaptationConfig.traitId,
+                        EnvironmentType = adaptationConfig.environmentType,
+                        MaxLevel = adaptationConfig.maxLevel,
+                        AdaptationTime = adaptationConfig.adaptationTime
+                    };
+                    
+                    // 转换等级配置
+                    foreach (var levelConfig in adaptationConfig.levelConfigs)
+                    {
+                        // 转换属性修改器
+                        var modifiers = new List<AttributeModifier>();
+                        foreach (var modifierConfig in levelConfig.modifiers)
+                        {
+                            modifiers.Add(new AttributeModifier
+                            {
+                                AttributeName = modifierConfig.attributeName,
+                                Type = modifierConfig.modifierType == AttributeModifierType.Add ? 
+                                       AttributeModifier.ModifierType.Add : AttributeModifier.ModifierType.Multiply,
+                                Value = modifierConfig.value
+                            });
+                        }
+                        adaptation.ModifiersByLevel[levelConfig.level] = modifiers.ToArray();
+                    }
+                    
+                    _environmentAdaptations[adaptationConfig.environmentType] = adaptation;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_environmentAdaptations.Count} 个环境适应");
+            }
+            else
+            {
+                // 使用默认硬编码环境适应作为后备
+                CreateDefaultEnvironmentAdaptations();
+                Debug.Log($"[{_managerName}] 使用默认环境适应配置");
+            }
+        }
+
+        /// <summary>
+        /// 创建默认环境适应（后备方案）
+        /// </summary>
+        private void CreateDefaultEnvironmentAdaptations()
+        {
             // 酸性环境适应
             EnvironmentAdaptation acidAdaptation = new EnvironmentAdaptation
             {
@@ -295,23 +377,9 @@ namespace DeepAbyssHive.Units.Managers
                 AdaptationTime = 8f
             };
             
-            // 设置酸性环境适应的属性修改器
             acidAdaptation.ModifiersByLevel[1] = new AttributeModifier[]
             {
                 new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
-            };
-            
-            acidAdaptation.ModifiersByLevel[2] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
-                new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
-            };
-            
-            acidAdaptation.ModifiersByLevel[3] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.3f },
-                new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
-                new AttributeModifier { AttributeName = "AttackDamage", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
             };
             
             _environmentAdaptations["acid"] = acidAdaptation;
@@ -325,29 +393,12 @@ namespace DeepAbyssHive.Units.Managers
                 AdaptationTime = 8f
             };
             
-            // 设置高温环境适应的属性修改器
             heatAdaptation.ModifiersByLevel[1] = new AttributeModifier[]
             {
                 new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
             };
             
-            heatAdaptation.ModifiersByLevel[2] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
-                new AttributeModifier { AttributeName = "AttackSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
-            };
-            
-            heatAdaptation.ModifiersByLevel[3] = new AttributeModifier[]
-            {
-                new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.3f },
-                new AttributeModifier { AttributeName = "AttackSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
-                new AttributeModifier { AttributeName = "SightRange", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
-            };
-            
             _environmentAdaptations["heat"] = heatAdaptation;
-            _environmentAdaptations["heat"] = heatAdaptation;
-            
-            // 添加更多环境适应...
         }
         
         /// <summary>

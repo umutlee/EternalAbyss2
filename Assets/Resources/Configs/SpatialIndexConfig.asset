@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0}
+  m_Name: SpatialIndexConfig
+  configName: SpatialIndexConfig
+  version: 1.0.0
+  description: 空间索引系统配置 - 包含空间索引结构、性能优化、调试等所有配置
+  useOctree: 1
+  worldBounds:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 500, y: 500, z: 500}
+  maxDepth: 8
+  maxObjectsPerNode: 10
+  autoResize: 1
+  enableBatching: 1
+  batchSize: 100
+  updateInterval: 0.1
+  enableAsyncQueries: 1
+  queryCacheSize: 1000
+  optimizeInterval: 5
+  nodePoolInitialSize: 500
+  nodePoolMaxSize: 2000
+  autoCleanupNodes: 1
+  cleanupInterval: 10
+  showDebugInfo: 0
+  showBounds: 0
+  boundsColor: {r: 0, g: 1, b: 0, a: 1}
+  showNodeStats: 0
+  enableProfiling: 0
+  enableSpatialHashing: 1
+  hashGridSize: 10
+  maxQueryResults: 1000
+  queryTimeoutMs: 100

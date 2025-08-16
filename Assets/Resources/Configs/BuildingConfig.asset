@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0}
+  m_Name: BuildingConfig
+  configName: "建筑系统配置"
+  description: "建筑系统的所有配置参数"
+  version: "1.0.0"
+  buildingTemplates:
+  - buildingType: 0
+    prefabPath: Prefabs/Buildings/Hatchery
+    displayName: "孵化场"
+    description: "生产工蚁的基础建筑"
+    buildCost:
+    - resourceType: Biomass
+      amount: 100
+    - resourceType: Energy
+      amount: 50
+    buildTime: 30
+    maxHealth: 500
+    size:
+      x: 3
+      y: 3
+    requiredTech: ""
+    energyConsumption: 10
+    productionCapacity: 5
+  - buildingType: 1
+    prefabPath: Prefabs/Buildings/SpawningPool
+    displayName: "孵化池"
+    description: "生产战斗单位的建筑"
+    buildCost:
+    - resourceType: Biomass
+      amount: 150
+    - resourceType: Energy
+      amount: 75
+    buildTime: 45
+    maxHealth: 600
+    size:
+      x: 4
+      y: 4
+    requiredTech: "basic_evolution"
+    energyConsumption: 15
+    productionCapacity: 3
+  - buildingType: 2
+    prefabPath: Prefabs/Buildings/EvolutionChamber
+    displayName: "进化腔"
+    description: "研究进化科技的建筑"
+    buildCost:
+    - resourceType: Biomass
+      amount: 200
+    - resourceType: Energy
+      amount: 100
+    buildTime: 60
+    maxHealth: 400
+    size:
+      x: 2
+      y: 2
+    requiredTech: ""
+    energyConsumption: 20
+    productionCapacity: 0
+  researchTemplates:
+  - researchId: "basic_evolution"
+    displayName: "基础进化"
+    description: "解锁基础单位进化能力"
+    researchCost:
+    - resourceType: Biomass
+      amount: 100
+    - resourceType: Energy
+      amount: 50
+    researchTime: 60
+    requiredBuilding: 2
+    prerequisites: []
+    unlockedBuildings: [1]
+    unlockedUnits: ["Warrior"]
+  - researchId: "advanced_carapace"
+    displayName: "高级甲壳"
+    description: "提升单位防御力"
+    researchCost:
+    - resourceType: Biomass
+      amount: 150
+    - resourceType: Energy
+      amount: 100
+    researchTime: 90
+    requiredBuilding: 2
+    prerequisites: ["basic_evolution"]
+    unlockedBuildings: []
+    unlockedUnits: []
+  constructionConfig:
+    maxConcurrentBuilds: 5
+    buildSpeedMultiplier: 1
+    cancelRefundPercentage: 0.75
+    placementCheckRadius: 1
+    requiresCreepConnection: 1
+    maxCreepDistance: 10
+  upgradeConfig:
+    maxUpgradeLevel: 3
+    upgradeTimeMultiplier: 1.5
+    upgradeCostMultiplier: 1.2
+    healthIncreasePerLevel: 100
+    efficiencyIncreasePerLevel: 0.1
+  performanceConfig:
+    updateBatchSize: 50
+    updateInterval: 0.1
+    enableAsyncUpdates: 1
+    maxUpdatesPerFrame: 10
+  placementConfig:
+    checkTerrain: 1
+    checkObstacles: 1
+    checkResources: 1
+    checkCreepCoverage: 1
+    minDistanceFromEnemies: 5
+    allowOverlap: 0

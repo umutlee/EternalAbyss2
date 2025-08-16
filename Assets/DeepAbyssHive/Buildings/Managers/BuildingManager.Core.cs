@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
+using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Buildings.Interfaces;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Buildings.Config;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 
 namespace DeepAbyssHive.Buildings.Managers
@@ -17,6 +19,9 @@ namespace DeepAbyssHive.Buildings.Managers
     /// </summary>
     public partial class BuildingManager
     {
+        // 配置系统
+        private BuildingConfigSO _config;
+        
         // 私有字段定义
         private readonly Dictionary<int, BuildingData> _buildings = new Dictionary<int, BuildingData>();
         private readonly Dictionary<int, GameObject> _buildingGameObjects = new Dictionary<int, GameObject>();
@@ -26,11 +31,109 @@ namespace DeepAbyssHive.Buildings.Managers
         private readonly Dictionary<int, HashSet<string>> _playerResearch = new Dictionary<int, HashSet<string>>();
         private readonly Queue<int> _buildingUpdateQueue = new Queue<int>();
         
+        // 配置参数（从配置文件加载，带默认值）
         private float _buildingUpdateTimer = 0f;
         private float _buildingUpdateInterval = 0.1f;
         private int _maxBuildingUpdatesPerFrame = 10;
         private float _buildingPlacementGridSize = 1f;
         private string _managerName = "BuildingManager";
+
+        /// <summary>
+        /// 初始化配置系统
+        /// </summary>
+        private void InitializeConfig()
+        {
+            _config = ConfigManager.GetConfig<BuildingConfigSO>("BuildingConfig");
+            
+            if (_config != null)
+            {
+                // 从配置加载参数
+                _buildingUpdateInterval = _config.performanceConfig.updateInterval;
+                _maxBuildingUpdatesPerFrame = _config.performanceConfig.maxUpdatesPerFrame;
+                _buildingPlacementGridSize = _config.constructionConfig.placementCheckRadius;
+                
+                Debug.Log($"[{_managerName}] 配置加载成功: {_config.configName}");
+            }
+            else
+            {
+                Debug.LogWarning($"[{_managerName}] 配置文件未找到，使用默认值");
+            }
+        }
+
+        /// <summary>
+        /// 从配置初始化建筑模板
+        /// </summary>
+        private void InitializeBuildingTemplatesFromConfig()
+        {
+            if (_config?.buildingTemplates != null)
+            {
+                foreach (var templateConfig in _config.buildingTemplates)
+                {
+                    var template = new BuildingTemplate
+                    {
+                        Type = templateConfig.buildingType,
+                        Name = templateConfig.displayName,
+                        MaxHealth = templateConfig.maxHealth,
+                        ConstructionTime = templateConfig.buildTime,
+                        Size = templateConfig.size,
+                        MaxLevel = _config.upgradeConfig.maxUpgradeLevel,
+                        BioEnergyConsumption = templateConfig.energyConsumption,
+                        BioEnergyGeneration = templateConfig.buildingType == BuildingType.BioEnergyCore ? 50f : 0f
+                    };
+                    _buildingTemplates[templateConfig.buildingType] = template;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_config.buildingTemplates.Length} 个建筑模板");
+            }
+            else
+            {
+                // 使用默认模板
+                InitializeBuildingTemplates();
+            }
+        }
+
+        /// <summary>
+        /// 从配置初始化建筑预制体路径
+        /// </summary>
+        private void InitializeBuildingPrefabPathsFromConfig()
+        {
+            if (_config?.buildingTemplates != null)
+            {
+                foreach (var templateConfig in _config.buildingTemplates)
+                {
+                    _buildingPrefabPaths[templateConfig.buildingType] = templateConfig.prefabPath;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_config.buildingTemplates.Length} 个预制体路径");
+            }
+            else
+            {
+                // 使用默认路径
+                InitializeBuildingPrefabPaths();
+            }
+        }
+
+        /// <summary>
+        /// 从配置初始化研究模板
+        /// </summary>
+        private void InitializeResearchTemplatesFromConfig()
+        {
+            if (_config?.researchTemplates != null)
+            {
+                foreach (var researchConfig in _config.researchTemplates)
+                {
+                    var template = new ResearchTemplate
+                    {
+                        Id = researchConfig.researchId,
+                        Name = researchConfig.displayName,
+                        Description = researchConfig.description,
+                        ResearchTime = researchConfig.researchTime,
+                        RequiredBuilding = researchConfig.requiredBuilding,
+                        Prerequisites = new List<string>(researchConfig.prerequisites ?? new string[0])
+                    };
+                    _researchTemplates[researchConfig.researchId] = template;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_config.researchTemplates.Length} 个研究模板");
+            }
+        }
 
         /// <summary>
         /// 实例化建筑游戏对象
@@ -75,12 +178,12 @@ namespace DeepAbyssHive.Buildings.Managers
         }
 
         /// <summary>
-        /// 初始化建筑模板
+        /// 初始化建筑模板（向后兼容版本）
         /// </summary>
         private void InitializeBuildingTemplates()
         {
             // 从配置文件或资源中加载建筑模板
-            // 这里使用简化的硬编码实现
+            // 这里使用简化的硬编码实现（向后兼容）
             foreach (BuildingType type in System.Enum.GetValues(typeof(BuildingType)))
             {
                 var template = new BuildingTemplate
@@ -99,14 +202,79 @@ namespace DeepAbyssHive.Buildings.Managers
         }
 
         /// <summary>
-        /// 初始化建筑预制体路径
+        /// 初始化建筑预制体路径（向后兼容版本）
         /// </summary>
         private void InitializeBuildingPrefabPaths()
         {
-            // 初始化建筑预制体路径映射
+            // 初始化建筑预制体路径映射（向后兼容）
             foreach (BuildingType type in System.Enum.GetValues(typeof(BuildingType)))
             {
                 _buildingPrefabPaths[type] = $"Prefabs/Buildings/{type}";
+            }
+        }
+
+        /// <summary>
+        /// 初始化所有配置和模板
+        /// </summary>
+        public void Initialize()
+        {
+            // 1. 首先初始化配置系统
+            InitializeConfig();
+            
+            // 2. 从配置初始化各种模板和路径
+            InitializeBuildingTemplatesFromConfig();
+            InitializeBuildingPrefabPathsFromConfig();
+            InitializeResearchTemplatesFromConfig();
+            
+            Debug.Log($"[{_managerName}] 初始化完成");
+        }
+
+        /// <summary>
+        /// 清理资源
+        /// </summary>
+        public void Cleanup()
+        {
+            _buildings.Clear();
+            _buildingGameObjects.Clear();
+            _buildingTemplates.Clear();
+            _researchTemplates.Clear();
+            _playerResearch.Clear();
+            _buildingUpdateQueue.Clear();
+            
+            Debug.Log($"[{_managerName}] 清理完成");
+        }
+
+        /// <summary>
+        /// 更新管理器
+        /// </summary>
+        /// <param name="deltaTime">时间增量</param>
+        public void Update(float deltaTime)
+        {
+            _buildingUpdateTimer += deltaTime;
+            
+            if (_buildingUpdateTimer >= _buildingUpdateInterval)
+            {
+                ProcessBuildingUpdates();
+                _buildingUpdateTimer = 0f;
+            }
+        }
+
+        /// <summary>
+        /// 处理建筑更新
+        /// </summary>
+        private void ProcessBuildingUpdates()
+        {
+            int updatesProcessed = 0;
+            
+            while (_buildingUpdateQueue.Count > 0 && updatesProcessed < _maxBuildingUpdatesPerFrame)
+            {
+                int buildingId = _buildingUpdateQueue.Dequeue();
+                
+                if (_buildings.TryGetValue(buildingId, out BuildingData buildingData))
+                {
+                    UpdateBuildingGameObject(buildingId, buildingData);
+                    updatesProcessed++;
+                }
             }
         }
 
