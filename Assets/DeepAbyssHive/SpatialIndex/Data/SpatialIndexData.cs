@@ -45,10 +45,13 @@ namespace DeepAbyssHive.SpatialIndex.Data
     [System.Serializable]
     public struct SpatialIndexPerformanceStats
     {
-        public int TotalObjects;
+        public int TotalQueries;
+        public float AverageQueryTime;
+        public int FrameQueries;
+        public int ObjectCount;
+        public int PendingOperations;
         public int TotalNodes;
         public int MaxDepth;
-        public float AverageQueryTime;
         public float AverageUpdateTime;
         public int QueriesPerSecond;
         public int UpdatesPerSecond;

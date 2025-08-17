@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Buildings;
 using DeepAbyssHive.Buildings.Enums;
 
 namespace DeepAbyssHive.Creep.Managers
@@ -84,48 +85,6 @@ namespace DeepAbyssHive.Creep.Managers
             }
             
             return tiles;
-        }
-        
-        /// <summary>
-        /// 获取矩形区域内的菌毯瓦片
-        /// </summary>
-        public List<CreepTile> GetCreepTilesInRect(Vector2Int bottomLeft, Vector2Int topRight)
-        {
-            var tiles = new List<CreepTile>();
-            
-            for (int x = bottomLeft.x; x <= topRight.x; x++)
-            {
-                for (int y = bottomLeft.y; y <= topRight.y; y++)
-                {
-                    var tile = GetCreepTileAt(new Vector2Int(x, y));
-                    if (tile != null && tile.IsActive)
-                    {
-                        tiles.Add(tile);
-                    }
-                }
-            }
-            
-            return tiles;
-        }
-        
-        /// <summary>
-        /// 检查区域是否完全被菌毯覆盖
-        /// </summary>
-        public bool IsAreaFullyCovered(Vector2Int center, int radius)
-        {
-            for (int x = center.x - radius; x <= center.x + radius; x++)
-            {
-                for (int y = center.y - radius; y <= center.y + radius; y++)
-                {
-                    var position = new Vector2Int(x, y);
-                    if (Vector2Int.Distance(center, position) <= radius)
-                    {
-                        if (!HasCreepAt(position))
-                            return false;
-                    }
-                }
-            }
-            return true;
         }
         
         /// <summary>

@@ -4,7 +4,6 @@ using Unity.Collections;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.Units.Enums;
-using DeepAbyssHive.Units.Data;
 
 namespace DeepAbyssHive.Units.Services
 {

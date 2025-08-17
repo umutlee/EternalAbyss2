@@ -5,6 +5,7 @@ using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Buildings;
 
 namespace DeepAbyssHive.Creep.Managers
 {

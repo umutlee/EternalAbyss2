@@ -1,11 +1,11 @@
 using UnityEngine;
-using UnityEngine;
 using System.Collections.Generic;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Implementations;
 using DeepAbyssHive.SpatialIndex.Config;
+using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
@@ -33,17 +33,19 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         [SerializeField] private bool _showBounds = false;
         [SerializeField] private Color _boundsColor = Color.green;
 
-        // 空间索引实例
+        // 服务委託
+        private ISpatialIndexService _spatialIndexService;
+        
+        // 配置
+        private SpatialIndexConfigSO _config;
+        
+        // 兼容性保持 - 保留原有字段用于向后兼容
         private ISpatialIndex<SpatialNode> _spatialIndex;
         private Dictionary<string, ISpatialIndex<SpatialNode>> _categoryIndices;
-        
-        // 对象管理
         private Dictionary<int, SpatialNode> _allNodes;
         private Queue<SpatialNode> _pendingInserts;
         private Queue<SpatialNode> _pendingUpdates;
         private Queue<SpatialNode> _pendingRemovals;
-        
-        // 性能统计
         private int _totalQueries = 0;
         private float _totalQueryTime = 0f;
         private int _frameQueries = 0;
@@ -57,7 +59,14 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         public bool IsInitialized { get; private set; }
         public string ManagerName => "SpatialIndexManager";
 
-        /// <summary>
+        // 公共屬性（用於兼容性）
+        public Bounds WorldBounds => _worldBounds;
+        public int BatchSize => _batchSize;
+        public float UpdateInterval => _updateInterval;
+        public bool ShowBounds => _showBounds;
+        public Color BoundsColor => _boundsColor;
+        public bool ShowDebugInfo => _showDebugInfo;
+
         /// <summary>
         /// 初始化管理器
         /// </summary>
@@ -68,17 +77,17 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             // 加载配置
             LoadConfiguration();
 
-            // 创建主空间索引
-            if (UseOctree)
-            {
-                _spatialIndex = new OctreeSpatialIndex(WorldBounds, MaxDepth, MaxObjectsPerNode);
-            }
-            else
-            {
-                _spatialIndex = new QuadTreeSpatialIndex(WorldBounds.size.x, MaxDepth, MaxObjectsPerNode) as ISpatialIndex<SpatialNode>;
-            }
+            // 创建并初始化空间索引服务
+            _spatialIndexService = new SpatialIndexService();
+            _spatialIndexService.Initialize(
+                worldBounds: _worldBounds,
+                maxDepth: _maxDepth,
+                maxObjectsPerNode: _maxObjectsPerNode,
+                useOctree: _useOctree,
+                batchSize: _batchSize
+            );
 
-            // 初始化数据结构
+            // 兼容性保持 - 初始化原有数据结构
             _categoryIndices = new Dictionary<string, ISpatialIndex<SpatialNode>>();
             _allNodes = new Dictionary<int, SpatialNode>();
             _pendingInserts = new Queue<SpatialNode>();
@@ -86,13 +95,13 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             _pendingRemovals = new Queue<SpatialNode>();
 
             // 启动更新协程
-            if (EnableBatching)
+            if (_enableBatching)
             {
                 StartCoroutine(BatchUpdateCoroutine());
             }
 
             IsInitialized = true;
-            Debug.Log($"[{ManagerName}] 初始化完成 - 使用{(UseOctree ? "八叉树" : "四叉树")}索引");
+            Debug.Log($"[{ManagerName}] 初始化完成 - 使用服务委託模式，{(_useOctree ? "八叉树" : "四叉树")}索引");
         }
 
         /// <summary>
@@ -128,7 +137,10 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         {
             if (!IsInitialized) return;
 
-            // 处理待处理的操作
+            // 委託給服務更新
+            _spatialIndexService?.UpdateService(Time.deltaTime);
+
+            // 兼容性保持 - 處理原有待處理操作
             if (!_enableBatching)
             {
                 ProcessPendingOperations();
@@ -209,12 +221,29 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         }
 
         /// <summary>
+        /// 获取服务实例
+        /// </summary>
+        /// <typeparam name="T">服务接口类型</typeparam>
+        /// <returns>服务实例，如果不存在则返回null</returns>
+        public T GetService<T>() where T : class
+        {
+            if (typeof(T) == typeof(ISpatialIndexService))
+                return _spatialIndexService as T;
+            
+            return null;
+        }
+
+        /// <summary>
         /// 清理管理器
         /// </summary>
         public void Cleanup()
         {
             if (!IsInitialized) return;
 
+            // 委託給服務清理
+            _spatialIndexService?.Cleanup();
+
+            // 兼容性保持 - 清理原有數據結構
             _spatialIndex?.Clear();
             foreach (var index in _categoryIndices.Values)
             {
@@ -228,7 +257,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             _pendingRemovals.Clear();
 
             IsInitialized = false;
-            Debug.Log($"[{ManagerName}] 清理完成");
+            Debug.Log($"[{ManagerName}] 清理完成 - 服務委託模式");
         }
 
         /// <summary>

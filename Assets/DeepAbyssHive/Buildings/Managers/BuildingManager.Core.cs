@@ -1,28 +1,37 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Core.Config;
-using DeepAbyssHive.Buildings.Interfaces;
+using IBuildingManagerCore = DeepAbyssHive.Core.Interfaces.IBuildingManager;
+using IBuildingManager = DeepAbyssHive.Buildings.Interfaces.IBuildingManager;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Buildings.Config;
+using DeepAbyssHive.Buildings.Services;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
     /// <summary>
-    /// BuildingManager 核心（字段、初始化、IManager生命周期）
-    /// 说明：
-    /// - 本文件为partial占位，不改变任何对外API与行为
-    /// - 后续将把字段区、构造器、Initialize/Cleanup/Update等迁移至此
+    /// BuildingManager 核心 - 服务容器和API适配器
+    /// 职责：
+    /// - 作为服务容器，持有 IBuildingQueryService 和 IBuildingConstructionService
+    /// - 提供向后兼容的公共API，内部委托给服务处理
+    /// - 管理MonoBehaviour生命周期和IManager接口实现
     /// </summary>
-    public partial class BuildingManager
+    public partial class BuildingManager : MonoBehaviour, IBuildingManager, IManager
     {
+        // 服务引用
+        private IBuildingQueryService _queryService;
+        private IBuildingConstructionService _constructionService;
+        private IResearchService _researchService;
+        
         // 配置系统
         private BuildingConfigSO _config;
         
-        // 私有字段定义
+        // 数据容器（由服务共享）
         private readonly Dictionary<int, BuildingData> _buildings = new Dictionary<int, BuildingData>();
         private readonly Dictionary<int, GameObject> _buildingGameObjects = new Dictionary<int, GameObject>();
         private readonly Dictionary<BuildingType, string> _buildingPrefabPaths = new Dictionary<BuildingType, string>();
@@ -31,12 +40,17 @@ namespace DeepAbyssHive.Buildings.Managers
         private readonly Dictionary<int, HashSet<string>> _playerResearch = new Dictionary<int, HashSet<string>>();
         private readonly Queue<int> _buildingUpdateQueue = new Queue<int>();
         
-        // 配置参数（从配置文件加载，带默认值）
+        // 配置参数
         private float _buildingUpdateTimer = 0f;
         private float _buildingUpdateInterval = 0.1f;
         private int _maxBuildingUpdatesPerFrame = 10;
         private float _buildingPlacementGridSize = 1f;
         private string _managerName = "BuildingManager";
+        private bool _isPaused = false;
+        private int _nextBuildingId = 1;
+
+        // 事件
+        public System.Action<BuildingData> OnBuildingPlaced;
 
         /// <summary>
         /// 初始化配置系统
@@ -52,12 +66,45 @@ namespace DeepAbyssHive.Buildings.Managers
                 _maxBuildingUpdatesPerFrame = _config.performanceConfig.maxUpdatesPerFrame;
                 _buildingPlacementGridSize = _config.constructionConfig.placementCheckRadius;
                 
-                Debug.Log($"[{_managerName}] 配置加载成功: {_config.configName}");
+                Debug.Log($"[{_managerName}] 配置加载成功: {_config.ConfigName}");
             }
             else
             {
                 Debug.LogWarning($"[{_managerName}] 配置文件未找到，使用默认值");
             }
+        }
+
+        /// <summary>
+        /// 创建建筑
+        /// </summary>
+        public int CreateBuilding(BuildingData buildingData)
+        {
+            if (buildingData == null)
+            {
+                Debug.LogError("BuildingData 不能为空");
+                return -1;
+            }
+
+            // 生成唯一ID
+            buildingData.Id = GenerateUniqueId();
+            
+            // 添加到建筑字典
+            _buildings[buildingData.Id] = buildingData;
+            
+            // 触发建筑放置事件
+            OnBuildingPlaced?.Invoke(buildingData);
+            
+            Debug.Log($"建筑创建成功: {buildingData.BuildingType} at {buildingData.Position}");
+            
+            return buildingData.Id;
+        }
+
+        /// <summary>
+        /// 生成唯一建筑ID
+        /// </summary>
+        private int GenerateUniqueId()
+        {
+            return _nextBuildingId++;
         }
 
         /// <summary>
@@ -74,11 +121,11 @@ namespace DeepAbyssHive.Buildings.Managers
                         Type = templateConfig.buildingType,
                         Name = templateConfig.displayName,
                         MaxHealth = templateConfig.maxHealth,
-                        ConstructionTime = templateConfig.buildTime,
+                        ConstructionTime = templateConfig.constructionTime,
                         Size = templateConfig.size,
-                        MaxLevel = _config.upgradeConfig.maxUpgradeLevel,
-                        BioEnergyConsumption = templateConfig.energyConsumption,
-                        BioEnergyGeneration = templateConfig.buildingType == BuildingType.BioEnergyCore ? 50f : 0f
+                        MaxLevel = templateConfig.maxLevel,
+                        BioEnergyConsumption = templateConfig.bioEnergyConsumption,
+                        BioEnergyGeneration = templateConfig.bioEnergyGeneration
                     };
                     _buildingTemplates[templateConfig.buildingType] = template;
                 }
@@ -135,17 +182,180 @@ namespace DeepAbyssHive.Buildings.Managers
             }
         }
 
+
         /// <summary>
-        /// 实例化建筑游戏对象
+        /// 获取建筑模板
         /// </summary>
-        /// <param name="buildingData">建筑数据</param>
-        /// <returns>建筑游戏对象</returns>
-        private GameObject InstantiateBuildingObject(BuildingData buildingData)
+        public BuildingTemplate GetBuildingTemplate(BuildingType buildingType)
         {
-            GameObject buildingObject = new GameObject($"Building_{buildingData.BuildingId}");
-            buildingObject.transform.position = buildingData.Position;
-            buildingObject.transform.rotation = buildingData.Rotation;
-            return buildingObject;
+            _buildingTemplates.TryGetValue(buildingType, out var template);
+            return template;
+        }
+
+        /// <summary>
+        /// 获取研究模板
+        /// </summary>
+        public ResearchTemplate GetResearchTemplate(ResearchType researchType)
+        {
+            _researchTemplates.TryGetValue(researchType, out var template);
+            return template;
+        }
+
+
+        /// <summary>
+        /// 获取所有建筑
+        /// </summary>
+        public List<Building> GetAllBuildings()
+        {
+            return new List<Building>(_buildings.Values);
+        }
+
+        /// <summary>
+        /// 获取指定类型的建筑
+        /// </summary>
+        public List<Building> GetBuildingsOfType(BuildingType buildingType)
+        {
+            return _buildings.Values.Where(b => b.BuildingType == buildingType).ToList();
+        }
+
+        /// <summary>
+        /// 获取范围内的建筑
+        /// </summary>
+        public List<Building> GetBuildingsInRange(Vector3 center, float radius)
+        {
+            float radiusSquared = radius * radius;
+            return _buildings.Values.Where(b => 
+                (b.Position - center).sqrMagnitude <= radiusSquared).ToList();
+        }
+
+        /// <summary>
+        /// 检查位置是否可以放置建筑
+        /// </summary>
+        public bool CanPlaceBuilding(BuildingType buildingType, Vector3 position)
+        {
+            var template = GetBuildingTemplate(buildingType);
+            if (template == null) return false;
+
+            // 检查是否有足够空间
+            float checkRadius = template.Size * 0.5f + 1f; // 添加一些缓冲
+            var nearbyBuildings = GetBuildingsInRange(position, checkRadius);
+            
+            return nearbyBuildings.Count == 0;
+        }
+
+        /// <summary>
+        /// 获取建筑统计信息
+        /// </summary>
+        public BuildingStats GetBuildingStats()
+        {
+            var stats = new BuildingStats();
+            foreach (var building in _buildings.Values)
+            {
+                stats.TotalBuildings++;
+                if (building.IsConstructed)
+                    stats.ConstructedBuildings++;
+                else
+                    stats.UnderConstructionBuildings++;
+            }
+            return stats;
+        }
+
+        // IBuildingManager 接口实现
+
+        public void UpdateBuilding(BuildingData buildingData)
+        {
+            if (_buildings.ContainsKey(buildingData.Id))
+            {
+                // 更新建筑数据
+                var building = _buildings[buildingData.Id];
+                building.SetConstructionProgress(buildingData.ConstructionProgress);
+                building.SetHealth(buildingData.Health);
+            }
+        }
+
+        public void RemoveBuilding(int buildingId)
+        {
+            _buildings.Remove(buildingId);
+        }
+
+        public bool IsValidPlacement(Vector3 position, Vector2Int size, bool checkResources = true)
+        {
+            // 简单的放置验证逻辑
+            return true; // 实际实现需要检查地形、资源等
+        }
+
+        public void StartConstruction(int buildingId)
+        {
+            if (_buildings.ContainsKey(buildingId))
+            {
+                // 开始建造逻辑
+                Debug.Log($"开始建造建筑 {buildingId}");
+            }
+        }
+
+        public void StartUpgrade(int buildingId, string upgradeType)
+        {
+            if (_buildings.ContainsKey(buildingId))
+            {
+                // 开始升级逻辑
+                Debug.Log($"开始升级建筑 {buildingId} 类型: {upgradeType}");
+            }
+        }
+
+        public void AddProductionQueueItem(int buildingId, ProductionQueueItem item)
+        {
+            // 添加生产队列项目
+            Debug.Log($"为建筑 {buildingId} 添加生产项目: {item}");
+        }
+
+        public void CancelProductionQueueItem(int buildingId, int itemIndex)
+        {
+            // 取消生产队列项目
+            Debug.Log($"取消建筑 {buildingId} 的生产项目 {itemIndex}");
+        }
+
+        public void StartResearch(int buildingId, string researchType)
+        {
+            // 开始研究
+            Debug.Log($"建筑 {buildingId} 开始研究: {researchType}");
+        }
+
+        public void CancelResearch(int buildingId)
+        {
+            // 取消研究
+            Debug.Log($"取消建筑 {buildingId} 的研究");
+        }
+
+        public float GetCreepExpansionRadius(int buildingId)
+        {
+            // 获取菌毯扩张半径
+            return 10f; // 默认值
+        }
+
+        // IManager 接口实现
+        public void FixedUpdate(float fixedDeltaTime)
+        {
+            // 固定更新逻辑
+        }
+
+        public void LateUpdate(float deltaTime)
+        {
+            // 延迟更新逻辑
+        }
+
+        public void Pause()
+        {
+            _isPaused = true;
+        }
+
+        public void Resume()
+        {
+            _isPaused = false;
+        }
+
+        public string GetManagerName()
+        {
+            return "BuildingManager";
         }
 
         /// <summary>
@@ -214,7 +424,7 @@ namespace DeepAbyssHive.Buildings.Managers
         }
 
         /// <summary>
-        /// 初始化所有配置和模板
+        /// 初始化服务和配置
         /// </summary>
         public void Initialize()
         {
@@ -226,14 +436,44 @@ namespace DeepAbyssHive.Buildings.Managers
             InitializeBuildingPrefabPathsFromConfig();
             InitializeResearchTemplatesFromConfig();
             
-            Debug.Log($"[{_managerName}] 初始化完成");
+            // 3. 初始化服务
+            InitializeServices();
+            
+            Debug.Log($"[{_managerName}] 服务化初始化完成");
         }
 
         /// <summary>
-        /// 清理资源
+        /// 初始化服务实例
+        /// </summary>
+        private void InitializeServices()
+        {
+            // 创建查询服务
+            _queryService = new BuildingQueryService(
+                _buildings,
+                _buildingGameObjects,
+                _buildingTemplates
+            );
+
+            // 创建建造服务
+            _constructionService = new BuildingConstructionService(
+                _buildings,
+                _buildingGameObjects,
+                _buildingTemplates,
+                _buildingPrefabPaths
+            );
+
+            // 创建研究服务
+            _researchService = new ResearchService();
+
+            Debug.Log($"[{_managerName}] 服务初始化完成");
+        }
+
+        /// <summary>
+        /// 清理资源和服务
         /// </summary>
         public void Cleanup()
         {
+            // 清理数据
             _buildings.Clear();
             _buildingGameObjects.Clear();
             _buildingTemplates.Clear();
@@ -241,17 +481,51 @@ namespace DeepAbyssHive.Buildings.Managers
             _playerResearch.Clear();
             _buildingUpdateQueue.Clear();
             
-            Debug.Log($"[{_managerName}] 清理完成");
+            // 清理服务引用
+            _queryService = null;
+            _constructionService = null;
+            _researchService = null;
+            
+            Debug.Log($"[{_managerName}] 服务化清理完成");
         }
 
         /// <summary>
-        /// 更新管理器
+        /// 获取服务实例
+        /// </summary>
+        /// <typeparam name="T">服务接口类型</typeparam>
+        /// <returns>服务实例，如果不存在则返回null</returns>
+        public T GetService<T>() where T : class
+        {
+            if (typeof(T) == typeof(IBuildingQueryService))
+                return _queryService as T;
+            if (typeof(T) == typeof(IBuildingConstructionService))
+                return _constructionService as T;
+            if (typeof(T) == typeof(IResearchService))
+                return _researchService as T;
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 更新管理器 - 委托给服务处理
         /// </summary>
         /// <param name="deltaTime">时间增量</param>
         public void Update(float deltaTime)
         {
-            _buildingUpdateTimer += deltaTime;
+            // 更新建造服务
+            if (_constructionService is BuildingConstructionService constructionService)
+            {
+                constructionService.Update(deltaTime);
+            }
             
+            // 更新研究服务
+            if (_researchService is ResearchService researchService)
+            {
+                researchService.UpdateResearchProgress(deltaTime);
+            }
+            
+            // 处理建筑更新队列
+            _buildingUpdateTimer += deltaTime;
             if (_buildingUpdateTimer >= _buildingUpdateInterval)
             {
                 ProcessBuildingUpdates();
@@ -260,7 +534,7 @@ namespace DeepAbyssHive.Buildings.Managers
         }
 
         /// <summary>
-        /// 处理建筑更新
+        /// 处理建筑更新队列
         /// </summary>
         private void ProcessBuildingUpdates()
         {
@@ -278,63 +552,57 @@ namespace DeepAbyssHive.Buildings.Managers
             }
         }
 
+        // ===== 公共API适配器方法 =====
+        // 这些方法保持向后兼容，内部委托给服务处理
+
         /// <summary>
-        /// 检查升级需求
+        /// 获取建筑数据（委托给查询服务）
         /// </summary>
-        /// <param name="playerId">玩家ID</param>
-        /// <param name="upgradePath">升级路径</param>
-        /// <returns>是否满足需求</returns>
-        private bool CheckUpgradeRequirements(int playerId, UpgradePath upgradePath)
+        public BuildingData? GetBuildingData(int buildingId)
         {
-            // 检查升级需求的实现
-            return true; // 简化实现
+            return _queryService?.GetBuildingData(buildingId);
         }
 
         /// <summary>
-        /// 获取建筑模板
+        /// 检查建筑是否存在（委托给查询服务）
         /// </summary>
-        /// <param name="buildingType">建筑类型</param>
-        /// <returns>建筑模板</returns>
-        private BuildingTemplate GetBuildingTemplate(BuildingType buildingType)
+        public bool BuildingExists(int buildingId)
         {
-            _buildingTemplates.TryGetValue(buildingType, out BuildingTemplate template);
-            return template;
+            return _queryService?.BuildingExists(buildingId) ?? false;
         }
 
         /// <summary>
-        /// 获取建筑半径
+        /// 获取指定范围内的建筑（委托给查询服务）
         /// </summary>
-        /// <param name="buildingType">建筑类型</param>
-        /// <returns>建筑半径</returns>
-        private float GetBuildingRadius(BuildingType buildingType)
+        public List<BuildingData> GetBuildingsInRange(Vector3 center, float radius, int playerId = -1)
         {
-            var template = GetBuildingTemplate(buildingType);
-            if (template != null)
-            {
-                return Mathf.Max(template.Size.x, template.Size.y) * 0.5f;
-            }
-            return 1.0f; // 默认半径
+            return _queryService?.GetBuildingsInRange(center, radius, playerId) ?? new List<BuildingData>();
         }
 
         /// <summary>
-        /// 销毁建筑
+        /// 开始建造建筑（委托给建造服务）
         /// </summary>
-        /// <param name="buildingId">建筑ID</param>
+        public int StartConstruction(BuildingType buildingType, Vector3 position, int playerId, Quaternion? rotation = null)
+        {
+            return _constructionService?.StartConstruction(buildingType, position, playerId, rotation) ?? -1;
+        }
+
+        /// <summary>
+        /// 升级建筑（委托给建造服务）
+        /// </summary>
+        public bool UpgradeBuilding(int buildingId)
+        {
+            return _constructionService?.UpgradeBuilding(buildingId) ?? false;
+        }
+
+        /// <summary>
+        /// 销毁建筑（委托给建造服务）
+        /// </summary>
         public void DestroyBuilding(int buildingId)
         {
-            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试销毁不存在的建筑: {buildingId}");
-                return;
-            }
-
-            // 销毁游戏对象
-            if (_buildingGameObjects.TryGetValue(buildingId, out GameObject buildingObject) && buildingObject != null)
-            {
-                UnityEngine.Object.Destroy(buildingObject);
-                _buildingGameObjects.Remove(buildingId);
-            }
-
+            // 委托给建造服务处理
+            _constructionService?.DestroyBuilding(buildingId);
+            
             // 移除建筑数据
             _buildings.Remove(buildingId);
 

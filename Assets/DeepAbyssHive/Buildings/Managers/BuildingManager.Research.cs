@@ -1,157 +1,94 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
+using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
     /// <summary>
-    /// BuildingManager 研究系统
-    /// 说明：
-    /// - 本文件为partial占位，不改变任何对外API与行为
-    /// - 后续将把 StartResearch(int,string) / CancelResearch(int)
-    ///   以及内部研究模板、进度更新、完成写入等方法迁移至此：
-    ///   - bool StartResearch(string researchId, int playerId)
-    ///   - bool IsResearchCompleted(string researchId, int playerId)
-    ///   - string[] GetCompletedResearch(int playerId)
-    ///   - void UpdateResearch(float deltaTime)
-    ///   - void InitializeResearchTemplates()
-    ///   - void CompleteResearch(string researchId, int playerId)
+    /// BuildingManager 研究功能 - 委托给 IBuildingConstructionService
+    /// 保持向后兼容的API，内部委托给建造服务处理
     /// </summary>
     public partial class BuildingManager
     {
         /// <summary>
-        /// 开始研究（建筑版本）
+        /// 开始研究（委托给建造服务）
         /// </summary>
-        /// <param name="buildingId">建筑ID</param>
-        /// <param name="researchId">研究ID</param>
-        public void StartResearch(int buildingId, string researchId)
+        public bool StartResearch(ResearchType researchType, int buildingId)
         {
-            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试在不存在的建筑中开始研究: {buildingId}");
-                return;
-            }
-            
-            StartResearch(researchId, buildingData.OwnerId);
+            return _constructionService?.StartResearch(researchType, buildingId) ?? false;
         }
 
         /// <summary>
-        /// 开始研究（玩家版本）
+        /// 取消研究（委托给建造服务）
         /// </summary>
-        /// <param name="researchId">研究ID</param>
-        /// <param name="playerId">玩家ID</param>
-        /// <returns>是否成功</returns>
-        public bool StartResearch(string researchId, int playerId)
+        public bool CancelResearch(ResearchType researchType)
         {
-            if (!_researchTemplates.TryGetValue(researchId, out ResearchTemplate template))
-            {
-                Debug.LogError($"[{_managerName}] 研究模板不存在: {researchId}");
-                return false;
-            }
-            
-            // 检查是否已经研究过
-            if (IsResearchCompleted(researchId, playerId))
-            {
-                Debug.LogWarning($"[{_managerName}] 研究已完成: {researchId}");
-                return false;
-            }
-            
-            // 检查前置研究
-            if (template.Prerequisites != null && template.Prerequisites.Length > 0)
-            {
-                foreach (string prerequisite in template.Prerequisites)
-                {
-                    if (!IsResearchCompleted(prerequisite, playerId))
-                    {
-                        Debug.LogWarning($"[{_managerName}] 前置研究未完成: {prerequisite}");
-                        return false;
-                    }
-                }
-            }
-            
-            // 开始研究
-            CompleteResearch(researchId, playerId);
-            
-            Debug.Log($"[{_managerName}] 开始研究: {researchId}, 玩家={playerId}");
-            
-            return true;
+            return _constructionService?.CancelResearch(researchType) ?? false;
         }
 
         /// <summary>
-        /// 取消研究
+        /// 完成研究（委托给建造服务）
         /// </summary>
-        /// <param name="buildingId">建筑ID</param>
-        public void CancelResearch(int buildingId)
+        public bool CompleteResearch(ResearchType researchType)
         {
-            // 简化实现，实际项目中需要完整的研究系统
-            Debug.Log($"[{_managerName}] 取消研究: 建筑={buildingId}");
+            return _constructionService?.CompleteResearch(researchType) ?? false;
         }
 
         /// <summary>
-        /// 检查研究是否完成
+        /// 检查研究是否已完成（委托给查询服务）
         /// </summary>
-        /// <param name="researchId">研究ID</param>
-        /// <param name="playerId">玩家ID</param>
-        /// <returns>是否完成</returns>
-        public bool IsResearchCompleted(string researchId, int playerId)
+        public bool IsResearchCompleted(ResearchType researchType, int playerId)
         {
-            if (!_playerResearch.TryGetValue(playerId, out HashSet<string> completedResearch))
-            {
-                return false;
-            }
-            
-            return completedResearch.Contains(researchId);
+            return _queryService?.IsResearchCompleted(researchType, playerId) ?? false;
         }
 
         /// <summary>
-        /// 获取玩家已完成的研究
+        /// 检查研究前置条件（委托给查询服务）
         /// </summary>
-        /// <param name="playerId">玩家ID</param>
-        /// <returns>已完成的研究ID数组</returns>
-        public string[] GetCompletedResearch(int playerId)
+        public bool CanStartResearch(ResearchType researchType, int playerId)
         {
-            if (!_playerResearch.TryGetValue(playerId, out HashSet<string> completedResearch))
-            {
-                return new string[0];
-            }
-            
-            var result = new string[completedResearch.Count];
-            completedResearch.CopyTo(result);
-            return result;
+            return _queryService?.CanStartResearch(researchType, playerId) ?? false;
         }
 
         /// <summary>
-        /// 更新研究
+        /// 获取研究进度（委托给建造服务）
         /// </summary>
-        /// <param name="deltaTime">时间增量</param>
-        private void UpdateResearch(float deltaTime)
+        public float GetResearchProgress(ResearchType researchType)
         {
-            // 简化实现，实际项目中需要完整的研究系统
+            return _constructionService?.GetResearchProgress(researchType) ?? 0f;
         }
 
         /// <summary>
-        /// 初始化研究模板
+        /// 获取已完成的研究列表（委托给查询服务）
         /// </summary>
-        private void InitializeResearchTemplates()
+        public List<ResearchType> GetCompletedResearch(int playerId)
         {
-            // 从配置文件或资源中加载研究模板
-            // 这里使用简化的硬编码实现
+            return _queryService?.GetCompletedResearch(playerId) ?? new List<ResearchType>();
         }
 
         /// <summary>
-        /// 完成研究
+        /// 获取正在进行的研究列表（委托给建造服务）
         /// </summary>
-        /// <param name="researchId">研究ID</param>
-        /// <param name="playerId">玩家ID</param>
-        private void CompleteResearch(string researchId, int playerId)
+        public List<ResearchType> GetActiveResearch()
         {
-            if (!_playerResearch.ContainsKey(playerId))
-            {
-                _playerResearch[playerId] = new HashSet<string>();
-            }
-            
-            _playerResearch[playerId].Add(researchId);
+            return _constructionService?.GetActiveResearch() ?? new List<ResearchType>();
+        }
+
+        /// <summary>
+        /// 加速研究（委托给建造服务）
+        /// </summary>
+        public bool AccelerateResearch(ResearchType researchType, float speedMultiplier)
+        {
+            return _constructionService?.AccelerateResearch(researchType, speedMultiplier) ?? false;
+        }
+
+        /// <summary>
+        /// 获取研究成本（委托给查询服务）
+        /// </summary>
+        public ResourceCost GetResearchCost(ResearchType researchType)
+        {
+            return _queryService?.GetResearchCost(researchType) ?? default(ResourceCost);
         }
     }
 }

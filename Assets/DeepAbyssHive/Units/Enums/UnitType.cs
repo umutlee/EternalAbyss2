@@ -14,6 +14,11 @@ namespace DeepAbyssHive.Units.Enums
         Warrior,
         Guardian,
         Hunter,
+        AcidSprayer,
+        Tank,
+        
+        // 飞行单位
+        Flyer,
         
         // 特殊单位
         Queen,

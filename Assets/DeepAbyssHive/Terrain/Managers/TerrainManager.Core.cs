@@ -1,367 +1,289 @@
 using System;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
-using Unity.Collections;
 using DeepAbyssHive.Core.Interfaces;
-using DeepAbyssHive.Terrain.Interfaces;
+using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
-using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Terrain.Services;
+using DeepAbyssHive.Terrain.Interfaces;
 
 namespace DeepAbyssHive.Terrain.Managers
 {
     /// <summary>
-    /// 地形管理器，负责管理分块地形系统 - 核心部分
+    /// 地形管理器核心 - 服務容器和API適配器
+    /// 職責：
+    /// - 作為服務容器，持有 ITerrainQueryService、ITerrainModificationService 和 ITerrainGenerationService
+    /// - 提供向後兼容的公共API，內部委託給服務處理
+    /// - 管理MonoBehaviour生命週期和IManager接口實現
     /// </summary>
-    public partial class TerrainManager
+    public partial class TerrainManager : MonoBehaviour, ITerrainManager
     {
-        #region 私有字段
-        private Dictionary<Vector2Int, ITerrainChunk> _terrainChunks = new Dictionary<Vector2Int, ITerrainChunk>();
-        private Dictionary<Vector2Int, TerrainType[,]> _chunkTerrainData = new Dictionary<Vector2Int, TerrainType[,]>();
-        private Queue<TerrainModification> _pendingModifications = new Queue<TerrainModification>();
-        private List<TerrainModification> _modificationHistory = new List<TerrainModification>();
+        // 服務引用
+        private ITerrainQueryService _queryService;
+        private ITerrainModificationService _modificationService;
+        private ITerrainGenerationService _generationService;
         
-        private bool _isInitialized = false;
-        private bool _isPaused = false;
-        private string _managerName = "TerrainManager";
-        
-        // 地形配置
-        // 配置引用
+        // 配置系統
         private TerrainConfigSO _config;
-        private Vector2Int _currentCenterChunk = Vector2Int.zero;
         
-        // 性能优化
-        private float _modificationProcessTimer = 0f;
-        private float _modificationProcessInterval = 0.1f; // 每0.1秒处理一批修改
+        // 數據容器（由服務共享）
+        private readonly Dictionary<Vector2Int, TerrainChunk> _terrainChunks = new Dictionary<Vector2Int, TerrainChunk>();
+        private readonly Queue<TerrainModification> _modificationQueue = new Queue<TerrainModification>();
+        private readonly List<TerrainModification> _modificationHistory = new List<TerrainModification>();
         
-        // 配置属性访问器（向后兼容）
-        private int ConfigChunkSize => _config?.chunkSize ?? 64;
-        private float ConfigTileSize => _config?.tileSize ?? 1.0f;
-        private int ConfigLoadRadius => _config?.loadRadius ?? 3;
-        private float ConfigNoiseScale => _config?.noiseScale ?? 0.1f;
-        private float ConfigHeightScale => _config?.heightScale ?? 10.0f;
-        private int ConfigSeed => _config?.seed ?? 12345;
-        private int ConfigMaxModificationsPerFrame => _config?.maxModificationsPerFrame ?? 10;
-        #endregion
-
-        #region 构造函数
-        /// <summary>
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        public TerrainManager()
-        {
-            // 加载配置
-            LoadConfiguration();
-            
-            // 初始化随机种子
-            UnityEngine.Random.InitState(ConfigSeed);
-        }
+        // 配置參數
+        [SerializeField] private int _chunkSize = 32;
+        [SerializeField] private float _heightScale = 10f;
+        [SerializeField] private float _noiseScale = 0.1f;
+        [SerializeField] private int _loadRadius = 3;
+        [SerializeField] private float _modificationProcessInterval = 0.1f;
+        
+        private float _modificationTimer = 0f;
+        private int _maxModificationsPerFrame = 5;
+        private string _managerName = "TerrainManager";
+        private bool _isPaused = false;
 
         /// <summary>
-        /// 构造函数（向后兼容）
+        /// 初始化配置系統
         /// </summary>
-        /// <param name="chunkSize">地形块大小</param>
-        /// <param name="tileSize">瓦片大小</param>
-        /// <param name="loadRadius">加载半径</param>
-        public TerrainManager(int chunkSize, float tileSize, int loadRadius)
+        private void InitializeConfig()
         {
-            // 加载配置
-            LoadConfiguration();
+            _config = ConfigManager.GetConfig<TerrainConfigSO>("TerrainConfig");
             
-            // 如果传入了参数，覆盖配置值（向后兼容）
             if (_config != null)
             {
-                _config.chunkSize = chunkSize;
-                _config.tileSize = tileSize;
-                _config.loadRadius = loadRadius;
+                // 從配置加載參數
+                _chunkSize = _config.chunkSize;
+                _heightScale = _config.heightScale;
+                _noiseScale = _config.noiseScale;
+                _loadRadius = _config.loadRadius;
+                _modificationProcessInterval = _config.modificationProcessInterval;
+                _maxModificationsPerFrame = _config.maxModificationsPerFrame;
+                
+                Debug.Log($"[{_managerName}] 配置加載成功: {_config.ConfigName}");
             }
-            
-            UnityEngine.Random.InitState(ConfigSeed);
+            else
+            {
+                Debug.LogWarning($"[{_managerName}] 配置文件未找到，使用默認值");
+            }
         }
-        #endregion
 
-        #region IManager接口实现
         /// <summary>
-        /// 初始化管理器
+        /// 初始化服務和配置
         /// </summary>
         public void Initialize()
         {
-            if (_isInitialized)
-                return;
-                
-            Debug.Log($"[{_managerName}] 初始化地形管理器");
+            // 1. 首先初始化配置系統
+            InitializeConfig();
             
-            // 初始化地形生成参数
-            InitializeTerrainGeneration();
+            // 2. 初始化服務
+            InitializeServices();
             
-            // 加载初始地形
-            LoadTerrain(Vector3.zero);
-            
-            _isInitialized = true;
-            Debug.Log($"[{_managerName}] 地形管理器初始化完成");
+            Debug.Log($"[{_managerName}] 服務化初始化完成");
         }
 
         /// <summary>
-        /// 更新管理器
+        /// 初始化服務實例
         /// </summary>
-        public void UpdateManager()
+        private void InitializeServices()
         {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 处理待处理的地形修改
-            ProcessPendingModifications();
+            // 創建查詢服務
+            _queryService = new TerrainQueryService(
+                _terrainChunks,
+                _chunkSize,
+                _heightScale
+            );
+
+            // 創建修改服務
+            _modificationService = new TerrainModificationService(
+                _terrainChunks,
+                _modificationQueue,
+                _modificationHistory
+            );
+
+            // 創建生成服務
+            _generationService = new TerrainGenerationService(
+                _chunkSize,
+                _heightScale,
+                _noiseScale
+            );
+
+            Debug.Log($"[{_managerName}] 服務初始化完成");
         }
 
         /// <summary>
-        /// 清理管理器
+        /// 清理資源和服務
         /// </summary>
         public void Cleanup()
         {
-            Debug.Log($"[{_managerName}] 清理地形管理器");
-            
-            // 卸载所有地形块
-            List<Vector2Int> allChunks = new List<Vector2Int>(_terrainChunks.Keys);
-            foreach (var chunkCoord in allChunks)
-            {
-                UnloadChunk(chunkCoord);
-            }
-            
+            // 清理數據
             _terrainChunks.Clear();
-            _chunkTerrainData.Clear();
-            _pendingModifications.Clear();
+            _modificationQueue.Clear();
             _modificationHistory.Clear();
             
-            _isInitialized = false;
+            // 清理服務引用
+            _queryService = null;
+            _modificationService = null;
+            _generationService = null;
             
-            Debug.Log($"[{_managerName}] 地形管理器清理完成");
+            Debug.Log($"[{_managerName}] 服務化清理完成");
         }
 
         /// <summary>
-        /// 更新管理器
+        /// 獲取服務實例
         /// </summary>
-        /// <param name="deltaTime">时间增量</param>
+        /// <typeparam name="T">服務接口類型</typeparam>
+        /// <returns>服務實例，如果不存在則返回null</returns>
+        public T GetService<T>() where T : class
+        {
+            if (typeof(T) == typeof(ITerrainQueryService))
+                return _queryService as T;
+            if (typeof(T) == typeof(ITerrainModificationService))
+                return _modificationService as T;
+            if (typeof(T) == typeof(ITerrainGenerationService))
+                return _generationService as T;
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 更新管理器 - 委託給服務處理
+        /// </summary>
+        /// <param name="deltaTime">時間增量</param>
         public void Update(float deltaTime)
         {
-            UpdateManager();
+            if (_isPaused) return;
 
-            // 每幀驅動所有已載入的 chunk 做逐幀更新（含節流的批次刷新/LOD 維護等）
-            foreach (var kv in _terrainChunks)
+            // 處理地形修改隊列
+            _modificationTimer += deltaTime;
+            if (_modificationTimer >= _modificationProcessInterval)
             {
-                kv.Value.UpdateTerrain(deltaTime);
+                ProcessModificationQueue();
+                _modificationTimer = 0f;
             }
         }
 
         /// <summary>
-        /// 固定更新管理器
+        /// 處理地形修改隊列
         /// </summary>
-        /// <param name="fixedDeltaTime">固定时间增量</param>
+        private void ProcessModificationQueue()
+        {
+            int modificationsProcessed = 0;
+            
+            while (_modificationQueue.Count > 0 && modificationsProcessed < _maxModificationsPerFrame)
+            {
+                var modification = _modificationQueue.Dequeue();
+                
+                // 委託給修改服務處理
+                _modificationService?.ApplyModification(modification);
+                
+                // 記錄到歷史
+                _modificationHistory.Add(modification);
+                
+                modificationsProcessed++;
+            }
+        }
+
+        /// <summary>
+        /// 加載地形
+        /// </summary>
+        /// <param name="centerPosition">中心位置</param>
+        public void LoadTerrain(Vector3 centerPosition)
+        {
+            Vector2Int centerChunk = WorldToChunkCoord(centerPosition);
+            
+            // 加載周圍的地形塊
+            for (int x = -_loadRadius; x <= _loadRadius; x++)
+            {
+                for (int z = -_loadRadius; z <= _loadRadius; z++)
+                {
+                    Vector2Int chunkCoord = centerChunk + new Vector2Int(x, z);
+                    LoadChunk(chunkCoord);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 加載地形塊
+        /// </summary>
+        /// <param name="chunkCoord">地形塊坐標</param>
+        private void LoadChunk(Vector2Int chunkCoord)
+        {
+            if (_terrainChunks.ContainsKey(chunkCoord))
+                return;
+
+            // 委託給生成服務創建地形塊
+            var terrainData = _generationService?.GenerateChunkTerrain(chunkCoord);
+            if (terrainData != null)
+            {
+                var chunk = new TerrainChunk(chunkCoord, terrainData, _chunkSize);
+                _terrainChunks[chunkCoord] = chunk;
+            }
+        }
+
+        /// <summary>
+        /// 卸載地形塊
+        /// </summary>
+        /// <param name="chunkCoord">地形塊坐標</param>
+        private void UnloadChunk(Vector2Int chunkCoord)
+        {
+            if (_terrainChunks.TryGetValue(chunkCoord, out var chunk))
+            {
+                chunk.Dispose();
+                _terrainChunks.Remove(chunkCoord);
+            }
+        }
+
+        /// <summary>
+        /// 世界坐標轉地形塊坐標
+        /// </summary>
+        /// <param name="worldPosition">世界坐標</param>
+        /// <returns>地形塊坐標</returns>
+        private Vector2Int WorldToChunkCoord(Vector3 worldPosition)
+        {
+            return new Vector2Int(
+                Mathf.FloorToInt(worldPosition.x / _chunkSize),
+                Mathf.FloorToInt(worldPosition.z / _chunkSize)
+            );
+        }
+
+        // IManager 接口實現
         public void FixedUpdate(float fixedDeltaTime)
         {
-            // 固定更新逻辑
+            // 固定更新邏輯
         }
 
-        /// <summary>
-        /// 后更新管理器
-        /// </summary>
-        public void LateUpdate()
+        public void LateUpdate(float deltaTime)
         {
-            // 后更新逻辑
+            // 延遲更新邏輯
         }
 
-        /// <summary>
-        /// 暂停管理器
-        /// </summary>
         public void Pause()
         {
             _isPaused = true;
         }
 
-        /// <summary>
-        /// 恢复管理器
-        /// </summary>
         public void Resume()
         {
             _isPaused = false;
         }
 
-        /// <summary>
-        /// 获取管理器名称
-        /// </summary>
-        /// <returns>管理器名称</returns>
         public string GetManagerName()
         {
             return _managerName;
         }
 
-        /// <summary>
-        /// <summary>
-        /// 地形块大小
-        /// </summary>
-        public int ChunkSize => ConfigChunkSize;
-
-        /// <summary>
-        /// 最大LOD级别
-        /// </summary>
-        public int MaxLODLevels => 4; // 简化实现，返回固定值
-
-        /// <summary>
-        /// 视距
-        /// </summary>
-        public float ViewDistance 
-        { 
-            get => ConfigLoadRadius * ConfigChunkSize * ConfigTileSize;
-            set 
-            {
-                if (_config != null)
-                {
-                    _config.loadRadius = Mathf.Max(1, Mathf.RoundToInt(value / (ConfigChunkSize * ConfigTileSize)));
-                }
-            }
-        }
-        #endregion
-
-        /// <summary>
-        /// <summary>
-        /// 加载配置
-        /// </summary>
-        private void LoadConfiguration()
+        // Unity 生命週期
+        private void Awake()
         {
-            _config = ConfigManager.Instance.GetConfig<TerrainConfigSO>("TerrainConfig");
-            
-            if (_config == null)
-            {
-                Debug.LogWarning($"[{_managerName}] 未找到TerrainConfig配置文件，使用默认值");
-            }
-            else
-            {
-                Debug.Log($"[{_managerName}] 成功加载地形配置: {_config.name}");
-            }
+            Initialize();
         }
 
-        /// <summary>
-        /// 初始化地形生成参数
-        /// </summary>
-        private void InitializeTerrainGeneration()
+        private void OnDestroy()
         {
-            // 从配置加载参数
-            UnityEngine.Random.InitState(ConfigSeed);
-            
-            Debug.Log($"[{_managerName}] 地形生成参数初始化完成: 噪声缩放={ConfigNoiseScale}, 高度缩放={ConfigHeightScale}, 种子={ConfigSeed}");
-        }
-
-        /// <summary>
-        /// 加载地形块
-        /// </summary>
-        /// <param name="chunkCoord">地形块坐标</param>
-        private void LoadChunk(Vector2Int chunkCoord)
-        {
-            if (_terrainChunks.ContainsKey(chunkCoord))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试加载已存在的地形块: {chunkCoord}");
-                return;
-            }
-            
-            // 生成地形数据
-            TerrainType[,] terrainData = GenerateChunkTerrain(chunkCoord);
-            _chunkTerrainData[chunkCoord] = terrainData;
-            
-            // 创建地形块对象
-            ITerrainChunk chunk = CreateTerrainChunk(chunkCoord, terrainData);
-            _terrainChunks[chunkCoord] = chunk;
-            
-            Debug.Log($"[{_managerName}] 加载地形块: {chunkCoord}");
-        }
-
-        /// <summary>
-        /// 卸载地形块
-        /// </summary>
-        /// <param name="chunkCoord">地形块坐标</param>
-        private void UnloadChunk(Vector2Int chunkCoord)
-        {
-            if (!_terrainChunks.ContainsKey(chunkCoord))
-            {
-                Debug.LogWarning($"[{_managerName}] 尝试卸载不存在的地形块: {chunkCoord}");
-                return;
-            }
-            
-            // 销毁地形块对象
-            ITerrainChunk chunk = _terrainChunks[chunkCoord];
-            chunk.Cleanup();
-            
-            _terrainChunks.Remove(chunkCoord);
-            _chunkTerrainData.Remove(chunkCoord);
-            
-            Debug.Log($"[{_managerName}] 卸载地形块: {chunkCoord}");
-        }
-
-        /// <summary>
-        /// 创建地形块
-        /// </summary>
-        /// <param name="chunkCoord">地形块坐标</param>
-        /// <param name="terrainData">地形数据</param>
-        /// <returns>地形块实例</returns>
-        private ITerrainChunk CreateTerrainChunk(Vector2Int chunkCoord, TerrainType[,] terrainData)
-        {
-            Vector3 worldPosition = ChunkToWorldPosition(chunkCoord);
-            
-            // 创建地形块游戏对象
-            GameObject chunkObject = new GameObject($"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}");
-            chunkObject.transform.position = worldPosition;
-            
-            // TODO: 需要实现TerrainChunk类或使用现有的地形块实现
-            // return new TerrainChunk(chunkCoord, _chunkSize, _tileSize, terrainData, chunkObject);
-            
-            // 临时返回null，等待TerrainChunk类实现
-            Debug.LogWarning($"[{_managerName}] TerrainChunk类型未找到，返回null");
-            return null;
-        }
-
-        /// <summary>
-        /// <summary>
-        /// 世界坐标转地形块坐标
-        /// </summary>
-        /// <param name="worldPosition">世界坐标</param>
-        /// <returns>地形块坐标</returns>
-        private Vector2Int WorldToChunkCoord(Vector3 worldPosition)
-        {
-            float chunkWorldSize = ConfigChunkSize * ConfigTileSize;
-            int chunkX = Mathf.FloorToInt(worldPosition.x / chunkWorldSize);
-            int chunkY = Mathf.FloorToInt(worldPosition.z / chunkWorldSize);
-            return new Vector2Int(chunkX, chunkY);
-        }
-
-        /// <summary>
-        /// 世界坐标转地形块内本地坐标
-        /// </summary>
-        /// <param name="worldPosition">世界坐标</param>
-        /// <returns>本地坐标</returns>
-        private Vector2Int WorldToLocalCoord(Vector3 worldPosition)
-        {
-            Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
-            Vector3 chunkWorldPos = ChunkToWorldPosition(chunkCoord);
-            
-            Vector3 localPos = worldPosition - chunkWorldPos;
-            int localX = Mathf.FloorToInt(localPos.x / ConfigTileSize);
-            int localY = Mathf.FloorToInt(localPos.z / ConfigTileSize);
-            
-            return new Vector2Int(localX, localY);
-        }
-
-        /// <summary>
-        /// 地形块坐标转世界坐标
-        /// </summary>
-        /// <param name="chunkCoord">地形块坐标</param>
-        /// <returns>世界坐标</returns>
-        private Vector3 ChunkToWorldPosition(Vector2Int chunkCoord)
-        {
-            float chunkWorldSize = ConfigChunkSize * ConfigTileSize;
-            float worldX = chunkCoord.x * chunkWorldSize;
-            float worldZ = chunkCoord.y * chunkWorldSize;
-            return new Vector3(worldX, 0, worldZ);
+            Cleanup();
         }
     }
 }

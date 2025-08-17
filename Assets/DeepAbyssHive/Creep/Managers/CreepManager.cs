@@ -4,6 +4,7 @@ using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Enums;
 using System;
+using System.Collections.Generic;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -18,6 +19,11 @@ namespace DeepAbyssHive.Creep.Managers
         
         
         /// <summary>
+        /// 菌毯擴張事件
+        /// </summary>
+        public event Action<Vector3, float> OnCreepExpanded;
+        
+        /// <summary>
         /// 菌毯移除事件
         /// </summary>
         public event Action<Vector3, float> OnCreepRemoved;
@@ -27,8 +33,10 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public bool CreateCreepSource(Vector3 position, float radius, int ownerId)
         {
-            // 调用Sources模块的方法创建源点
-            var sourceId = CreateCreepSourcePoint(position, radius, ownerId, CreepSourceType.Building);
+            if (!IsInitialized) return false;
+            
+            // 委托给源点服务
+            var sourceId = _sourceService.CreateCreepSource(position, ownerId, CreepSourceType.Building, radius);
             return sourceId != -1;
         }
         
@@ -37,14 +45,15 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public bool RemoveCreepAt(Vector3 position)
         {
-            var gridPos = WorldToGridPosition(position);
-            if (_creepTiles.ContainsKey(gridPos))
+            if (!IsInitialized) return false;
+            
+            // 委托给模拟服务
+            bool success = _simulationService.ClearCreep(position, 0.5f);
+            if (success)
             {
-                RemoveCreepTile(gridPos);
-                OnCreepRemoved?.Invoke(position, _gridCellSize);
-                return true;
+                OnCreepRemoved?.Invoke(position, _gridService.GridCellSize);
             }
-            return false;
+            return success;
         }
         
         /// <summary>
@@ -52,8 +61,11 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public bool HasCreepAt(Vector3 position)
         {
-            var gridPos = WorldToGridPosition(position);
-            return HasCreepAt(gridPos);
+            if (!IsInitialized) return false;
+            
+            // 委托给网格服务
+            var gridPos = _gridService.WorldToGridPosition(position);
+            return _gridService.HasCreepAt(gridPos);
         }
         
         /// <summary>
@@ -61,10 +73,13 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public bool CanPlaceBuildingAt(Vector3 position, BuildingType buildingType)
         {
-            var gridPos = WorldToGridPosition(position);
+            if (!IsInitialized) return false;
+            
+            // 委托给查询服务
+            var gridPos = _gridService.WorldToGridPosition(position);
             
             // 检查是否有菌毯覆盖
-            if (!HasCreepAt(gridPos))
+            if (!_gridService.HasCreepAt(gridPos))
                 return false;
                 
             // 检查建筑类型的特殊要求
@@ -76,13 +91,16 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public float GetCreepDensityAt(Vector3 position)
         {
-            var gridPos = WorldToGridPosition(position);
-            var tile = GetCreepTileAt(gridPos);
+            if (!IsInitialized) return 0f;
             
-            if (tile == null || !tile.IsActive)
+            // 委托给查询服务
+            var gridPos = _gridService.WorldToGridPosition(position);
+            
+            if (!_gridService.HasCreepAt(gridPos))
                 return 0f;
                 
-            return tile.GrowthLevel / tile.MaxGrowthLevel;
+            var data = _gridService.GetGridCell(gridPos);
+            return data.Strength;
         }
         
         /// <summary>
@@ -92,14 +110,14 @@ namespace DeepAbyssHive.Creep.Managers
         {
             if (!IsInitialized) return;
             
-            // 强制更新所有菌毯瓦片
-            foreach (var tile in _creepTiles.Values)
-            {
-                tile.NeedsUpdate = true;
-            }
+            // 委托给各个服务
+            UpdateServices(Time.deltaTime);
             
-            // 立即处理更新
-            ProcessCreepUpdates();
+            // 强制优化网络结构
+            foreach (var playerId in GetActivePlayers())
+            {
+                _networkService.OptimizeNetworkStructure(playerId);
+            }
         }
         
         #endregion
@@ -111,16 +129,18 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private bool CheckBuildingPlacementRequirements(Vector2Int position, BuildingType buildingType)
         {
-            // 根据建筑类型检查特殊要求
+            if (!IsInitialized) return false;
+            
+            // 委托给查询服务
             switch (buildingType)
             {
                 case BuildingType.SpawningPool:
                     // 孵化池需要周围有足够的菌毯覆盖
-                    return IsAreaFullyCovered(position, 1);
+                    return _queryService.IsAreaFullyCovered(position, 1);
                     
                 case BuildingType.EvolutionChamber:
                     // 进化腔需要连接到主菌毯网络
-                    return IsConnectedToMainNetwork(position);
+                    return _queryService.IsConnectedToMainNetwork(position);
                     
                 case BuildingType.CreepNode:
                     // 菌毯节点可以放置在任何有菌毯的位置
@@ -133,15 +153,48 @@ namespace DeepAbyssHive.Creep.Managers
         }
         
         /// <summary>
-        /// 检查位置是否连接到主菌毯网络
+        /// 获取活跃玩家ID列表
         /// </summary>
-        private bool IsConnectedToMainNetwork(Vector2Int position)
+        private System.Collections.Generic.List<int> GetActivePlayers()
         {
-            var tile = GetCreepTileAt(position);
-            if (tile == null) return false;
+            if (!IsInitialized) return new System.Collections.Generic.List<int>();
             
-            // 简化实现：检查是否有连接的瓦片
-            return tile.ConnectedTiles.Count > 0;
+            // 委托给网络服务
+            return _networkService.GetActivePlayerIds();
+        }
+        
+        
+        /// <summary>
+        /// 获取指定位置的菌毯强度
+        /// </summary>
+        public float GetCreepStrengthAt(Vector3 position)
+        {
+            if (!IsInitialized) return 0f;
+            
+            // 委托给查询服务
+            return _queryService.GetCreepStrength(position);
+        }
+        
+        /// <summary>
+        /// 获取指定区域内的菌毯覆盖率
+        /// </summary>
+        public float GetCreepCoverageInArea(Vector3 center, float radius)
+        {
+            if (!IsInitialized) return 0f;
+            
+            // 委托给查询服务
+            return _queryService.GetCreepCoverageInRange(center, radius);
+        }
+        
+        /// <summary>
+        /// 获取菌毯网络的连通性信息
+        /// </summary>
+        public CreepNetworkInfo GetCreepNetworkInfo(int ownerId)
+        {
+            if (!IsInitialized) return new CreepNetworkInfo();
+            
+            // 委托给网络服务
+            return _networkService.GetNetworkInfo(ownerId);
         }
         
         #endregion

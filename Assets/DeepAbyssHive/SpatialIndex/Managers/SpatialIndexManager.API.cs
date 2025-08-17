@@ -1,7 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.SpatialIndex.Enums;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
 {
@@ -22,18 +24,22 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             if (!IsInitialized || obj == null) return -1;
 
             var actualBounds = bounds ?? new Bounds(obj.transform.position, Vector3.one);
-            var node = new SpatialNode(obj.GetInstanceID(), obj, obj.transform.position, actualBounds, category, 0, false);
-
-            if (_enableBatching)
+            var objectId = obj.GetInstanceID();
+            
+            // 委託給服務
+            var objectType = GetSpatialObjectType(category);
+            bool success = _spatialIndexService?.AddObject(objectId, obj.transform.position, actualBounds, objectType) ?? false;
+            
+            if (success)
             {
-                _pendingInserts.Enqueue(node);
-            }
-            else
-            {
-                InsertNodeImmediate(node);
+                // 兼容性保持 - 維護原有數據結構
+                var node = new SpatialNode(objectId, obj, obj.transform.position, actualBounds, category, 0, false);
+                _allNodes[objectId] = node;
+                OnNodeAdded?.Invoke(node);
+                return objectId;
             }
 
-            return node.Id;
+            return -1;
         }
 
         /// <summary>
@@ -372,16 +378,55 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         /// <param name="category">分类</param>
         public void ClearCategory(string category)
         {
-            if (!IsInitialized || !_categoryIndices.ContainsKey(category))
-                return;
+            if (!IsInitialized) return;
 
-            var nodesToRemove = _allNodes.Values.Where(node => node.Category == category).ToList();
-            foreach (var node in nodesToRemove)
+            // 委託給服務
+            var objectType = GetSpatialObjectType(category);
+            _spatialIndexService?.Clear(objectType);
+
+            // 兼容性保持 - 清理原有數據結構
+            if (_categoryIndices.ContainsKey(category))
             {
-                RemoveNodeImmediate(node);
+                var nodesToRemove = _allNodes.Values.Where(node => node.Category == category).ToList();
+                foreach (var node in nodesToRemove)
+                {
+                    _allNodes.Remove(node.Id);
+                    OnNodeRemoved?.Invoke(node);
+                }
+                Debug.Log($"[{ManagerName}] 已清空分类: {category}, 移除了 {nodesToRemove.Count} 个对象");
             }
+        }
 
-            Debug.Log($"[{ManagerName}] 已清空分类: {category}, 移除了 {nodesToRemove.Count} 个对象");
+        /// <summary>
+        /// 輔助方法：將分類字符串轉換為SpatialObjectType
+        /// </summary>
+        /// <param name="category">分類字符串</param>
+        /// <returns>對應的SpatialObjectType</returns>
+        private SpatialObjectType GetSpatialObjectType(string category)
+        {
+            if (string.IsNullOrEmpty(category) || category == "default")
+                return SpatialObjectType.All;
+                
+            // 根據分類名稱映射到對應的枚舉值
+            switch (category.ToLower())
+            {
+                case "unit":
+                case "units":
+                    return SpatialObjectType.Unit;
+                case "building":
+                case "buildings":
+                    return SpatialObjectType.Building;
+                case "resource":
+                case "resources":
+                    return SpatialObjectType.Resource;
+                case "terrain":
+                    return SpatialObjectType.Terrain;
+                case "effect":
+                case "effects":
+                    return SpatialObjectType.Effect;
+                default:
+                    return SpatialObjectType.All;
+            }
         }
     }
 }
