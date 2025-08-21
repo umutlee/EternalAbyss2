@@ -9,25 +9,29 @@ using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.Units.Config;
 using DeepAbyssHive.Core.Config;
-using DeepAbyssHive.Units.Services;
 using IUnitManager = DeepAbyssHive.Units.Interfaces.IUnitManager;
 
 namespace DeepAbyssHive.Units.Managers
 {
     /// <summary>
-    /// 单位管理器核心部分 - 作为服务容器和API适配器
+    /// 单位管理器核心部分 - 数据结构、初始化/清理、生命周期管理
     /// </summary>
     public partial class UnitManager : IUnitManager, IManager
     {
-        #region 服务依赖
-        private IUnitQueryService _queryService;
-        private IUnitCommandService _commandService;
-        #endregion
-
         #region 私有字段
+        private Dictionary<int, UnitHotData> _unitHotData = new Dictionary<int, UnitHotData>();
+        private Dictionary<int, UnitColdData> _unitColdData = new Dictionary<int, UnitColdData>();
+        private Dictionary<int, GameObject> _unitGameObjects = new Dictionary<int, GameObject>();
+        private Dictionary<int, SpatialNode> _unitSpatialNodes = new Dictionary<int, SpatialNode>();
+        private ISpatialIndex _spatialIndex;
+        private int _nextUnitId = 1;
         private bool _isInitialized = false;
         private bool _isPaused = false;
         private string _managerName = "UnitManager";
+        private UnitConfigSO _config;
+        private Dictionary<UnitType, string> _unitPrefabPaths = new Dictionary<UnitType, string>();
+        private Dictionary<string, EvolutionPath> _evolutionPaths = new Dictionary<string, EvolutionPath>();
+        private Dictionary<string, EnvironmentAdaptation> _environmentAdaptations = new Dictionary<string, EnvironmentAdaptation>();
         #endregion
 
         #region IManager属性实现
@@ -47,13 +51,17 @@ namespace DeepAbyssHive.Units.Managers
                 
             Debug.Log($"[{_managerName}] 初始化单位管理器");
             
-            // 创建服务实例
-            _queryService = new UnitQueryService();
-            _commandService = new UnitCommandService();
+            // 加载配置
+            LoadConfiguration();
             
-            // 初始化服务
-            _queryService.Initialize();
-            _commandService.Initialize();
+            // 初始化单位预制体路径
+            InitializeUnitPrefabPaths();
+            
+            // 初始化进化路径
+            InitializeEvolutionPaths();
+            
+            // 初始化环境适应
+            InitializeEnvironmentAdaptations();
             
             _isInitialized = true;
             Debug.Log($"[{_managerName}] 单位管理器初始化完成");
@@ -68,8 +76,12 @@ namespace DeepAbyssHive.Units.Managers
             if (!_isInitialized || _isPaused)
                 return;
                 
-            // 委托给命令服务处理更新
-            _commandService?.Update(deltaTime);
+            // 更新所有单位
+            List<int> unitIds = new List<int>(_unitHotData.Keys);
+            foreach (int unitId in unitIds)
+            {
+                UpdateUnit(unitId, deltaTime);
+            }
         }
 
         /// <summary>
@@ -81,8 +93,18 @@ namespace DeepAbyssHive.Units.Managers
             if (!_isInitialized || _isPaused)
                 return;
                 
-            // 委托给命令服务处理固定更新
-            _commandService?.FixedUpdate(fixedDeltaTime);
+            // 在这里可以添加物理相关的更新逻辑
+        }
+
+        /// <summary>
+        /// 后更新管理器
+        /// </summary>
+        public void LateUpdate()
+        {
+            if (!_isInitialized || _isPaused)
+                return;
+                
+            // 在这里可以添加后更新逻辑
         }
 
         /// <summary>
@@ -93,8 +115,7 @@ namespace DeepAbyssHive.Units.Managers
             if (!_isInitialized || _isPaused)
                 return;
                 
-            // 委托给命令服务处理后更新
-            _commandService?.LateUpdate(deltaTime);
+            // 在这里可以添加后更新逻辑
         }
 
         /// <summary>
@@ -104,12 +125,17 @@ namespace DeepAbyssHive.Units.Managers
         {
             Debug.Log($"[{_managerName}] 清理单位管理器");
             
-            // 清理服务
-            _commandService?.Cleanup();
-            _queryService?.Cleanup();
+            // 销毁所有单位
+            List<int> unitIds = new List<int>(_unitColdData.Keys);
+            foreach (int unitId in unitIds)
+            {
+                DestroyUnit(unitId);
+            }
             
-            _queryService = null;
-            _commandService = null;
+            _unitHotData.Clear();
+            _unitColdData.Clear();
+            _unitGameObjects.Clear();
+            _unitSpatialNodes.Clear();
             _isInitialized = false;
             
             Debug.Log($"[{_managerName}] 单位管理器清理完成");
@@ -124,7 +150,6 @@ namespace DeepAbyssHive.Units.Managers
                 return;
                 
             _isPaused = true;
-            _commandService?.SetPaused(true);
             Debug.Log($"[{_managerName}] 单位管理器已暂停");
         }
 
@@ -137,7 +162,6 @@ namespace DeepAbyssHive.Units.Managers
                 return;
                 
             _isPaused = false;
-            _commandService?.SetPaused(false);
             Debug.Log($"[{_managerName}] 单位管理器已恢复");
         }
 
@@ -149,126 +173,343 @@ namespace DeepAbyssHive.Units.Managers
         {
             return _managerName;
         }
-
-        /// <summary>
-        /// 获取服务实例
-        /// </summary>
-        /// <typeparam name="T">服务接口类型</typeparam>
-        /// <returns>服务实例，如果不存在则返回null</returns>
-        public T GetService<T>() where T : class
-        {
-            if (typeof(T) == typeof(IUnitQueryService))
-                return _queryService as T;
-            if (typeof(T) == typeof(IUnitCommandService))
-                return _commandService as T;
-            
-            return null;
-        }
         #endregion
 
-        #region API 兼容性方法 - 委托给服务处理
+        #region 私有初始化方法
         /// <summary>
-        /// 创建单位 - 委托给命令服务
+        /// 加载配置
         /// </summary>
-        public int CreateUnit(UnitType type, Vector3 position, int ownerId)
+        private void LoadConfiguration()
         {
-            return _commandService?.CreateUnit(type, position, ownerId) ?? -1;
+            _config = ConfigManager.Instance.GetConfig<UnitConfigSO>();
+            if (_config == null)
+            {
+                Debug.LogWarning($"[{_managerName}] 未找到UnitConfig配置，将使用默认配置");
+            }
         }
 
         /// <summary>
-        /// 销毁单位 - 委托给命令服务
+        /// 初始化单位预制体路径
         /// </summary>
+        private void InitializeUnitPrefabPaths()
+        {
+            _unitPrefabPaths.Clear();
+            
+            if (_config != null && _config.unitPrefabPaths != null)
+            {
+                // 从配置加载预制体路径
+                foreach (var prefabPath in _config.unitPrefabPaths)
+                {
+                    _unitPrefabPaths[prefabPath.unitType] = prefabPath.prefabPath;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_unitPrefabPaths.Count} 个单位预制体路径");
+            }
+            else
+            {
+                // 使用默认硬编码路径作为后备
+                _unitPrefabPaths[UnitType.Worker] = "Prefabs/Units/Worker";
+                _unitPrefabPaths[UnitType.Warrior] = "Prefabs/Units/Warrior";
+                _unitPrefabPaths[UnitType.AcidSprayer] = "Prefabs/Units/AcidSprayer";
+                _unitPrefabPaths[UnitType.Tank] = "Prefabs/Units/Tank";
+                _unitPrefabPaths[UnitType.Scout] = "Prefabs/Units/Scout";
+                _unitPrefabPaths[UnitType.Flyer] = "Prefabs/Units/Flyer";
+                _unitPrefabPaths[UnitType.Queen] = "Prefabs/Units/Queen";
+                Debug.Log($"[{_managerName}] 使用默认预制体路径配置");
+            }
+        }
+
+        /// <summary>
+        /// 初始化进化路径
+        /// </summary>
+        private void InitializeEvolutionPaths()
+        {
+            _evolutionPaths.Clear();
+            
+            if (_config != null && _config.evolutionPaths != null)
+            {
+                // 从配置加载进化路径
+                foreach (var evolutionConfig in _config.evolutionPaths)
+                {
+                    EvolutionPath evolutionPath = new EvolutionPath
+                    {
+                        PathId = evolutionConfig.pathId,
+                        RequiredUnitType = evolutionConfig.requiredUnitType,
+                        MaxLevel = evolutionConfig.maxLevel,
+                        EvolutionTime = evolutionConfig.evolutionTime
+                    };
+                    
+                    // 转换等级配置
+                    foreach (var levelConfig in evolutionConfig.levelConfigs)
+                    {
+                        // 转换属性修改器
+                        var modifiers = new List<AttributeModifier>();
+                        foreach (var modifierConfig in levelConfig.attributeModifiers)
+                        {
+                            modifiers.Add(new AttributeModifier
+                            {
+                                AttributeName = modifierConfig.attributeName,
+                                Type = modifierConfig.modifierType == AttributeModifierType.Add ? 
+                                       AttributeModifier.ModifierType.Add : AttributeModifier.ModifierType.Multiply,
+                                Value = modifierConfig.value
+                            });
+                        }
+                        evolutionPath.AttributeModifiersByLevel[levelConfig.level] = modifiers.ToArray();
+                        
+                        // 设置解锁能力
+                        evolutionPath.UnlockedAbilitiesByLevel[levelConfig.level] = levelConfig.unlockedAbilities;
+                    }
+                    
+                    _evolutionPaths[evolutionConfig.pathId] = evolutionPath;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_evolutionPaths.Count} 个进化路径");
+            }
+            else
+            {
+                // 使用默认硬编码进化路径作为后备
+                CreateDefaultEvolutionPaths();
+                Debug.Log($"[{_managerName}] 使用默认进化路径配置");
+            }
+        }
+
+        /// <summary>
+        /// 创建默认进化路径（后备方案）
+        /// </summary>
+        private void CreateDefaultEvolutionPaths()
+        {
+            // 工蚁进化路径
+            EvolutionPath workerPath = new EvolutionPath
+            {
+                PathId = "worker_efficiency",
+                RequiredUnitType = UnitType.Worker,
+                MaxLevel = 3,
+                EvolutionTime = 10f
+            };
+            
+            workerPath.AttributeModifiersByLevel[1] = new AttributeModifier[]
+            {
+                new AttributeModifier { AttributeName = "ResourceGatherRate", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
+                new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
+            };
+            workerPath.UnlockedAbilitiesByLevel[1] = new string[] { "fast_gather" };
+            
+            _evolutionPaths["worker_efficiency"] = workerPath;
+            
+            // 战蚁进化路径
+            EvolutionPath warriorPath = new EvolutionPath
+            {
+                PathId = "warrior_strength",
+                RequiredUnitType = UnitType.Warrior,
+                MaxLevel = 3,
+                EvolutionTime = 15f
+            };
+            
+            warriorPath.AttributeModifiersByLevel[1] = new AttributeModifier[]
+            {
+                new AttributeModifier { AttributeName = "AttackDamage", Type = AttributeModifier.ModifierType.Multiply, Value = 1.2f },
+                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
+            };
+            warriorPath.UnlockedAbilitiesByLevel[1] = new string[] { "power_strike" };
+            
+            _evolutionPaths["warrior_strength"] = warriorPath;
+        }
+
+        /// <summary>
+        /// 初始化环境适应
+        /// </summary>
+        private void InitializeEnvironmentAdaptations()
+        {
+            _environmentAdaptations.Clear();
+            
+            if (_config != null && _config.environmentAdaptations != null)
+            {
+                // 从配置加载环境适应
+                foreach (var adaptationConfig in _config.environmentAdaptations)
+                {
+                    EnvironmentAdaptation adaptation = new EnvironmentAdaptation
+                    {
+                        TraitId = adaptationConfig.traitId,
+                        EnvironmentType = adaptationConfig.environmentType,
+                        MaxLevel = adaptationConfig.maxLevel,
+                        AdaptationTime = adaptationConfig.adaptationTime
+                    };
+                    
+                    // 转换等级配置
+                    foreach (var levelConfig in adaptationConfig.levelConfigs)
+                    {
+                        // 转换属性修改器
+                        var modifiers = new List<AttributeModifier>();
+                        foreach (var modifierConfig in levelConfig.modifiers)
+                        {
+                            modifiers.Add(new AttributeModifier
+                            {
+                                AttributeName = modifierConfig.attributeName,
+                                Type = modifierConfig.modifierType == AttributeModifierType.Add ? 
+                                       AttributeModifier.ModifierType.Add : AttributeModifier.ModifierType.Multiply,
+                                Value = modifierConfig.value
+                            });
+                        }
+                        adaptation.ModifiersByLevel[levelConfig.level] = modifiers.ToArray();
+                    }
+                    
+                    _environmentAdaptations[adaptationConfig.environmentType] = adaptation;
+                }
+                Debug.Log($"[{_managerName}] 从配置加载了 {_environmentAdaptations.Count} 个环境适应");
+            }
+            else
+            {
+                // 使用默认硬编码环境适应作为后备
+                CreateDefaultEnvironmentAdaptations();
+                Debug.Log($"[{_managerName}] 使用默认环境适应配置");
+            }
+        }
+
+        /// <summary>
+        /// 创建默认环境适应（后备方案）
+        /// </summary>
+        private void CreateDefaultEnvironmentAdaptations()
+        {
+            // 酸性环境适应
+            EnvironmentAdaptation acidAdaptation = new EnvironmentAdaptation
+            {
+                TraitId = "acid_resistance",
+                EnvironmentType = "acid",
+                MaxLevel = 3,
+                AdaptationTime = 8f
+            };
+            
+            acidAdaptation.ModifiersByLevel[1] = new AttributeModifier[]
+            {
+                new AttributeModifier { AttributeName = "MaxHealth", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
+            };
+            
+            _environmentAdaptations["acid"] = acidAdaptation;
+            
+            // 高温环境适应
+            EnvironmentAdaptation heatAdaptation = new EnvironmentAdaptation
+            {
+                TraitId = "heat_resistance",
+                EnvironmentType = "heat",
+                MaxLevel = 3,
+                AdaptationTime = 8f
+            };
+            
+            heatAdaptation.ModifiersByLevel[1] = new AttributeModifier[]
+            {
+                new AttributeModifier { AttributeName = "MoveSpeed", Type = AttributeModifier.ModifierType.Multiply, Value = 1.1f }
+            };
+            
+            _environmentAdaptations["heat"] = heatAdaptation;
+        }
+        
+        /// <summary>
+        /// 更新单位
+        /// </summary>
+        private void UpdateUnit(int unitId, float deltaTime)
+        {
+            if (!_unitHotData.TryGetValue(unitId, out var hotData))
+                return;
+                
+            // 更新单位状态
+            switch (hotData.CurrentState)
+            {
+                case UnitState.Moving:
+                    // 移动逻辑在Movement模块中处理
+                    break;
+                case UnitState.Attacking:
+                    // 攻击逻辑在Combat模块中处理
+                    break;
+                case UnitState.Evolving:
+                    // 进化逻辑在Evolution模块中处理
+                    break;
+            }
+        }
+        
+        /// <summary>
+        /// 销毁单位 - IUnitManager接口实现
+        /// </summary>
+        /// <param name="unitId">单位ID</param>
         public void DestroyUnit(int unitId)
         {
-            _commandService?.DestroyUnit(unitId);
+            if (_unitGameObjects.TryGetValue(unitId, out var gameObject))
+            {
+                if (gameObject != null)
+                    UnityEngine.Object.Destroy(gameObject);
+                _unitGameObjects.Remove(unitId);
+            }
+            
+            _unitHotData.Remove(unitId);
+            _unitColdData.Remove(unitId);
+            _unitSpatialNodes.Remove(unitId);
         }
+        
+        #endregion
 
+        #region 内部类
         /// <summary>
-        /// 移动单位 - 委托给命令服务
+        /// 进化路径类
         /// </summary>
-        public void MoveUnit(int unitId, Vector3 targetPosition)
+        private class EvolutionPath
         {
-            _commandService?.MoveUnit(unitId, targetPosition);
+            /// <summary>
+            /// 路径ID
+            /// </summary>
+            public string PathId;
+            
+            /// <summary>
+            /// 所需单位类型
+            /// </summary>
+            public UnitType RequiredUnitType;
+            
+            /// <summary>
+            /// 最大等级
+            /// </summary>
+            public int MaxLevel;
+            
+            /// <summary>
+            /// 进化时间
+            /// </summary>
+            public float EvolutionTime;
+            
+            /// <summary>
+            /// 各等级的属性修改器
+            /// </summary>
+            public Dictionary<int, AttributeModifier[]> AttributeModifiersByLevel = new Dictionary<int, AttributeModifier[]>();
+            
+            /// <summary>
+            /// 各等级解锁的能力
+            /// </summary>
+            public Dictionary<int, string[]> UnlockedAbilitiesByLevel = new Dictionary<int, string[]>();
         }
-
+        
         /// <summary>
-        /// 攻击目标 - 委托给命令服务
+        /// 环境适应类
         /// </summary>
-        public void AttackTarget(int unitId, int targetId)
+        private class EnvironmentAdaptation
         {
-            _commandService?.AttackTarget(unitId, targetId);
-        }
-
-        /// <summary>
-        /// 获取范围内的单位 - 委托给查询服务
-        /// </summary>
-        public NativeArray<int> GetUnitsInRange(Vector3 position, float radius)
-        {
-            return _queryService?.GetUnitsInRange(position, radius) ?? new NativeArray<int>(0, Allocator.Temp);
-        }
-
-        /// <summary>
-        /// 获取指定类型的单位 - 委托给查询服务
-        /// </summary>
-        public NativeArray<int> GetUnitsOfType(UnitType type, int ownerId)
-        {
-            return _queryService?.GetUnitsOfType(type, ownerId) ?? new NativeArray<int>(0, Allocator.Temp);
-        }
-
-        /// <summary>
-        /// 进化单位 - 委托给命令服务
-        /// </summary>
-        public bool EvolveUnit(int unitId, UnitType targetType)
-        {
-            return _commandService?.EvolveUnit(unitId, targetType) ?? false;
-        }
-
-        /// <summary>
-        /// 获取单位数据 - 委托给查询服务
-        /// </summary>
-        public UnitData GetUnit(int unitId)
-        {
-            return _queryService?.GetUnit(unitId);
-        }
-
-        /// <summary>
-        /// 获取范围内单位 - 委托给查询服务
-        /// </summary>
-        public NativeArray<UnitData> GetUnitsInRange(Vector3 center, float radius, Allocator allocator = Allocator.Temp)
-        {
-            return _queryService?.GetUnitsInRange(center, radius, allocator) ?? new NativeArray<UnitData>(0, allocator);
-        }
-
-        /// <summary>
-        /// 获取指定类型单位 - 委托给查询服务
-        /// </summary>
-        public NativeArray<UnitData> GetUnitsOfType(UnitType unitType, Allocator allocator = Allocator.Temp)
-        {
-            return _queryService?.GetUnitsOfType(unitType, allocator) ?? new NativeArray<UnitData>(0, allocator);
-        }
-
-        /// <summary>
-        /// 获取所有单位 - 委托给查询服务
-        /// </summary>
-        public NativeArray<UnitData> GetAllUnits(Allocator allocator = Allocator.Temp)
-        {
-            return _queryService?.GetAllUnits(allocator) ?? new NativeArray<UnitData>(0, allocator);
-        }
-
-        /// <summary>
-        /// 获取单位总数 - 委托给查询服务
-        /// </summary>
-        public int GetUnitCount()
-        {
-            return _queryService?.GetUnitCount() ?? 0;
-        }
-
-        /// <summary>
-        /// 检查单位是否存在 - 委托给查询服务
-        /// </summary>
-        public bool HasUnit(int unitId)
-        {
-            return _queryService?.HasUnit(unitId) ?? false;
+            /// <summary>
+            /// 特征ID
+            /// </summary>
+            public string TraitId;
+            
+            /// <summary>
+            /// 环境类型
+            /// </summary>
+            public string EnvironmentType;
+            
+            /// <summary>
+            /// 最大等级
+            /// </summary>
+            public int MaxLevel;
+            
+            /// <summary>
+            /// 适应时间
+            /// </summary>
+            public float AdaptationTime;
+            
+            /// <summary>
+            /// 各等级的属性修改器
+            /// </summary>
+            public Dictionary<int, AttributeModifier[]> ModifiersByLevel = new Dictionary<int, AttributeModifier[]>();
         }
         #endregion
     }

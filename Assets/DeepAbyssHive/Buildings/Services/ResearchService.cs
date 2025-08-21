@@ -257,9 +257,9 @@ namespace DeepAbyssHive.Buildings.Services
             }
 
             // 检查前置建筑
-            if (template.RequiredBuildings != null)
+            if (template.Prerequisites != null)
             {
-                foreach (var buildingType in template.RequiredBuildings)
+                foreach (var buildingType in template.Prerequisites)
                 {
                     // TODO: 检查玩家是否拥有所需建筑
                     // 这里需要与 BuildingQueryService 集成
@@ -297,19 +297,19 @@ namespace DeepAbyssHive.Buildings.Services
             {
                 return new ResearchUnlocks
                 {
-                    UnlockedBuildings = new List<BuildingType>(),
-                    UnlockedUnits = new List<string>(),
-                    UnlockedTechnologies = new List<string>(),
-                    UnlockedAbilities = new List<string>()
+                    UnlockedBuildings = new string[0],
+                    UnlockedUnitTypes = new DeepAbyssHive.Units.Enums.UnitType[0],
+                    UnlockedTechnologies = new string[0],
+                    UnlockedAbilities = new string[0]
                 };
             }
 
             return new ResearchUnlocks
             {
-                UnlockedBuildings = template.UnlockedBuildings ?? new List<BuildingType>(),
-                UnlockedUnits = template.UnlockedUnits ?? new List<string>(),
-                UnlockedTechnologies = template.UnlockedTechnologies ?? new List<string>(),
-                UnlockedAbilities = template.UnlockedAbilities ?? new List<string>()
+                UnlockedBuildings = template.UnlockedBuildings ?? new string[0],
+                UnlockedUnitTypes = template.UnlockedUnitTypes ?? new DeepAbyssHive.Units.Enums.UnitType[0],
+                UnlockedTechnologies = template.UnlockedTechnologies ?? new string[0],
+                UnlockedAbilities = new string[0] // 这个字段在ResearchTemplate中不存在，设为空数组
             };
         }
 
@@ -375,12 +375,12 @@ namespace DeepAbyssHive.Buildings.Services
 
             foreach (var template in _researchTemplates.Values)
             {
-                if (!IsResearchCompleted(template.Id, playerId))
+                if (!IsResearchCompleted(template.ResearchId, playerId))
                 {
-                    var prerequisiteResult = CheckResearchPrerequisites(template.Id, playerId);
+                    var prerequisiteResult = CheckResearchPrerequisites(template.ResearchId, playerId);
                     if (prerequisiteResult.IsValid)
                     {
-                        availableResearch.Add(template.Id);
+                        availableResearch.Add(template.ResearchId);
                     }
                 }
             }

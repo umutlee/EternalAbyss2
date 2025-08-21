@@ -63,7 +63,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
         /// <param name="maxDistance">最大距离</param>
         /// <param name="objectType">对象类型过滤</param>
         /// <returns>碰撞的对象ID列表</returns>
-        List<UnityEngine.RaycastHit> QueryRaycast(Ray ray, float maxDistance = float.MaxValue, SpatialObjectType objectType = SpatialObjectType.All);
+        List<RaycastHit> QueryRaycast(Ray ray, float maxDistance = float.MaxValue, SpatialObjectType objectType = SpatialObjectType.All);
 
         /// <summary>
         /// 查询最近的对象

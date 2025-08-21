@@ -77,7 +77,7 @@ namespace DeepAbyssHive.Buildings.Services
 
             foreach (var building in _buildings.Values)
             {
-                if (playerId != -1 && building.PlayerId != playerId)
+                if (playerId != -1 && GetBuildingPlayerId(building) != playerId)
                     continue;
 
                 float distanceSquared = (building.Position - center).sqrMagnitude;
@@ -102,7 +102,7 @@ namespace DeepAbyssHive.Buildings.Services
                 }
                 else
                 {
-                    return cachedBuildings.Where(b => b.PlayerId == playerId).ToList();
+                    return cachedBuildings.Where(b => GetBuildingPlayerId(b) == playerId).ToList();
                 }
             }
 
@@ -141,7 +141,7 @@ namespace DeepAbyssHive.Buildings.Services
 
             foreach (var building in _buildings.Values)
             {
-                if (building.PlayerId == playerId)
+                if (GetBuildingPlayerId(building) == playerId)
                 {
                     if (counts.ContainsKey(building.Type))
                     {
@@ -237,7 +237,7 @@ namespace DeepAbyssHive.Buildings.Services
 
             foreach (var building in _buildings.Values)
             {
-                if (building.Type != buildingType || building.PlayerId != playerId)
+                if (building.buildingType != buildingType || GetBuildingPlayerId(building) != playerId)
                     continue;
 
                 float distanceSquared = (building.Position - position).sqrMagnitude;
@@ -310,11 +310,11 @@ namespace DeepAbyssHive.Buildings.Services
             foreach (var building in _buildings.Values)
             {
                 // 按玩家缓存
-                if (!_playerBuildingsCache.ContainsKey(building.PlayerId))
+                if (!_playerBuildingsCache.ContainsKey(GetBuildingPlayerId(building)))
                 {
-                    _playerBuildingsCache[building.PlayerId] = new List<BuildingData>();
+                    _playerBuildingsCache[GetBuildingPlayerId(building)] = new List<BuildingData>();
                 }
-                _playerBuildingsCache[building.PlayerId].Add(building);
+                _playerBuildingsCache[GetBuildingPlayerId(building)].Add(building);
 
                 // 按类型缓存
                 if (!_typeBuildingsCache.ContainsKey(building.Type))

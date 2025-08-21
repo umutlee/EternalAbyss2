@@ -1,0 +1,141 @@
+---
+description: 
+globs:
+alwaysApply: true
+---
+# EA — Batch S2–S7 (sequential, stop-on-red)
+
+project: Eternal Abyss 2/ · mode: fix-compile-first · author: [chatgpt1@kooapps.com](mailto:chatgpt1@kooapps.com)  
+Rule: do minimal diffs; no public API rename; one commit per step; **stop on first compile error**.
+
+## Global Session Guards
+
+- Only touch files under `Assets/DeepAbyssHive/**`.  
+- After each step: Recompile → if red, revert the step’s last hunk and narrow the change.  
+- Prefer **FQNs / using-alias** to resolve name collisions; don’t rename namespaces unless explicitly asked.
+
+---
+
+## S2 — CreepManager partial/重複定義收斂
+
+**Goal**: 僅保留一份欄位/事件/方法定義；其它 partial 只留邏輯。  
+**Edits**
+
+1. 將 `CreepManager.*` 四檔維持 `partial class CreepManager`。  
+2. 搜尋重複符號：`OnCreepExpanded`, `GetCreepStatistics`。  
+   - **保留**於 `CreepManager.Core.cs`；**移除**其它檔的重複宣告與重複實作。  
+3. 移除任何檔內**次序錯置**的 `using`（所有 `using` 置於檔首；namespace 內不得再出現 `using`）。 **Accept**  
+- 0× CS0111 / CS0102 / CS1529；專案可持續編譯。
+
+---
+
+## S3 — 缺失型別恢復（CreepType / CreepTileType / CreepSourceType）
+
+**Goal**: 還原缺失 enum；以**參考端為準**恢復必要成員。  
+**Edits**
+
+1. 全域搜尋 `CreepType.`、`CreepTileType.`、`CreepSourceType.`，蒐集被使用成員名。  
+2. 建立/恢復空殼 enum 檔（不改命名空間路徑）：  
+   - `Assets/DeepAbyssHive/Creep/Enums/CreepType.cs`  
+   - `Assets/DeepAbyssHive/Creep/Data/CreepTileType.cs`（或原本所在）  
+   - `Assets/DeepAbyssHive/Creep/Data/CreepSourceType.cs`  
+     內容：只放**被引用到的成員**（例如 `Basic/Enhanced/Specialized/Manual/...`），不做數值調整。  
+3. 任何 `CreepTileType.Specialized`、`CreepSourceType.Basic` 等報錯，優先補到對應 enum。  
+   **Accept**  
+- 0× CS0246（以上三型別）；相關引用不再報缺。
+
+---
+
+## S4 — ISpatialIndex 家族消歧義與實作統一（Quad/Octree \+ Service）
+
+**Goal**: 僅對「SpatialIndex 模組」實作 `DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex`；其餘用 FQN/alias。  
+**Edits**
+
+1. 在以下檔案開頭加入別名（僅那些涉及 spatial index 的檔案）  
+     
+   using SpatialISpatialIndex \= DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;  
+     
+   using CoreISpatialIndex \= DeepAbyssHive.Core.Interfaces.ISpatialIndex;  
+     
+   using SIRaycastHit \= DeepAbyssHive.SpatialIndex.Data.RaycastHit;
+
+   
+
+2. `QuadTreeSpatialIndex` / `OctreeSpatialIndex` 的**介面**改為 `SpatialISpatialIndex`，並**逐一對齊簽名**：
+
+   `void Insert(object item, Vector3 position, Vector3 bounds);`  
+   `void Update(object item, Vector3 oldPosition, Vector3 newPosition, Vector3 bounds);`  
+   `void Remove(object item, Vector3 position, Vector3 bounds);`
+
+`List<object> QueryRange(Vector3 center, Vector3 extents);`  
+`List<object> QueryNearest(Vector3 point, float maxDistance, int maxResults);`  
+`List<object> QueryRaycast(Ray ray, float maxDistance);`
+
+若內部使用泛型，新增**薄適配層**（裝箱為 object 回傳）。
+
+3. `ISpatialIndexService` / `SpatialIndexService` 的 `QueryRaycast` **統一回傳** `List<SIRaycastHit>`（於檔首用 `using SIRaycastHit = ...` 消弭 Unity 的 `RaycastHit` 重名）。
+
+4. `SpatialIndexManager.Core.cs` 等「非 SpatialIndex 模組」若僅需宣告欄位類型，改用 **FQN** 指向目標介面或以別名固定目標。避免非必要的雙介面同時 `using`。  
+    **Accept**
+
+* 無 CS0104（ISpatialIndex / RaycastHit）；`Quad/Octree/Service` 全數通過 CS0535/CS0738 檢查。
+
+---
+
+## **S5 — TerrainQueryService 介面歸位**
+
+**Goal**: QueryService 不假冒 Manager；回傳/參數型別與介面一致。  
+ **Edits**
+
+1. 檢查 `TerrainQueryService` 的繼承：**若寫成** `: ITerrainManager` → 改為對應 `ITerrainQueryService`（或移除多餘 `IManager/Updatable` 族介面）。
+
+2. `GetChunkAt(Vector3)` 的回傳型別以 **FQN** 對齊：`DeepAbyssHive.Terrain.Interfaces.ITerrainChunk`。
+
+3. 若框架需要生命周期空實作，提供 no-op `Update/FixedUpdate/LateUpdate/Pause/Resume`，但不要改外部契約。  
+    **Accept**
+
+* 0× CS0535 / CS0738（TerrainQueryService）；可通過編譯。
+
+---
+
+## **S6 — 交叉引用修復：IResearchService × UnitType**
+
+**Goal**: 讓介面能見到 `UnitType` 而不改其命名。  
+ **Edits**
+
+在 `IResearchService.cs` 檔首加入：
+
+ `using DeepAbyssHive.Units.Enums;`
+
+1.  或直接把簽名參數寫成 FQN：`DeepAbyssHive.Units.Enums.UnitType`。
+
+2. 僅限介面與對應實作檔調整，不修改 enum 名稱與值。  
+    **Accept**
+
+* 0× CS0246（UnitType）。
+
+---
+
+## **S7 — 全案 using 規範掃描（收尾）**
+
+**Goal**: 消除 namespace 內 using、檔中段 using；固定別名放檔首。  
+ **Edits**
+
+1. 對 `Assets/DeepAbyssHive/**.cs`：
+
+   * 所有 `using` 置檔首；namespace 區塊內不得出現 `using`。
+
+   * 保留必要別名（如 `SIRaycastHit`、`SpatialISpatialIndex`）。
+
+2. 移除未使用 `using`（ide 提示 \+ 編譯器警告）。  
+    **Accept**
+
+* 0× CS1529；編譯綠。
+
+---
+
+## **Commit & Log (each step)**
+
+* Title: `EA S{n}: <short desc>`
+
+* Body: 「變更摘要 / 風險 / 觸及檔案」；**僅**包含本步檔案。

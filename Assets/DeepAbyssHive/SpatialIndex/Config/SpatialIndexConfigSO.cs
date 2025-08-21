@@ -15,7 +15,7 @@ namespace DeepAbyssHive.SpatialIndex.Config
         public bool useOctree = true;
         
         [Tooltip("世界边界")]
-        public Bounds worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
+        public Bounds worldBounds = new Bounds(Vector3.zero, new Vector3(1000f, 1000f, 1000f));
         
         [Tooltip("最大深度")]
         public int maxDepth = 8;
@@ -110,7 +110,7 @@ namespace DeepAbyssHive.SpatialIndex.Config
             // 确保世界边界有效
             if (worldBounds.size.x <= 0 || worldBounds.size.y <= 0 || worldBounds.size.z <= 0)
             {
-                worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
+                worldBounds = new Bounds(Vector3.zero, new Vector3(1000f, 1000f, 1000f));
             }
         }
     }

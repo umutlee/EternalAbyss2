@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Units.Enums;
 
 namespace DeepAbyssHive.Buildings.Services
 {
@@ -129,9 +130,9 @@ namespace DeepAbyssHive.Buildings.Services
     /// </summary>
     public struct ResearchUnlocks
     {
-        public List<BuildingType> UnlockedBuildings;
-        public List<string> UnlockedUnits;
-        public List<string> UnlockedTechnologies;
-        public List<string> UnlockedAbilities;
+        public string[] UnlockedBuildings;
+        public UnitType[] UnlockedUnitTypes;
+        public string[] UnlockedTechnologies;
+        public string[] UnlockedAbilities;
     }
 }

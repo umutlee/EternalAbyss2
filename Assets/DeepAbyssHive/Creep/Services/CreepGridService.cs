@@ -11,13 +11,13 @@ namespace DeepAbyssHive.Creep.Services
     /// 菌毯网格服务实现
     /// 负责菌毯网格数据的管理和操作
     /// </summary>
-    public class CreepGridService : ICreepGridService, IService, ICommandService
+    public class CreepGridService : ICreepGridService
     {
         #region 私有字段
 
         private readonly Dictionary<Vector2Int, CreepData> _creepGrid;
         private readonly HashSet<Vector2Int> _activePositions;
-        private ISpatialIndex<CreepData> _spatialIndex;
+        private ISpatialIndex _spatialIndex;
 
         private float _gridCellSize = 1f;
         private int _gridWidth = 100;
@@ -33,6 +33,7 @@ namespace DeepAbyssHive.Creep.Services
         public int GridHeight => _gridHeight;
         public bool IsInitialized { get; private set; }
         public bool IsCommandAvailable => IsInitialized;
+        private bool _isPaused;
 
         #endregion
 
@@ -99,8 +100,8 @@ namespace DeepAbyssHive.Creep.Services
             if (_spatialIndex != null)
             {
                 Vector3 worldPos = GridToWorldPosition(gridPosition);
-                Vector3 size = Vector3.one * _gridCellSize;
-                _spatialIndex.Add(data, worldPos, size);
+                Vector3 size = new Vector3(_gridCellSize, _gridCellSize, _gridCellSize);
+                _spatialIndex.Insert(data, worldPos, new Bounds(worldPos, size));
             }
         }
 
@@ -121,8 +122,8 @@ namespace DeepAbyssHive.Creep.Services
                 if (_spatialIndex != null)
                 {
                     Vector3 worldPos = GridToWorldPosition(gridPosition);
-                    Vector3 size = Vector3.one * _gridCellSize;
-                    _spatialIndex.Remove(data, worldPos, size);
+                    Vector3 size = new Vector3(_gridCellSize, _gridCellSize, _gridCellSize);
+                    _spatialIndex.Remove(data, worldPos, new Bounds(worldPos, size));
                 }
             }
         }
@@ -206,7 +207,8 @@ namespace DeepAbyssHive.Creep.Services
                     Vector2Int pos = new Vector2Int(x, y);
                     if (IsValidGridPosition(pos))
                     {
-                        float distance = Vector2Int.Distance(center, pos);
+                        // 将Vector2Int转换为Vector2后再计算距离
+                        float distance = Vector2.Distance(new Vector2(center.x, center.y), new Vector2(pos.x, pos.y));
                         if (distance <= radius)
                         {
                             positions.Add(pos);
@@ -280,9 +282,19 @@ namespace DeepAbyssHive.Creep.Services
         /// 设置空间索引引用
         /// </summary>
         /// <param name="spatialIndex">空间索引</param>
-        public void SetSpatialIndex(ISpatialIndex<CreepData> spatialIndex)
+        public void SetSpatialIndex(ISpatialIndex spatialIndex)
         {
             _spatialIndex = spatialIndex;
+        }
+
+        /// <summary>
+        /// 设置暂停状态
+        /// </summary>
+        /// <param name="paused">是否暂停</param>
+        public void SetPaused(bool paused)
+        {
+            _isPaused = paused;
+            Debug.Log($"[CreepGridService] 服务已{(paused ? "暂停" : "恢复")}");
         }
 
         #endregion

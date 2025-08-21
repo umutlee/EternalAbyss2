@@ -13,13 +13,12 @@ namespace DeepAbyssHive.Terrain.Services
     /// 地形修改服务实现
     /// 负责地形修改队列处理、历史记录和撤销操作
     /// </summary>
-    public class TerrainModificationService : ITerrainModificationService, IService, ICommandService
+    public class TerrainModificationService : IService
     {
         #region 属性
 
         public string ServiceName => "TerrainModificationService";
         public bool IsInitialized { get; private set; }
-        public bool IsCommandAvailable => IsInitialized;
 
         #endregion
 

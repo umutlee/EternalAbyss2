@@ -23,7 +23,7 @@ namespace DeepAbyssHive.SpatialIndex
             _maxDepth = maxDepth;
             _maxObjectsPerNode = maxObjectsPerNode;
             
-            var bounds = new Bounds(Vector3.zero, Vector3.one * worldSize);
+            var bounds = new Bounds(Vector3.zero, new Vector3(worldSize, worldSize, worldSize));
             _root = new QuadTreeNode(bounds, 0, _maxDepth, _maxObjectsPerNode);
         }
         
@@ -50,7 +50,7 @@ namespace DeepAbyssHive.SpatialIndex
         /// </summary>
         public List<CreepData> Query(Vector3 center, float radius)
         {
-            var bounds = new Bounds(center, Vector3.one * radius * 2f);
+            var bounds = new Bounds(center, new Vector3(radius * 2f, radius * 2f, radius * 2f));
             return _root.Query(bounds);
         }
         
@@ -59,7 +59,7 @@ namespace DeepAbyssHive.SpatialIndex
         /// </summary>
         public void Clear()
         {
-            var bounds = new Bounds(Vector3.zero, Vector3.one * _worldSize);
+            var bounds = new Bounds(Vector3.zero, new Vector3(_worldSize, _worldSize, _worldSize));
             _root = new QuadTreeNode(bounds, 0, _maxDepth, _maxObjectsPerNode);
         }
     }

@@ -14,13 +14,18 @@ namespace DeepAbyssHive.Terrain.Services
     /// 地形查询服务实现
     /// 负责地形数据查询、路径查找和地形分析
     /// </summary>
-    public class TerrainQueryService : ITerrainQueryService, IService, IQueryService
+    public class TerrainQueryService : ITerrainQueryService
     {
         #region 属性
 
         public string ServiceName => "TerrainQueryService";
         public bool IsInitialized { get; private set; }
         public bool IsQueryAvailable => IsInitialized;
+
+        // ITerrainManager 属性实现
+        public int ChunkSize => _chunkSize;
+        public int MaxLODLevels { get; private set; } = 4;
+        public float ViewDistance { get; set; } = 100f;
 
         #endregion
 
@@ -47,16 +52,16 @@ namespace DeepAbyssHive.Terrain.Services
         #endregion
 
         #region ITerrainQueryService 实现
-        public TerrainChunk GetChunkAt(Vector3 worldPosition)
+        public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunkAt(Vector3 worldPosition)
         {
             Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
             
-            if (_terrainChunks.ContainsKey(chunkCoord))
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is TerrainChunk terrainChunk)
             {
-                return _terrainChunks[chunkCoord] as TerrainChunk;
+                return terrainChunk;
             }
             
-            return null;
+            return default;
         }
 
         public TerrainType GetTerrainTypeAt(Vector3 worldPosition)
@@ -94,14 +99,14 @@ namespace DeepAbyssHive.Terrain.Services
             {
                 // 如果区块未加载，返回默认地形类型
                 Debug.LogWarning($"[{ServiceName}] 尝试获取未加载区块的地形类型: {chunkCoord}");
-                return TerrainType.Unknown;
+                return TerrainType.Normal;
             }
             
             // 检查本地坐标是否在有效范围内
             if (localCoord.x < 0 || localCoord.x >= _chunkSize || localCoord.y < 0 || localCoord.y >= _chunkSize)
             {
                 Debug.LogWarning($"[{ServiceName}] 本地坐标超出范围: {localCoord}");
-                return TerrainType.Unknown;
+                return TerrainType.Normal;
             }
             
             return _chunkTerrainData[chunkCoord][localCoord.x, localCoord.y];
@@ -118,11 +123,9 @@ namespace DeepAbyssHive.Terrain.Services
                     return 0.0f;
                 case TerrainType.Sand:
                     return 0.5f;
-                case TerrainType.Grass:
+                case TerrainType.Normal:
                     return 1.0f;
-                case TerrainType.Forest:
-                    return 1.5f;
-                case TerrainType.Mountain:
+                case TerrainType.Rock:
                     return 5.0f;
                 default:
                     return 0.0f;
@@ -153,10 +156,10 @@ namespace DeepAbyssHive.Terrain.Services
             {
                 case TerrainType.Water:
                     return false; // 水域不可通行
-                case TerrainType.Mountain:
-                    return false; // 山地不可通行
-                case TerrainType.Unknown:
-                    return false; // 未知地形不可通行
+                case TerrainType.Rock:
+                    return false; // 岩石不可通行
+                case TerrainType.Lava:
+                    return false; // 岩浆不可通行
                 default:
                     return true; // 其他地形可通行
             }
@@ -399,14 +402,14 @@ namespace DeepAbyssHive.Terrain.Services
         }
 
         // 新增的介面方法實現
-        public TerrainChunk GetChunk(int chunkX, int chunkZ)
+        public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunk(int chunkX, int chunkZ)
         {
             Vector2Int chunkCoord = new Vector2Int(chunkX, chunkZ);
-            if (_terrainChunks.ContainsKey(chunkCoord))
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is TerrainChunk terrainChunk)
             {
-                return _terrainChunks[chunkCoord] as TerrainChunk;
+                return terrainChunk;
             }
-            return null;
+            return default;
         }
 
         public float GetHeight(Vector3 position)
@@ -425,20 +428,20 @@ namespace DeepAbyssHive.Terrain.Services
                     return 0.0f; // 水域無法移動
                 case TerrainType.Sand:
                     return 0.8f; // 沙地減速
-                case TerrainType.Grass:
-                    return 1.0f; // 草地正常速度
-                case TerrainType.Forest:
-                    return 0.6f; // 森林減速
-                case TerrainType.Mountain:
-                    return 0.0f; // 山地無法移動
+                case TerrainType.Normal:
+                    return 1.0f; // 普通地形正常速度
+                case TerrainType.Rock:
+                    return 0.0f; // 岩石無法移動
+                case TerrainType.Lava:
+                    return 0.0f; // 岩浆無法移動
                 default:
                     return 1.0f;
             }
         }
 
-        public NativeArray<TerrainChunk> GetChunksInRange(Vector3 center, float radius)
+        public NativeArray<DeepAbyssHive.Terrain.Data.TerrainChunk> GetChunksInRange(Vector3 center, float radius)
         {
-            List<TerrainChunk> chunks = new List<TerrainChunk>();
+            List<DeepAbyssHive.Terrain.Data.TerrainChunk> chunks = new List<DeepAbyssHive.Terrain.Data.TerrainChunk>();
             
             Vector2Int centerChunkCoord = WorldToChunkCoord(center);
             int chunkRadius = Mathf.CeilToInt(radius / (_chunkSize * _tileSize));
@@ -449,18 +452,17 @@ namespace DeepAbyssHive.Terrain.Services
                 {
                     Vector2Int chunkCoord = new Vector2Int(centerChunkCoord.x + cx, centerChunkCoord.y + cy);
                     
-                    if (_terrainChunks.ContainsKey(chunkCoord))
+                    if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
                     {
-                        var chunk = _terrainChunks[chunkCoord] as TerrainChunk;
-                        if (chunk != null)
+                        if (chunk is TerrainChunk terrainChunk)
                         {
-                            chunks.Add(chunk);
+                            chunks.Add(terrainChunk);
                         }
                     }
                 }
             }
             
-            var nativeArray = new NativeArray<TerrainChunk>(chunks.Count, Allocator.Temp);
+            var nativeArray = new NativeArray<DeepAbyssHive.Terrain.Data.TerrainChunk>(chunks.Count, Allocator.Temp);
             for (int i = 0; i < chunks.Count; i++)
             {
                 nativeArray[i] = chunks[i];
@@ -599,6 +601,75 @@ namespace DeepAbyssHive.Terrain.Services
             }
             
             return true;
+        }
+
+        /// <summary>
+        /// 修改指定世界坐标处的地形
+        /// </summary>
+        /// <param name="worldPosition">世界坐标</param>
+        /// <param name="modification">地形修改数据</param>
+        public void ModifyTerrainAt(Vector3 worldPosition, TerrainModification modification)
+        {
+            Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
+            Vector2Int localCoord = WorldToLocalCoord(worldPosition);
+            
+            // 检查区块是否已加载
+            if (!_chunkTerrainData.ContainsKey(chunkCoord))
+            {
+                Debug.LogWarning($"[{ServiceName}] 尝试修改未加载区块的地形: {chunkCoord}");
+                return;
+            }
+            
+            // 检查本地坐标是否在有效范围内
+            if (localCoord.x < 0 || localCoord.x >= _chunkSize || localCoord.y < 0 || localCoord.y >= _chunkSize)
+            {
+                Debug.LogWarning($"[{ServiceName}] 本地坐标超出范围: {localCoord}");
+                return;
+            }
+            
+            // 应用地形修改
+            if (modification.changeTerrainType)
+            {
+                _chunkTerrainData[chunkCoord][localCoord.x, localCoord.y] = modification.newTerrainType;
+            }
+            
+            // 通知地形块更新
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
+            {
+                chunk.UpdateTerrainData(_chunkTerrainData[chunkCoord]);
+            }
+        }
+
+        /// <summary>
+        /// 更新指定位置周围的地形块
+        /// </summary>
+        /// <param name="centerPosition">中心位置</param>
+        public void UpdateChunksAroundPosition(Vector3 centerPosition)
+        {
+            Vector2Int centerChunkCoord = WorldToChunkCoord(centerPosition);
+            int updateRadius = Mathf.CeilToInt(ViewDistance / (_chunkSize * _tileSize));
+            
+            for (int cx = -updateRadius; cx <= updateRadius; cx++)
+            {
+                for (int cy = -updateRadius; cy <= updateRadius; cy++)
+                {
+                    Vector2Int chunkCoord = new Vector2Int(centerChunkCoord.x + cx, centerChunkCoord.y + cy);
+                    
+                    // 如果地形块已加载，确保其处于活跃状态
+                    if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
+                    {
+                        // 这里可以添加LOD更新逻辑
+                        float distance = Vector3.Distance(centerPosition, ChunkToWorldPosition(chunkCoord));
+                        int lodLevel = Mathf.Clamp(Mathf.FloorToInt(distance / (ViewDistance / MaxLODLevels)), 0, MaxLODLevels - 1);
+                        
+                        // 更新LOD级别（如果地形块支持）
+                        if (chunk is TerrainChunk terrainChunk)
+                        {
+                            // terrainChunk.SetLODLevel(lodLevel);
+                        }
+                    }
+                }
+            }
         }
         #endregion
 

@@ -120,6 +120,12 @@ namespace DeepAbyssHive.Creep.Services
         /// </summary>
         /// <returns>网格统计</returns>
         CreepGridStatistics GetGridStatistics();
+        
+        /// <summary>
+        /// 设置暂停状态
+        /// </summary>
+        /// <param name="paused">是否暂停</param>
+        void SetPaused(bool paused);
     }
 
     /// <summary>

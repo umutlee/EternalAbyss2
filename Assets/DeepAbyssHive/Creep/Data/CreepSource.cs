@@ -13,7 +13,7 @@ namespace DeepAbyssHive.Creep.Data
         public Vector3 Position;
         public float Radius;
         public float Strength;
-        public CreepType Type;
+        public CreepSourceType Type;
         public bool IsActive;
         public float CreationTime;
         public int NetworkId;

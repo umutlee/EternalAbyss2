@@ -1,133 +1,133 @@
 using UnityEngine;
 using DeepAbyssHive.Terrain.Enums;
-using System;
 
 namespace DeepAbyssHive.Terrain.Data
 {
     /// <summary>
     /// 地形修改数据结构
+    /// 用于描述对地形的修改操作
     /// </summary>
+    [System.Serializable]
     public struct TerrainModification
     {
         /// <summary>
-        /// 修改类型
+        /// 是否改变地形类型
         /// </summary>
-        public enum ModificationType
-        {
-            /// <summary>
-            /// 高度修改
-            /// </summary>
-            Height,
-            
-            /// <summary>
-            /// 地形类型修改
-            /// </summary>
-            TerrainType,
-            
-            /// <summary>
-            /// 菌毯密度修改
-            /// </summary>
-            CreepDensity
-        }
+        public bool changeTerrainType;
         
         /// <summary>
-        /// 修改类型
+        /// 新的地形类型
         /// </summary>
-        public ModificationType Type;
+        public TerrainType newTerrainType;
+        
+        /// <summary>
+        /// 是否改变高度
+        /// </summary>
+        public bool changeHeight;
+        
+        /// <summary>
+        /// 高度变化量
+        /// </summary>
+        public float heightDelta;
         
         /// <summary>
         /// 修改半径
         /// </summary>
-        public float Radius;
+        public float radius;
         
         /// <summary>
-        /// 修改强度
+        /// 修改强度（0-1）
         /// </summary>
-        public float Strength;
+        public float intensity;
         
         /// <summary>
-        /// 地形类型（当Type为TerrainType时使用）
+        /// 修改类型
         /// </summary>
-        public TerrainType TerrainTypeValue;
-        
-        /// <summary>
-        /// 所有者ID（当Type为CreepDensity时使用）
-        /// </summary>
-        public int OwnerId;
-        
-        /// <summary>
-        /// 修改位置
-        /// </summary>
-        public Vector3 Position;
-        
-        /// <summary>
-        /// 新地形类型
-        /// </summary>
-        public TerrainType NewTerrainType;
-        
-        /// <summary>
-        /// 原始地形类型
-        /// </summary>
-        public TerrainType OriginalTerrainType;
-        
-        /// <summary>
-        /// 修改时间戳
-        /// </summary>
-        public float Timestamp;
-        
-        /// <summary>
-        /// 修改ID
-        /// </summary>
-        public string ModificationId;
-        
-        /// <summary>
-        /// 创建高度修改
-        /// </summary>
-        /// <param name="radius">修改半径</param>
-        /// <param name="strength">修改强度</param>
-        /// <returns>地形修改数据</returns>
-        public static TerrainModification CreateHeightModification(float radius, float strength)
-        {
-            return new TerrainModification
-            {
-                Type = ModificationType.Height,
-                Radius = radius,
-                Strength = strength
-            };
-        }
+        public TerrainModificationType modificationType;
         
         /// <summary>
         /// 创建地形类型修改
         /// </summary>
-        /// <param name="radius">修改半径</param>
-        /// <param name="terrainType">地形类型</param>
+        /// <param name="newType">新地形类型</param>
+        /// <param name="radius">影响半径</param>
+        /// <param name="intensity">修改强度</param>
         /// <returns>地形修改数据</returns>
-        public static TerrainModification CreateTerrainTypeModification(float radius, TerrainType terrainType)
+        public static TerrainModification CreateTypeChange(TerrainType newType, float radius = 1f, float intensity = 1f)
         {
             return new TerrainModification
             {
-                Type = ModificationType.TerrainType,
-                Radius = radius,
-                TerrainTypeValue = terrainType
+                changeTerrainType = true,
+                newTerrainType = newType,
+                changeHeight = false,
+                heightDelta = 0f,
+                radius = radius,
+                intensity = intensity,
+                modificationType = TerrainModificationType.TypeChange
             };
         }
         
         /// <summary>
-        /// 创建菌毯密度修改
+        /// 创建高度修改
         /// </summary>
-        /// <param name="radius">修改半径</param>
-        /// <param name="strength">修改强度</param>
-        /// <param name="ownerId">所有者ID</param>
+        /// <param name="heightDelta">高度变化量</param>
+        /// <param name="radius">影响半径</param>
+        /// <param name="intensity">修改强度</param>
         /// <returns>地形修改数据</returns>
-        public static TerrainModification CreateCreepModification(float radius, float strength, int ownerId)
+        public static TerrainModification CreateHeightChange(float heightDelta, float radius = 1f, float intensity = 1f)
         {
             return new TerrainModification
             {
-                Type = ModificationType.CreepDensity,
-                Radius = radius,
-                Strength = strength,
-                OwnerId = ownerId
+                changeTerrainType = false,
+                newTerrainType = TerrainType.Normal,
+                changeHeight = true,
+                heightDelta = heightDelta,
+                radius = radius,
+                intensity = intensity,
+                modificationType = TerrainModificationType.HeightChange
             };
         }
+        
+        /// <summary>
+        /// 创建复合修改
+        /// </summary>
+        /// <param name="newType">新地形类型</param>
+        /// <param name="heightDelta">高度变化量</param>
+        /// <param name="radius">影响半径</param>
+        /// <param name="intensity">修改强度</param>
+        /// <returns>地形修改数据</returns>
+        public static TerrainModification CreateCombinedChange(TerrainType newType, float heightDelta, float radius = 1f, float intensity = 1f)
+        {
+            return new TerrainModification
+            {
+                changeTerrainType = true,
+                newTerrainType = newType,
+                changeHeight = true,
+                heightDelta = heightDelta,
+                radius = radius,
+                intensity = intensity,
+                modificationType = TerrainModificationType.Combined
+            };
+        }
+    }
+    
+    /// <summary>
+    /// 地形修改类型
+    /// </summary>
+    public enum TerrainModificationType
+    {
+        /// <summary>
+        /// 仅改变地形类型
+        /// </summary>
+        TypeChange,
+        
+        /// <summary>
+        /// 仅改变高度
+        /// </summary>
+        HeightChange,
+        
+        /// <summary>
+        /// 复合修改
+        /// </summary>
+        Combined
     }
 }

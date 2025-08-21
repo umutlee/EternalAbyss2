@@ -7,7 +7,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
     /// 空间索引接口
     /// </summary>
     /// <typeparam name="T">索引对象类型</typeparam>
-    public interface ISpatialIndex<T>
+    public interface ISpatialIndex
     {
         /// <summary>
         /// 插入对象到空间索引
@@ -15,7 +15,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
         /// <param name="obj">对象</param>
         /// <param name="position">位置</param>
         /// <param name="size">大小</param>
-        void Insert(T obj, Vector3 position, Vector3 size);
+        void Insert(object obj, Vector3 position, Vector3 size);
         
         /// <summary>
         /// 更新对象在空间索引中的位置
@@ -24,7 +24,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
         /// <param name="oldPosition">旧位置</param>
         /// <param name="newPosition">新位置</param>
         /// <param name="size">大小</param>
-        void Update(T obj, Vector3 oldPosition, Vector3 newPosition, Vector3 size);
+        void Update(object obj, Vector3 oldPosition, Vector3 newPosition, Vector3 size);
         
         /// <summary>
         /// 从空间索引中移除对象
@@ -32,7 +32,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
         /// <param name="obj">对象</param>
         /// <param name="position">位置</param>
         /// <param name="size">大小</param>
-        void Remove(T obj, Vector3 position, Vector3 size);
+        void Remove(object obj, Vector3 position, Vector3 size);
         
         /// <summary>
         /// 查询指定区域内的所有对象
@@ -40,7 +40,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
         /// <param name="position">查询位置</param>
         /// <param name="size">查询大小</param>
         /// <returns>区域内的对象列表</returns>
-        List<T> QueryRange(Vector3 position, Vector3 size);
+        List<object> QueryRange(Vector3 position, Vector3 size);
         
         /// <summary>
         /// 查询指定点最近的对象
@@ -49,7 +49,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
         /// <param name="maxDistance">最大距离</param>
         /// <param name="maxResults">最大结果数</param>
         /// <returns>最近的对象列表</returns>
-        List<T> QueryNearest(Vector3 position, float maxDistance, int maxResults);
+        List<object> QueryNearest(Vector3 position, float maxDistance, int maxResults);
         
         /// <summary>
         /// 查询与射线相交的对象
@@ -57,7 +57,7 @@ namespace DeepAbyssHive.SpatialIndex.Interfaces
         /// <param name="ray">射线</param>
         /// <param name="maxDistance">最大距离</param>
         /// <returns>相交的对象列表</returns>
-        List<T> QueryRaycast(Ray ray, float maxDistance);
+        List<object> QueryRaycast(Ray ray, float maxDistance);
         
         /// <summary>
         /// 清空空间索引

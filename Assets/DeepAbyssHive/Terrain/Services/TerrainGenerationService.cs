@@ -14,13 +14,12 @@ namespace DeepAbyssHive.Terrain.Services
     /// 地形生成服务实现
     /// 负责地形块的生成、噪声计算和程序化地形创建
     /// </summary>
-    public class TerrainGenerationService : ITerrainGenerationService, IService, ICommandService
+    public class TerrainGenerationService : IService
     {
         #region 属性
 
         public string ServiceName => "TerrainGenerationService";
         public bool IsInitialized { get; private set; }
-        public bool IsCommandAvailable => IsInitialized;
 
         #endregion
 
@@ -68,7 +67,7 @@ namespace DeepAbyssHive.Terrain.Services
         }
         #endregion
 
-        #region ITerrainGenerationService 实现
+        #region 地形生成方法
         public ITerrainChunk GenerateChunk(Vector2Int chunkCoord)
         {
             TerrainType[,] terrainData = GenerateChunkTerrain(chunkCoord);
@@ -101,7 +100,7 @@ namespace DeepAbyssHive.Terrain.Services
             return noise;
         }
 
-        public void Initialize(TerrainConfigSO config)
+        public void InitializeWithConfig(TerrainConfigSO config)
         {
             _config = config;
             InitializeParameters();
@@ -169,13 +168,13 @@ namespace DeepAbyssHive.Terrain.Services
             if (height < -2f)
                 return TerrainType.Water;
             else if (height < 0f)
-                return TerrainType.Swamp;
+                return TerrainType.Mud;
             else if (height < 3f)
-                return TerrainType.Ground;
+                return TerrainType.Normal;
             else if (height < 8f)
                 return TerrainType.Rock;
             else
-                return TerrainType.Mountain;
+                return TerrainType.Rock;
         }
 
         public ITerrainChunk CreateTerrainChunk(Vector2Int chunkCoord, TerrainType[,] terrainData)

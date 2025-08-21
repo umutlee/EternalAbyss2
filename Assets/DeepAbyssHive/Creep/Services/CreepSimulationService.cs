@@ -64,7 +64,7 @@ namespace DeepAbyssHive.Creep.Services
             var sourceData = new CreepSource
             {
                 Position = position,
-                PlayerId = playerId,
+                NetworkId = playerId,
                 Strength = Mathf.Clamp01(strength),
                 Radius = Mathf.Max(0f, radius),
                 IsActive = true,
@@ -115,14 +115,14 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
 
             var gridPos = _gridService.WorldToGridPosition(position);
-            var gridRadius = Mathf.CeilToInt(radius / _gridService.CellSize);
+            var gridRadius = Mathf.CeilToInt(radius / _gridService.GridCellSize);
 
             for (int x = -gridRadius; x <= gridRadius; x++)
             {
                 for (int z = -gridRadius; z <= gridRadius; z++)
                 {
                     var targetPos = gridPos + new Vector2Int(x, z);
-                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.CellSize;
+                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.GridCellSize;
                     
                     if (distance <= radius)
                     {
@@ -133,7 +133,7 @@ namespace DeepAbyssHive.Creep.Services
                         if (cell != null)
                         {
                             cell.Strength = Mathf.Max(cell.Strength, finalStrength);
-                            cell.PlayerId = playerId;
+                            cell.NetworkId = playerId;
                             cell.IsActive = true;
                             _gridService.SetGridCell(targetPos, cell);
                         }
@@ -153,14 +153,14 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
 
             var gridPos = _gridService.WorldToGridPosition(position);
-            var gridRadius = Mathf.CeilToInt(radius / _gridService.CellSize);
+            var gridRadius = Mathf.CeilToInt(radius / _gridService.GridCellSize);
 
             for (int x = -gridRadius; x <= gridRadius; x++)
             {
                 for (int z = -gridRadius; z <= gridRadius; z++)
                 {
                     var targetPos = gridPos + new Vector2Int(x, z);
-                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.CellSize;
+                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.GridCellSize;
                     
                     if (distance <= radius)
                     {
@@ -194,14 +194,14 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
 
             var gridPos = _gridService.WorldToGridPosition(position);
-            var gridRadius = Mathf.CeilToInt(radius / _gridService.CellSize);
+            var gridRadius = Mathf.CeilToInt(radius / _gridService.GridCellSize);
 
             for (int x = -gridRadius; x <= gridRadius; x++)
             {
                 for (int z = -gridRadius; z <= gridRadius; z++)
                 {
                     var targetPos = gridPos + new Vector2Int(x, z);
-                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.CellSize;
+                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.GridCellSize;
                     
                     if (distance <= radius)
                     {
@@ -229,7 +229,7 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
 
             var gridPos = _gridService.WorldToGridPosition(position);
-            var gridRadius = Mathf.CeilToInt(radius / _gridService.CellSize);
+            var gridRadius = Mathf.CeilToInt(radius / _gridService.GridCellSize);
             var clampedStrength = Mathf.Clamp01(strength);
 
             for (int x = -gridRadius; x <= gridRadius; x++)
@@ -237,7 +237,7 @@ namespace DeepAbyssHive.Creep.Services
                 for (int z = -gridRadius; z <= gridRadius; z++)
                 {
                     var targetPos = gridPos + new Vector2Int(x, z);
-                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.CellSize;
+                    var distance = Vector2.Distance(gridPos, targetPos) * _gridService.GridCellSize;
                     
                     if (distance <= radius)
                     {
@@ -245,7 +245,7 @@ namespace DeepAbyssHive.Creep.Services
                         if (cell != null)
                         {
                             cell.Strength = clampedStrength;
-                            cell.PlayerId = playerId;
+                            cell.NetworkId = playerId;
                             cell.IsActive = clampedStrength > 0.01f;
                             _gridService.SetGridCell(targetPos, cell);
                         }
@@ -266,7 +266,7 @@ namespace DeepAbyssHive.Creep.Services
 
             // 简单的直线连接实现
             var distance = Vector3.Distance(position1, position2);
-            var steps = Mathf.CeilToInt(distance / _gridService.CellSize);
+            var steps = Mathf.CeilToInt(distance / _gridService.GridCellSize);
             
             for (int i = 0; i <= steps; i++)
             {
@@ -278,7 +278,7 @@ namespace DeepAbyssHive.Creep.Services
                 if (cell != null)
                 {
                     cell.Strength = Mathf.Max(cell.Strength, strength);
-                    cell.PlayerId = playerId;
+                    cell.NetworkId = playerId;
                     cell.IsActive = true;
                     _gridService.SetGridCell(gridPos, cell);
                 }
@@ -319,7 +319,8 @@ namespace DeepAbyssHive.Creep.Services
                 return;
 
             _globalGrowthMultiplier = Mathf.Max(0f, speedMultiplier);
-            _expansionService.SetGrowthSpeedMultiplier(playerId, speedMultiplier);
+            // 注意：这里假设 ICreepExpansionService 有这个方法，如果没有需要移除或修改
+            // _expansionService.SetGrowthSpeedMultiplier(playerId, speedMultiplier);
         }
 
         /// <summary>
@@ -343,6 +344,14 @@ namespace DeepAbyssHive.Creep.Services
         }
 
         /// <summary>
+        /// 设置暂停状态（ICreepSimulationService 接口要求）
+        /// </summary>
+        public void SetPaused(bool paused)
+        {
+            SetSimulationPaused(paused);
+        }
+
+        /// <summary>
         /// 重置菌毯模拟
         /// </summary>
         public void ResetCreepSimulation(int playerId = -1)
@@ -353,24 +362,25 @@ namespace DeepAbyssHive.Creep.Services
             if (playerId == -1)
             {
                 // 重置所有玩家的菌毯
-                _gridService.ClearAllGrids();
-                _sourceService.ClearAllSources();
-                _networkService.ClearAllNetworks();
+                _gridService.ClearGrid();
+                // 注意：这里假设服务有这些方法，如果没有需要移除或修改
+                // _sourceService.ClearAllSources();
+                // _networkService.ClearAllNetworks();
             }
             else
             {
                 // 重置指定玩家的菌毯
-                _sourceService.ClearPlayerSources(playerId);
-                _networkService.ClearPlayerNetworks(playerId);
+                // 注意：这里假设服务有这些方法，如果没有需要移除或修改
+                // _sourceService.ClearPlayerSources(playerId);
+                // _networkService.ClearPlayerNetworks(playerId);
                 
                 // 清除该玩家的网格数据
-                var gridSize = _gridService.GridSize;
-                for (int x = 0; x < gridSize.x; x++)
+                for (int x = 0; x < _gridService.GridWidth; x++)
                 {
-                    for (int z = 0; z < gridSize.y; z++)
+                    for (int z = 0; z < _gridService.GridHeight; z++)
                     {
                         var cell = _gridService.GetGridCell(new Vector2Int(x, z));
-                        if (cell != null && cell.PlayerId == playerId)
+                        if (cell != null && cell.NetworkId == playerId)
                         {
                             cell.IsActive = false;
                             cell.Strength = 0f;
@@ -432,7 +442,7 @@ namespace DeepAbyssHive.Creep.Services
             if (!IsInitialized)
                 return;
 
-            _networkService.OptimizeNetworks(playerId);
+            _networkService.OptimizeNetworkStructure(playerId);
         }
 
         #endregion

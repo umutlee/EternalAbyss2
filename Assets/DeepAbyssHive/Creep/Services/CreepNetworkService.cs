@@ -28,6 +28,7 @@ namespace DeepAbyssHive.Creep.Services
 
         public string ServiceName => "CreepNetworkService";
         public bool IsInitialized { get; private set; }
+        private bool _isPaused;
 
         #endregion
 
@@ -100,7 +101,7 @@ namespace DeepAbyssHive.Creep.Services
                 if (visited.Contains(pos)) continue;
 
                 CreepData data = _gridService.GetGridCell(pos);
-                if (data.PlayerId != playerId) continue;
+                if (data.NetworkId != playerId) continue;
 
                 // 找到一个新的连通区域
                 var network = new HashSet<Vector2Int>();
@@ -120,7 +121,7 @@ namespace DeepAbyssHive.Creep.Services
                         if (!_gridService.HasCreepAt(neighbor)) continue;
 
                         CreepData neighborData = _gridService.GetGridCell(neighbor);
-                        if (neighborData.PlayerId != playerId) continue;
+                        if (neighborData.NetworkId != playerId) continue;
 
                         queue.Enqueue(neighbor);
                         visited.Add(neighbor);
@@ -166,7 +167,7 @@ namespace DeepAbyssHive.Creep.Services
                 return default;
 
             CreepData data = _gridService.GetGridCell(gridPos);
-            int playerId = data.PlayerId;
+            int playerId = data.NetworkId;
 
             // 如果该玩家没有网络或者网络分析过期，重新分析
             if (!_playerNetworks.ContainsKey(playerId) || 
@@ -226,7 +227,7 @@ namespace DeepAbyssHive.Creep.Services
             CreepData startData = _gridService.GetGridCell(startGrid);
             CreepData endData = _gridService.GetGridCell(endGrid);
 
-            if (startData.PlayerId != endData.PlayerId)
+            if (startData.NetworkId != endData.NetworkId)
                 return false;
 
             if (startData.Strength < minStrength || endData.Strength < minStrength)
@@ -252,7 +253,7 @@ namespace DeepAbyssHive.Creep.Services
                     if (!_gridService.HasCreepAt(neighbor)) continue;
 
                     CreepData neighborData = _gridService.GetGridCell(neighbor);
-                    if (neighborData.PlayerId != startData.PlayerId || neighborData.Strength < minStrength)
+                    if (neighborData.NetworkId != startData.NetworkId || neighborData.Strength < minStrength)
                         continue;
 
                     queue.Enqueue(neighbor);
@@ -274,11 +275,11 @@ namespace DeepAbyssHive.Creep.Services
             CreepData startData = _gridService.GetGridCell(startGrid);
             CreepData endData = _gridService.GetGridCell(endGrid);
 
-            if (startData.PlayerId != endData.PlayerId)
+            if (startData.NetworkId != endData.NetworkId)
                 return new Vector3[0];
 
             // 使用A*算法寻找路径
-            var path = FindPath(startGrid, endGrid, startData.PlayerId, minStrength);
+            var path = FindPath(startGrid, endGrid, startData.NetworkId, minStrength);
             var worldPath = new Vector3[path.Count];
 
             for (int i = 0; i < path.Count; i++)
@@ -297,10 +298,10 @@ namespace DeepAbyssHive.Creep.Services
                 return -1;
             }
 
-            if (network1.PlayerId != network2.PlayerId)
+            if (network1.NetworkId != network2.NetworkId)
                 return -1;
 
-            int playerId = network1.PlayerId;
+            int playerId = network1.NetworkId;
             
             // 创建新的合并网络
             int mergedNetworkId = _nextNetworkId++;
@@ -337,7 +338,7 @@ namespace DeepAbyssHive.Creep.Services
             if (!_networks.TryGetValue(networkId, out CreepNetworkInfo network))
                 return new int[0];
 
-            int playerId = network.PlayerId;
+            int playerId = network.NetworkId;
             
             // 移除旧网络
             _networks.Remove(networkId);
@@ -372,7 +373,7 @@ namespace DeepAbyssHive.Creep.Services
                 Vector2Int gridPos = activePositions[i];
                 CreepData data = _gridService.GetGridCell(gridPos);
                 
-                if (data.PlayerId != network.PlayerId)
+                if (data.NetworkId != network.NetworkId)
                     continue;
 
                 // 检查是否是边界（至少有一个邻居没有菌毯）
@@ -464,7 +465,7 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
             }
 
-            if (network.PlayerId != targetNetwork.PlayerId)
+            if (network.NetworkId != targetNetwork.NetworkId)
                 return false;
 
             // 合并网络
@@ -503,7 +504,7 @@ namespace DeepAbyssHive.Creep.Services
 
         public void UpdateNetworks(float deltaTime)
         {
-            if (!IsInitialized)
+            if (!IsInitialized || _isPaused)
                 return;
 
             // 定期重新分析网络连通性
@@ -515,6 +516,12 @@ namespace DeepAbyssHive.Creep.Services
                 }
                 _lastAnalysisTime = Time.time;
             }
+        }
+
+        public void SetPaused(bool paused)
+        {
+            _isPaused = paused;
+            Debug.Log($"[CreepNetworkService] 服务已{(paused ? "暂停" : "恢复")}");
         }
 
         public CreepNetworkStatistics GetNetworkStatistics(int playerId)
@@ -575,7 +582,7 @@ namespace DeepAbyssHive.Creep.Services
             {
                 if (_networks.TryGetValue(networkId, out CreepNetworkInfo network))
                 {
-                    int playerId = network.PlayerId;
+                    int playerId = network.NetworkId;
                     _networks.Remove(networkId);
                     
                     if (_playerNetworks.TryGetValue(playerId, out List<int> networkIds))
@@ -595,7 +602,7 @@ namespace DeepAbyssHive.Creep.Services
             {
                 int networkId = kvp.Key;
                 CreepNetworkInfo network = kvp.Value;
-                int playerId = network.PlayerId;
+                int playerId = network.NetworkId;
                 
                 if (!_playerNetworks.ContainsKey(playerId))
                 {
@@ -674,7 +681,7 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
 
             CreepData data = _gridService.GetGridCell(gridPos);
-            if (data.PlayerId != network.PlayerId)
+            if (data.NetworkId != network.NetworkId)
                 return false;
 
             // 使用广度优先搜索检查是否在同一个连通区域
@@ -722,7 +729,7 @@ namespace DeepAbyssHive.Creep.Services
                     if (!_gridService.HasCreepAt(neighbor)) continue;
 
                     CreepData neighborData = _gridService.GetGridCell(neighbor);
-                    if (neighborData.PlayerId != playerId || neighborData.Strength < minStrength)
+                    if (neighborData.NetworkId != playerId || neighborData.Strength < minStrength)
                         continue;
 
                     float tentativeGScore = gScore[current] + 1;
@@ -771,7 +778,7 @@ namespace DeepAbyssHive.Creep.Services
                 return false;
             }
 
-            if (network1.PlayerId != network2.PlayerId)
+            if (network1.NetworkId != network2.NetworkId)
                 return false;
 
             // 检查两个网络是否相邻

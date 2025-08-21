@@ -136,7 +136,7 @@ namespace DeepAbyssHive.Buildings.Services
                 Type = construction.BuildingType,
                 Position = construction.Position,
                 Rotation = construction.Rotation,
-                PlayerId = construction.PlayerId,
+                // PlayerId 已移除，由 IBuildingManager 管理归属关系
                 Level = 1,
                 Health = template.MaxHealth,
                 MaxHealth = template.MaxHealth,

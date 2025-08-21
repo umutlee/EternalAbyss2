@@ -33,7 +33,7 @@ namespace DeepAbyssHive.Buildings.Tests
             var config = ConfigManager.GetConfig<BuildingConfigSO>("BuildingConfig");
             if (config != null)
             {
-                Debug.Log($"✓ 配置加载成功: {config.ConfigName}");
+                Debug.Log($"✓ 配置加载成功: {config.configName}");
                 Debug.Log($"  - 建筑模板数量: {config.buildingTemplates?.Length ?? 0}");
                 Debug.Log($"  - 研究模板数量: {config.researchTemplates?.Length ?? 0}");
                 Debug.Log($"  - 最大同时建造: {config.constructionConfig.maxConcurrentBuilds}");

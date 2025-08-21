@@ -7,12 +7,58 @@ using DeepAbyssHive.Terrain.Data;
 namespace DeepAbyssHive.Terrain.Managers
 {
     /// <summary>
-    /// 地形管理器 - 地形生成部分（委托模式）
-    /// 所有方法委托给 TerrainGenerationService
+    /// 地形管理器，负责管理分块地形系统 - 地形生成部分
     /// </summary>
     public partial class TerrainManager
     {
-        #region 地形生成 - 委托给服务
+        #region 地形生成
+        /// <summary>
+        /// 加载地形
+        /// </summary>
+        /// <param name="playerPosition">玩家位置</param>
+        public void LoadTerrain(Vector3 playerPosition)
+        {
+            Vector2Int centerChunk = WorldToChunkCoord(playerPosition);
+            _currentCenterChunk = centerChunk;
+            
+            // 计算需要加载的区块
+            HashSet<Vector2Int> chunksToLoad = new HashSet<Vector2Int>();
+            for (int x = -_loadRadius; x <= _loadRadius; x++)
+            {
+                for (int y = -_loadRadius; y <= _loadRadius; y++)
+                {
+                    Vector2Int chunkCoord = new Vector2Int(centerChunk.x + x, centerChunk.y + y);
+                    chunksToLoad.Add(chunkCoord);
+                }
+            }
+            
+            // 卸载不需要的区块
+            List<Vector2Int> chunksToUnload = new List<Vector2Int>();
+            foreach (var chunkCoord in _terrainChunks.Keys)
+            {
+                if (!chunksToLoad.Contains(chunkCoord))
+                {
+                    chunksToUnload.Add(chunkCoord);
+                }
+            }
+            
+            foreach (var chunkCoord in chunksToUnload)
+            {
+                UnloadChunk(chunkCoord);
+            }
+            
+            // 加载新区块
+            foreach (var chunkCoord in chunksToLoad)
+            {
+                if (!_terrainChunks.ContainsKey(chunkCoord))
+                {
+                    LoadChunk(chunkCoord);
+                }
+            }
+            
+            Debug.Log($"[{_managerName}] 地形加载完成，中心区块: {centerChunk}，已加载区块数: {_terrainChunks.Count}");
+        }
+
         /// <summary>
         /// 生成地形块数据
         /// </summary>
@@ -20,7 +66,31 @@ namespace DeepAbyssHive.Terrain.Managers
         /// <returns>地形类型数组</returns>
         private TerrainType[,] GenerateChunkTerrain(Vector2Int chunkCoord)
         {
-            return _generationService?.GenerateChunkTerrain(chunkCoord) ?? new TerrainType[_chunkSize, _chunkSize];
+            TerrainType[,] terrainData = new TerrainType[_chunkSize, _chunkSize];
+            
+            // 使用柏林噪声生成地形高度
+            float offsetX = chunkCoord.x * _chunkSize;
+            float offsetY = chunkCoord.y * _chunkSize;
+            
+            for (int x = 0; x < _chunkSize; x++)
+            {
+                for (int y = 0; y < _chunkSize; y++)
+                {
+                    float noiseX = (offsetX + x) * _noiseScale;
+                    float noiseY = (offsetY + y) * _noiseScale;
+                    
+                    float perlinValue = Mathf.PerlinNoise(noiseX, noiseY);
+                    
+                    // 根据噪声值确定地形类型
+                    TerrainType terrainType = DetermineTerrainType(perlinValue);
+                    terrainData[x, y] = terrainType;
+                }
+            }
+            
+            // 应用地形特征（如河流、山脉等）
+            ApplyTerrainFeatures(terrainData, chunkCoord);
+            
+            return terrainData;
         }
 
         /// <summary>
@@ -30,10 +100,17 @@ namespace DeepAbyssHive.Terrain.Managers
         /// <returns>地形类型</returns>
         private TerrainType DetermineTerrainType(float noiseValue)
         {
-            // 委托给生成服务
-            Vector2 worldPos = new Vector2(0, 0); // 临时位置
-            float height = noiseValue * _heightScale;
-            return _generationService?.DetermineTerrainType(height, worldPos) ?? TerrainType.Unknown;
+            // 简单的地形类型确定逻辑
+            if (noiseValue < 0.3f)
+                return TerrainType.Water;
+            else if (noiseValue < 0.4f)
+                return TerrainType.Sand;
+            else if (noiseValue < 0.7f)
+                return TerrainType.Normal;
+            else if (noiseValue < 0.8f)
+                return TerrainType.Normal;
+            else
+                return TerrainType.Rock;
         }
 
         /// <summary>
@@ -43,8 +120,46 @@ namespace DeepAbyssHive.Terrain.Managers
         /// <param name="chunkCoord">地形块坐标</param>
         private void ApplyTerrainFeatures(TerrainType[,] terrainData, Vector2Int chunkCoord)
         {
-            // 这个方法的逻辑已经整合到 TerrainGenerationService 中
-            // 保留空实现以维持兼容性
+            // 这里可以添加更复杂的地形特征生成逻辑
+            // 例如：河流、山脉、洞穴等
+            
+            // 示例：在特定条件下生成河流
+            if (chunkCoord.x % 5 == 0)
+            {
+                int riverY = UnityEngine.Random.Range(0, _chunkSize);
+                int riverWidth = UnityEngine.Random.Range(2, 5);
+                
+                for (int x = 0; x < _chunkSize; x++)
+                {
+                    for (int y = riverY - riverWidth / 2; y <= riverY + riverWidth / 2; y++)
+                    {
+                        if (y >= 0 && y < _chunkSize)
+                        {
+                            terrainData[x, y] = TerrainType.Water;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 设置地形生成参数
+        /// </summary>
+        /// <param name="noiseScale">噪声缩放</param>
+        /// <param name="heightScale">高度缩放</param>
+        /// <param name="seed">随机种子</param>
+        public void SetTerrainGenerationParameters(float noiseScale, float heightScale, int seed)
+        {
+            _noiseScale = noiseScale;
+            _heightScale = heightScale;
+            _seed = seed;
+            
+            UnityEngine.Random.InitState(_seed);
+            
+            Debug.Log($"[{_managerName}] 更新地形生成参数: 噪声缩放={_noiseScale}, 高度缩放={_heightScale}, 种子={_seed}");
+            
+            // 重新生成所有已加载的地形块
+            RegenerateAllChunks();
         }
 
         /// <summary>

@@ -28,8 +28,8 @@ namespace DeepAbyssHive.SpatialIndex.Data
 
         // 属性访问器
         public int Id => _id;
-        public Vector3 Position { get => _position; internal set => _position = value; }
-        public Bounds Bounds { get => _bounds; internal set => _bounds = value; }
+        public Vector3 Position => _position;
+        public Bounds Bounds => _bounds;
         public GameObject GameObject => _gameObject;
         public string Category => _category;
         public int Layer => _layer;

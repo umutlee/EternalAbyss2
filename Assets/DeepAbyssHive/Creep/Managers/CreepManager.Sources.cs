@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Creep.Enums;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -32,7 +33,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// <param name="ownerId">所有者ID</param>
         /// <param name="sourceType">源点类型</param>
         /// <returns>源点ID，失败返回-1</returns>
-        public int CreateCreepSourcePoint(Vector3 worldPosition, float radius, int ownerId, CreepSourceType sourceType = CreepSourceType.Building)
+        public int CreateCreepSourcePoint(Vector3 worldPosition, float radius, int ownerId, CreepSourceType sourceType = CreepSourceType.Enhanced)
         {
             var gridPos = WorldToGridPosition(worldPosition);
             
@@ -47,17 +48,14 @@ namespace DeepAbyssHive.Creep.Managers
             var sourceId = _nextSourceId++;
             var source = new CreepSource
             {
-                Id = sourceId,
+                SourceId = sourceId,
                 Position = worldPosition,
-                GridPosition = gridPos,
                 Radius = radius,
-                OwnerId = ownerId,
-                SourceType = sourceType,
+                Type = sourceType,
                 IsActive = true,
                 CreationTime = Time.time,
-                LastUpdateTime = Time.time,
-                Strength = CalculateSourceStrength(sourceType),
-                NetworkId = -1 // 稍后分配网络ID
+                NetworkId = ownerId, // 使用 ownerId 作为 NetworkId
+                Strength = CalculateSourceStrength(sourceType)
             };
             
             _creepSources[sourceId] = source;
@@ -99,7 +97,7 @@ namespace DeepAbyssHive.Creep.Managers
             RemoveSourceFromNetwork(source);
             
             // 移除对应的菌毯瓦片
-            var gridPos = source.GridPosition;
+            var gridPos = WorldToGridPosition(source.Position);
             if (_creepTiles.TryGetValue(gridPos, out var tile))
             {
                 tile.IsNutritionSource = false;
@@ -107,7 +105,7 @@ namespace DeepAbyssHive.Creep.Managers
                 // 如果没有其他源点支持，标记为衰减
                 if (!HasNearbyNutritionSource(gridPos))
                 {
-                    tile.Status = CreepTileStatus.Starving;
+                    tile.Status = CreepTileStatus.Weakened;
                 }
             }
             
@@ -136,7 +134,7 @@ namespace DeepAbyssHive.Creep.Managers
             int removedCount = 0;
             foreach (var source in sourcesToRemove)
             {
-                if (RemoveCreepSource(source.Id))
+                if (RemoveCreepSource(source.SourceId))
                     removedCount++;
             }
             
@@ -161,14 +159,22 @@ namespace DeepAbyssHive.Creep.Managers
                 // 创建新网络
                 var networkId = _nextNetworkId++;
                 _sourceNetworks[networkId] = new List<CreepSource> { source };
-                source.NetworkId = networkId;
+                
+                // 由于 CreepSource 是结构体，需要先获取副本，修改后再存回字典
+                var updatedSource = source;
+                updatedSource.NetworkId = networkId;
+                _creepSources[source.SourceId] = updatedSource;
             }
             else if (nearbyNetworks.Count == 1)
             {
                 // 加入现有网络
                 var networkId = nearbyNetworks[0];
                 _sourceNetworks[networkId].Add(source);
-                source.NetworkId = networkId;
+                
+                // 由于 CreepSource 是结构体，需要先获取副本，修改后再存回字典
+                var updatedSource = source;
+                updatedSource.NetworkId = networkId;
+                _creepSources[source.SourceId] = updatedSource;
             }
             else
             {
@@ -208,7 +214,11 @@ namespace DeepAbyssHive.Creep.Managers
             
             // 将新源点加入主网络
             primaryNetwork.Add(newSource);
-            newSource.NetworkId = primaryNetworkId;
+            
+            // 由于 CreepSource 是结构体，需要先获取副本，修改后再存回字典
+            var updatedSource = newSource;
+            updatedSource.NetworkId = primaryNetworkId;
+            _creepSources[newSource.SourceId] = updatedSource;
             
             // 合并其他网络到主网络
             for (int i = 1; i < networkIds.Count; i++)
@@ -218,8 +228,12 @@ namespace DeepAbyssHive.Creep.Managers
                 {
                     foreach (var source in network)
                     {
-                        source.NetworkId = primaryNetworkId;
-                        primaryNetwork.Add(source);
+                        // 由于 CreepSource 是结构体，需要先获取副本，修改后再存回字典
+                        var updatedNetworkSource = source;
+                        updatedNetworkSource.NetworkId = primaryNetworkId;
+                        _creepSources[source.SourceId] = updatedNetworkSource;
+                        
+                        primaryNetwork.Add(updatedNetworkSource);
                     }
                     _sourceNetworks.Remove(networkId);
                 }
@@ -269,7 +283,10 @@ namespace DeepAbyssHive.Creep.Managers
                 
                 foreach (var source in group)
                 {
-                    source.NetworkId = newNetworkId;
+                    // 由于 CreepSource 是结构体，需要先获取副本，修改后再存回字典
+                    var updatedSource = source;
+                    updatedSource.NetworkId = newNetworkId;
+                    _creepSources[source.SourceId] = updatedSource;
                 }
             }
             
@@ -287,7 +304,9 @@ namespace DeepAbyssHive.Creep.Managers
         /// <returns>是否有源点</returns>
         public bool HasSourceAt(Vector2Int gridPosition)
         {
-            return _creepSources.Values.Any(source => source.GridPosition == gridPosition);
+            var worldPos = GridToWorldPosition(gridPosition);
+            return _creepSources.Values.Any(source => 
+                Vector3.Distance(source.Position, worldPos) < 0.5f);
         }
         
         /// <summary>
@@ -318,7 +337,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// <returns>源点列表</returns>
         public List<CreepSource> GetSourcesByOwner(int ownerId)
         {
-            return _creepSources.Values.Where(source => source.OwnerId == ownerId).ToList();
+            return _creepSources.Values.Where(source => source.NetworkId == ownerId).ToList();
         }
         
         /// <summary>
@@ -343,9 +362,9 @@ namespace DeepAbyssHive.Creep.Managers
         {
             return sourceType switch
             {
-                CreepSourceType.Building => 100f,
-                CreepSourceType.Tumor => 50f,
-                CreepSourceType.Natural => 25f,
+                CreepSourceType.Enhanced => 100f,
+                CreepSourceType.Specialized => 50f,
+                CreepSourceType.Basic => 25f,
                 _ => 10f
             };
         }
@@ -359,10 +378,10 @@ namespace DeepAbyssHive.Creep.Managers
         {
             return sourceType switch
             {
-                CreepSourceType.Building => CreepTileType.Enhanced,
-                CreepSourceType.Tumor => CreepTileType.Specialized,
-                CreepSourceType.Natural => CreepTileType.Basic,
-                _ => CreepTileType.Basic
+                CreepSourceType.Enhanced => CreepTileType.Core,
+                CreepSourceType.Specialized => CreepTileType.Core,
+                CreepSourceType.Basic => CreepTileType.Creep,
+                _ => CreepTileType.Creep
             };
         }
         
@@ -489,37 +508,6 @@ namespace DeepAbyssHive.Creep.Managers
         #endregion
     }
     
-    #region 数据结构定义
-    
-    /// <summary>
-    /// 菌毯源点数据
-    /// </summary>
-    [System.Serializable]
-    public class CreepSource
-    {
-        public int Id;
-        public Vector3 Position;
-        public Vector2Int GridPosition;
-        public float Radius;
-        public int OwnerId;
-        public CreepSourceType SourceType;
-        public bool IsActive;
-        public float CreationTime;
-        public float LastUpdateTime;
-        public float Strength;
-        public int NetworkId;
-    }
-    
-    /// <summary>
-    /// 菌毯源点类型
-    /// </summary>
-    public enum CreepSourceType
-    {
-        Building,   // 建筑源点
-        Tumor,      // 肿瘤源点
-        Natural,    // 自然源点
-        Temporary   // 临时源点
-    }
-    
+    // 注意：CreepSource 已在 DeepAbyssHive.Creep.Data 命名空间中定义为结构体
     #endregion
 }

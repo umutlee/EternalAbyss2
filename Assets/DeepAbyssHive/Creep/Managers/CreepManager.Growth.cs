@@ -5,7 +5,7 @@ using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
-using DeepAbyssHive.Buildings;
+using DeepAbyssHive.Creep.Enums;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -92,8 +92,16 @@ namespace DeepAbyssHive.Creep.Managers
             float priority = 0f;
             
             // 连接现有菌毯网络的位置优先级更高
-            var connectedCreepTiles = GetConnectedCreepTiles(position);
-            priority += connectedCreepTiles * 2f;
+            var neighbors = GetNeighborPositions(position);
+            int connectedCount = 0;
+            foreach (var neighbor in neighbors)
+            {
+                if (_creepTiles.ContainsKey(neighbor))
+                {
+                    connectedCount++;
+                }
+            }
+            priority += connectedCount * 2f;
             
             // 基础优先级
             priority += 1f;
@@ -238,21 +246,37 @@ namespace DeepAbyssHive.Creep.Managers
         #region 扩张执行
         
         /// <summary>
-        /// 尝试扩张到指定位置
+        /// 根据源点类型获取瓦片类型
         /// </summary>
+        /// <param name="sourceType">源点类型</param>
+        /// <returns>瓦片类型</returns>
+        private CreepTileType GetTileTypeForSource(CreepSourceType sourceType)
+        {
+            return sourceType switch
+            {
+                CreepSourceType.Enhanced => CreepTileType.Core,
+                CreepSourceType.Specialized => CreepTileType.Core,
+                CreepSourceType.Basic => CreepTileType.Creep,
+                _ => CreepTileType.Creep
+            };
+        }
+        
+        /// <summary>
+        /// 尝试扩张菌毯到指定位置
+        /// </summary>
+        /// <param name="position">目标位置</param>
+        /// <param name="consumeResources">是否消耗资源</param>
+        /// <returns>是否成功扩张</returns>
         private bool TryExpandToPosition(Vector2Int position, bool consumeResources = true)
         {
+            // 检查是否可以扩张到该位置
             if (!CanExpandToPosition(position))
                 return false;
                 
-            if (consumeResources)
-            {
-                var cost = CalculateExpansionCost(position);
-                // TODO: 实现资源消耗逻辑
-                // if (!_resourceManager?.ConsumeResources(cost) ?? false)
-                //     return false;
-            }
-            
+            // 检查资源消耗
+            if (consumeResources && !CanAffordExpansion(position))
+                return false;
+                
             // 创建新的菌毯瓦片
             var creepTile = CreateCreepTile(position);
             if (creepTile == null)
@@ -291,26 +315,16 @@ namespace DeepAbyssHive.Creep.Managers
         
         #endregion
         
-        #region 辅助方法
+        #region 更新配置
         
-        /// <summary>
-        /// 获取连接到指定位置的菌毯瓦片数量
-        /// </summary>
-        private int GetConnectedCreepTiles(Vector2Int position)
-        {
-            var neighbors = GetNeighborPositions(position);
-            return neighbors.Count(neighbor => _creepTiles.ContainsKey(neighbor));
-        }
+        [Header("更新设置")]
+        [SerializeField] private float _maintenanceInterval = 5.0f;
+        [SerializeField] private float _cleanupInterval = 10.0f;
+        [SerializeField] private int _maxUpdatesPerFrame = 50;
         
-        /// <summary>
-        /// 获取地形成本倍数
-        /// </summary>
-        private float GetTerrainCostMultiplier(Vector2Int position)
-        {
-            // 这里可以根据实际地形系统实现
-            // 暂时返回基础倍数
-            return 1.0f;
-        }
+        private float _lastMaintenanceTime;
+        private float _lastCleanupTime;
+        private Queue<CreepTile> _updateQueue = new Queue<CreepTile>();
         
         #endregion
     }

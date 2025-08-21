@@ -5,7 +5,6 @@ using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Implementations;
 using DeepAbyssHive.SpatialIndex.Config;
-using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
@@ -17,7 +16,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
     {
         [Header("空间索引配置")]
         [SerializeField] private bool _useOctree = true;
-        [SerializeField] private Bounds _worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
+        [SerializeField] private Bounds _worldBounds = new Bounds(Vector3.zero, new Vector3(1000f, 1000f, 1000f));
         [SerializeField] private int _maxDepth = 8;
         [SerializeField] private int _maxObjectsPerNode = 10;
         [SerializeField] private bool _autoResize = true;
@@ -33,19 +32,17 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         [SerializeField] private bool _showBounds = false;
         [SerializeField] private Color _boundsColor = Color.green;
 
-        // 服务委託
-        private ISpatialIndexService _spatialIndexService;
+        // 空间索引实例
+        private ISpatialIndex _spatialIndex;
+        private Dictionary<string, ISpatialIndex> _categoryIndices;
         
-        // 配置
-        private SpatialIndexConfigSO _config;
-        
-        // 兼容性保持 - 保留原有字段用于向后兼容
-        private ISpatialIndex<SpatialNode> _spatialIndex;
-        private Dictionary<string, ISpatialIndex<SpatialNode>> _categoryIndices;
+        // 对象管理
         private Dictionary<int, SpatialNode> _allNodes;
         private Queue<SpatialNode> _pendingInserts;
         private Queue<SpatialNode> _pendingUpdates;
         private Queue<SpatialNode> _pendingRemovals;
+        
+        // 性能统计
         private int _totalQueries = 0;
         private float _totalQueryTime = 0f;
         private int _frameQueries = 0;
@@ -59,14 +56,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         public bool IsInitialized { get; private set; }
         public string ManagerName => "SpatialIndexManager";
 
-        // 公共屬性（用於兼容性）
-        public Bounds WorldBounds => _worldBounds;
-        public int BatchSize => _batchSize;
-        public float UpdateInterval => _updateInterval;
-        public bool ShowBounds => _showBounds;
-        public Color BoundsColor => _boundsColor;
-        public bool ShowDebugInfo => _showDebugInfo;
-
+        /// <summary>
         /// <summary>
         /// 初始化管理器
         /// </summary>
@@ -77,18 +67,18 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             // 加载配置
             LoadConfiguration();
 
-            // 创建并初始化空间索引服务
-            _spatialIndexService = new SpatialIndexService();
-            _spatialIndexService.Initialize(
-                worldBounds: _worldBounds,
-                maxDepth: _maxDepth,
-                maxObjectsPerNode: _maxObjectsPerNode,
-                useOctree: _useOctree,
-                batchSize: _batchSize
-            );
+            // 创建主空间索引
+            if (UseOctree)
+            {
+                _spatialIndex = new OctreeSpatialIndex(_worldBounds, _maxDepth, _maxObjectsPerNode);
+            }
+            else
+            {
+                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds.size.x, _maxDepth, _maxObjectsPerNode);
+            }
 
-            // 兼容性保持 - 初始化原有数据结构
-            _categoryIndices = new Dictionary<string, ISpatialIndex<SpatialNode>>();
+            // 初始化数据结构
+            _categoryIndices = new Dictionary<string, ISpatialIndex>();
             _allNodes = new Dictionary<int, SpatialNode>();
             _pendingInserts = new Queue<SpatialNode>();
             _pendingUpdates = new Queue<SpatialNode>();
@@ -101,7 +91,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             }
 
             IsInitialized = true;
-            Debug.Log($"[{ManagerName}] 初始化完成 - 使用服务委託模式，{(_useOctree ? "八叉树" : "四叉树")}索引");
+            Debug.Log($"[{ManagerName}] 初始化完成 - 使用{(_useOctree ? "八叉树" : "四叉树")}索引");
         }
 
         /// <summary>
@@ -109,7 +99,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         /// </summary>
         private void LoadConfiguration()
         {
-            _config = ConfigManager.Instance.GetConfig<SpatialIndexConfigSO>("SpatialIndexConfig");
+            _config = ConfigManager.Instance.GetConfig<SpatialIndexConfigSO>();
             
             if (_config == null)
             {
@@ -137,11 +127,8 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         {
             if (!IsInitialized) return;
 
-            // 委託給服務更新
-            _spatialIndexService?.UpdateService(Time.deltaTime);
-
-            // 兼容性保持 - 處理原有待處理操作
-            if (!_enableBatching)
+            // 处理待处理的操作
+            if (!_enableBatching && IsInitialized)
             {
                 ProcessPendingOperations();
             }
@@ -221,29 +208,12 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         }
 
         /// <summary>
-        /// 获取服务实例
-        /// </summary>
-        /// <typeparam name="T">服务接口类型</typeparam>
-        /// <returns>服务实例，如果不存在则返回null</returns>
-        public T GetService<T>() where T : class
-        {
-            if (typeof(T) == typeof(ISpatialIndexService))
-                return _spatialIndexService as T;
-            
-            return null;
-        }
-
-        /// <summary>
         /// 清理管理器
         /// </summary>
         public void Cleanup()
         {
             if (!IsInitialized) return;
 
-            // 委託給服務清理
-            _spatialIndexService?.Cleanup();
-
-            // 兼容性保持 - 清理原有數據結構
             _spatialIndex?.Clear();
             foreach (var index in _categoryIndices.Values)
             {
@@ -257,7 +227,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             _pendingRemovals.Clear();
 
             IsInitialized = false;
-            Debug.Log($"[{ManagerName}] 清理完成 - 服務委託模式");
+            Debug.Log($"[{ManagerName}] 清理完成");
         }
 
         /// <summary>
@@ -268,7 +238,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         {
             // 处理插入
             int insertCount = 0;
-            while (_pendingInserts.Count > 0 && insertCount < BatchSize)
+            while (_pendingInserts.Count > 0 && insertCount < _batchSize)
             {
                 var node = _pendingInserts.Dequeue();
                 InsertNodeImmediate(node);
@@ -277,7 +247,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
 
             // 处理更新
             int updateCount = 0;
-            while (_pendingUpdates.Count > 0 && updateCount < BatchSize)
+            while (_pendingUpdates.Count > 0 && updateCount < _batchSize)
             {
                 var node = _pendingUpdates.Dequeue();
                 UpdateNodeImmediate(node, node.Position); // 简化处理
@@ -286,7 +256,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
 
             // 处理移除
             int removeCount = 0;
-            while (_pendingRemovals.Count > 0 && removeCount < BatchSize)
+            while (_pendingRemovals.Count > 0 && removeCount < _batchSize)
             {
                 var node = _pendingRemovals.Dequeue();
                 RemoveNodeImmediate(node);
@@ -302,7 +272,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             while (IsInitialized)
             {
                 ProcessPendingOperations();
-                yield return new WaitForSeconds(UpdateInterval);
+                yield return new WaitForSeconds(_updateInterval);
             }
         }
 
@@ -321,15 +291,15 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         // Unity生命周期
         private void OnDrawGizmos()
         {
-            if (!ShowBounds || !IsInitialized) return;
+            if (!_showBounds || !IsInitialized) return;
 
-            Gizmos.color = BoundsColor;
-            Gizmos.DrawWireCube(WorldBounds.center, WorldBounds.size);
+            Gizmos.color = _boundsColor;
+            Gizmos.DrawWireCube(_worldBounds.center, _worldBounds.size);
         }
 
         private void OnGUI()
         {
-            if (!ShowDebugInfo || !IsInitialized) return;
+            if (!_showDebugInfo || !IsInitialized) return;
 
             GUILayout.BeginArea(new Rect(10, 10, 300, 200));
             GUILayout.Label(GetPerformanceStats());

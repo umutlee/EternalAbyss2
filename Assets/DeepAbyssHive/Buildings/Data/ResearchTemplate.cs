@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DeepAbyssHive.Buildings.Enums;
+using DeepAbyssHive.Units.Enums;
 
 namespace DeepAbyssHive.Buildings.Data
 {
@@ -17,7 +18,7 @@ namespace DeepAbyssHive.Buildings.Data
         /// <summary>
         /// 研究名称
         /// </summary>
-        public string ResearchName;
+        public string Name;
         
         /// <summary>
         /// 研究描述
@@ -37,7 +38,7 @@ namespace DeepAbyssHive.Buildings.Data
         /// <summary>
         /// 支持的建筑类型
         /// </summary>
-        public BuildingType[] SupportedBuildingTypes;
+        public string[] SupportedBuildingTypes;
         
         /// <summary>
         /// 前置条件
@@ -50,19 +51,19 @@ namespace DeepAbyssHive.Buildings.Data
         public Dictionary<string, float> Effects = new Dictionary<string, float>();
         
         /// <summary>
-        /// 解锁的单位类型
-        /// </summary>
-        public string[] UnlockedUnitTypes;
-        
-        /// <summary>
         /// 解锁的建筑类型
         /// </summary>
-        public BuildingType[] UnlockedBuildingTypes;
+        public string[] UnlockedBuildings;
         
         /// <summary>
-        /// 解锁的能力
+        /// 解锁的单位类型（UnitType枚举数组）
         /// </summary>
-        public string[] UnlockedAbilities;
+        public UnitType[] UnlockedUnitTypes;
+        
+        /// <summary>
+        /// 解锁的技术
+        /// </summary>
+        public string[] UnlockedTechnologies;
         
         /// <summary>
         /// 研究类别

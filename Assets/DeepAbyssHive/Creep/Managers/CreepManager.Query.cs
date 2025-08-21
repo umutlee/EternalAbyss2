@@ -4,8 +4,8 @@ using System.Linq;
 using UnityEngine;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
-using DeepAbyssHive.Buildings;
 using DeepAbyssHive.Buildings.Enums;
+using DeepAbyssHive.Creep.Enums;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -54,7 +54,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public float GetTotalCreepArea()
         {
-            return GetCreepTileCount() * _tileSize * _tileSize;
+            return GetCreepTileCount() * _gridCellSize * _gridCellSize;
         }
         
         #endregion
@@ -85,6 +85,48 @@ namespace DeepAbyssHive.Creep.Managers
             }
             
             return tiles;
+        }
+        
+        /// <summary>
+        /// 获取矩形区域内的菌毯瓦片
+        /// </summary>
+        public List<CreepTile> GetCreepTilesInRect(Vector2Int bottomLeft, Vector2Int topRight)
+        {
+            var tiles = new List<CreepTile>();
+            
+            for (int x = bottomLeft.x; x <= topRight.x; x++)
+            {
+                for (int y = bottomLeft.y; y <= topRight.y; y++)
+                {
+                    var tile = GetCreepTileAt(new Vector2Int(x, y));
+                    if (tile != null && tile.IsActive)
+                    {
+                        tiles.Add(tile);
+                    }
+                }
+            }
+            
+            return tiles;
+        }
+        
+        /// <summary>
+        /// 检查区域是否完全被菌毯覆盖
+        /// </summary>
+        public bool IsAreaFullyCovered(Vector2Int center, int radius)
+        {
+            for (int x = center.x - radius; x <= center.x + radius; x++)
+            {
+                for (int y = center.y - radius; y <= center.y + radius; y++)
+                {
+                    var position = new Vector2Int(x, y);
+                    if (Vector2Int.Distance(center, position) <= radius)
+                    {
+                        if (!HasCreepAt(position))
+                            return false;
+                    }
+                }
+            }
+            return true;
         }
         
         /// <summary>
@@ -139,7 +181,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public List<CreepTile> GetGrowingCreepTiles()
         {
-            return GetCreepTilesByStatus(CreepTileStatus.Growing);
+            return GetCreepTilesByStatus(CreepTileStatus.Healthy);
         }
         
         #endregion
@@ -160,7 +202,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public List<CreepTile> GetSpecializedCreepTiles()
         {
-            return GetCreepTilesByType(CreepTileType.Specialized);
+            return GetCreepTilesByType(CreepTileType.Frontier);
         }
         
         #endregion
@@ -263,6 +305,54 @@ namespace DeepAbyssHive.Creep.Managers
         
         #region 统计查询
         
+        /// <summary>
+        /// 获取菌毯统计信息
+        /// </summary>
+        public CreepStatistics GetCreepStatistics()
+        {
+            var stats = new CreepStatistics();
+            
+            foreach (var tile in _creepTiles.Values)
+            {
+                if (!tile.IsActive) continue;
+                
+                stats.TotalTiles++;
+                stats.TotalArea += _gridCellSize * _gridCellSize;
+                stats.TotalHealth += tile.Health;
+                stats.TotalResourcesGenerated += tile.TotalResourcesGenerated;
+                
+                switch (tile.Status)
+                {
+                    case CreepTileStatus.Healthy:
+                        stats.HealthyTiles++;
+                        break;
+                    case CreepTileStatus.Weakened:
+                        stats.GrowingTiles++;
+                        break;
+                    case CreepTileStatus.Collapsing:
+                        stats.DyingTiles++;
+                        break;
+                }
+                
+                switch (tile.TileType)
+                {
+                    case CreepTileType.Creep:
+                        stats.BasicTiles++;
+                        break;
+                    case CreepTileType.Core:
+                        stats.EnhancedTiles++;
+                        break;
+                    case CreepTileType.Frontier:
+                        stats.SpecializedTiles++;
+                        break;
+                }
+            }
+            
+            stats.AverageHealth = stats.TotalTiles > 0 ? stats.TotalHealth / stats.TotalTiles : 0f;
+            stats.ConnectedRegions = GetConnectedRegions().Count;
+            
+            return stats;
+        }
         
         #endregion
         

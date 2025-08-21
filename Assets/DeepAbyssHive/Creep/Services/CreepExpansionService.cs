@@ -201,7 +201,7 @@ namespace DeepAbyssHive.Creep.Services
                 if (_gridService.HasCreepAt(neighbor))
                 {
                     CreepData neighborData = _gridService.GetGridCell(neighbor);
-                    if (neighborData.PlayerId == playerId && neighborData.Strength >= _expansionThreshold)
+                    if (neighborData.NetworkId == playerId && neighborData.Strength >= _expansionThreshold)
                     {
                         return true;
                     }
@@ -239,7 +239,7 @@ namespace DeepAbyssHive.Creep.Services
                 Vector2Int gridPos = activePositions[i];
                 CreepData data = _gridService.GetGridCell(gridPos);
                 
-                if (data.PlayerId == playerId)
+                if (data.NetworkId == playerId)
                 {
                     // 检查是否是前沿（有空的邻居）
                     var neighbors = _gridService.GetNeighborPositions(gridPos, false);
@@ -297,7 +297,7 @@ namespace DeepAbyssHive.Creep.Services
             
             foreach (var request in _expansionRequests.Values)
             {
-                if (request.PlayerId == playerId && request.IsActive)
+                if (request.NetworkId == playerId && request.IsActive)
                 {
                     activeRequests.Add(request);
                 }
@@ -322,13 +322,19 @@ namespace DeepAbyssHive.Creep.Services
             _isPaused = false;
         }
 
+        public void SetPaused(bool paused)
+        {
+            _isPaused = paused;
+            Debug.Log($"[CreepExpansionService] 服务已{(paused ? "暂停" : "恢复")}");
+        }
+
         public CreepExpansionStatistics GetExpansionStatistics(int playerId)
         {
             var stats = new CreepExpansionStatistics();
             
             foreach (var request in _expansionRequests.Values)
             {
-                if (request.PlayerId == playerId)
+                if (request.NetworkId == playerId)
                 {
                     if (request.IsActive)
                     {
@@ -447,7 +453,7 @@ namespace DeepAbyssHive.Creep.Services
         private int GetPlayerIdFromSource(Vector3 sourcePosition)
         {
             var source = _sourceService.GetNearestCreepSource(sourcePosition);
-            return source.PlayerId;
+            return source.NetworkId;
         }
 
         private float GetExpansionPriority(Vector3 from, Vector3 to, CreepExpansionType expansionType)

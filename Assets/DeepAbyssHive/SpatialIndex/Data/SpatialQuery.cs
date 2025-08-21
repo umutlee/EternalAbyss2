@@ -82,7 +82,7 @@ namespace DeepAbyssHive.SpatialIndex.Data
             _center = center;
             _radius = radius;
             _queryType = QueryType.Circle;
-            _bounds = new Bounds(center, Vector3.one * radius * 2);
+            _bounds = new Bounds(center, new Vector3(radius * 2, radius * 2, radius * 2));
             InitializeDefaults();
         }
 

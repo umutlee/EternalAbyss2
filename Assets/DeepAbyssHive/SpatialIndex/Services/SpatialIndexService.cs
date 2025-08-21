@@ -16,8 +16,8 @@ namespace DeepAbyssHive.SpatialIndex.Services
     public class SpatialIndexService : ISpatialIndexService, IUpdatableService, IService
     {
         // 空间索引实例
-        private ISpatialIndex<SpatialNode> _spatialIndex;
-        private Dictionary<string, ISpatialIndex<SpatialNode>> _categoryIndices;
+        private SpatialISpatialIndex _spatialIndex;
+        private Dictionary<string, SpatialISpatialIndex> _categoryIndices;
         
         // 对象管理
         private Dictionary<int, SpatialNode> _allNodes;
@@ -60,11 +60,11 @@ namespace DeepAbyssHive.SpatialIndex.Services
             }
             else
             {
-                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds.size.x, _maxDepth, _maxObjectsPerNode) as ISpatialIndex<SpatialNode>;
+                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds.size.x, _maxDepth, _maxObjectsPerNode) as SpatialISpatialIndex;
             }
 
             // 初始化数据结构
-            _categoryIndices = new Dictionary<string, ISpatialIndex<SpatialNode>>();
+            _categoryIndices = new Dictionary<string, ISpatialIndex>();
             _allNodes = new Dictionary<int, SpatialNode>();
             _pendingInserts = new Queue<SpatialNode>();
             _pendingUpdates = new Queue<SpatialNode>();
@@ -129,7 +129,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
 
             var startTime = Time.realtimeSinceStartup;
             
-            var querySize = Vector3.one * radius * 2;
+            var querySize = new Vector3(radius * 2, radius * 2, radius * 2);
             var results = _spatialIndex.QueryRange(center, querySize);
             
             // 过滤类型和距离
@@ -194,10 +194,10 @@ namespace DeepAbyssHive.SpatialIndex.Services
         /// <summary>
         /// 查询射线碰撞的对象
         /// </summary>
-        public List<UnityEngine.RaycastHit> QueryRaycast(Ray ray, float maxDistance = float.MaxValue, SpatialObjectType objectType = SpatialObjectType.All)
+        public List<SIRaycastHit> QueryRaycast(Ray ray, float maxDistance = float.MaxValue, SpatialObjectType objectType = SpatialObjectType.All)
         {
             // 简化实现，实际应该使用更高效的射线查询算法
-            var results = new List<UnityEngine.RaycastHit>();
+            var results = new List<SIRaycastHit>();
             
             if (!IsInitialized) return results;
 
@@ -525,7 +525,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
         /// </summary>
         public void Initialize()
         {
-            Initialize(new Bounds(Vector3.zero, Vector3.one * 1000f));
+            Initialize(new Bounds(Vector3.zero, new Vector3(1000f, 1000f, 1000f)));
         }
 
         /// <summary>

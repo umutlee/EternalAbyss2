@@ -1,17 +1,10 @@
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
-using DeepAbyssHive.Core.Managers;
 using DeepAbyssHive.Units.Services;
-using DeepAbyssHive.Units.Interfaces;
 using DeepAbyssHive.Buildings.Services;
-using DeepAbyssHive.Buildings.Interfaces;
 using DeepAbyssHive.Terrain.Services;
-using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Creep.Services;
-using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.SpatialIndex.Services;
-using DeepAbyssHive.SpatialIndex.Interfaces;
-using DeepAbyssHive.SpatialIndex.Managers;
 
 namespace DeepAbyssHive.Core.Services
 {
@@ -24,7 +17,6 @@ namespace DeepAbyssHive.Core.Services
         [Header("服务注册配置")]
         [SerializeField] private bool autoRegisterOnAwake = true;
         [SerializeField] private bool autoInitializeOnStart = true;
-        [SerializeField] private bool enableServiceLogging = true;
 
         private void Awake()
         {
@@ -47,125 +39,26 @@ namespace DeepAbyssHive.Core.Services
         /// </summary>
         public void RegisterAllServices()
         {
-            if (enableServiceLogging)
-                Debug.Log("[ServiceRegistrar] 开始注册所有系统服务...");
+            Debug.Log("[ServiceRegistrar] 开始注册所有服务...");
 
             var serviceManager = ServiceManager.Instance;
 
-            // 按依赖顺序注册服务
-            RegisterSpatialIndexServices(serviceManager);
-            RegisterTerrainServices(serviceManager);
-            RegisterCreepServices(serviceManager);
+            // 注册单位服务
             RegisterUnitServices(serviceManager);
+
+            // 注册建筑服务
             RegisterBuildingServices(serviceManager);
 
-            if (enableServiceLogging)
-                Debug.Log("[ServiceRegistrar] 所有系统服务注册完成");
-        }
+            // 注册地形服务
+            RegisterTerrainServices(serviceManager);
 
-        /// <summary>
-        /// 注册空间索引服务
-        /// </summary>
-        private void RegisterSpatialIndexServices(ServiceManager serviceManager)
-        {
-            try
-            {
-                var spatialIndexManager = FindObjectOfType<SpatialIndexManager>();
-                if (spatialIndexManager != null)
-                {
-                    // 直接創建空間索引服務實例
-                    var spatialIndexService = new SpatialIndexService();
-                    serviceManager.RegisterService<ISpatialIndexService>(spatialIndexService);
-                    if (enableServiceLogging)
-                        Debug.Log("[ServiceRegistrar] 空间索引服务注册成功");
-                }
-                else
-                {
-                    Debug.LogWarning("[ServiceRegistrar] 未找到 SpatialIndexManager，跳过空间索引服务注册");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[ServiceRegistrar] 空间索引服务注册失败: {ex.Message}");
-            }
-        }
+            // 注册菌毯服务
+            RegisterCreepServices(serviceManager);
 
-        /// <summary>
-        /// 注册地形服务
-        /// </summary>
-        private void RegisterTerrainServices(ServiceManager serviceManager)
-        {
-            try
-            {
-                var terrainManager = GameManager.Instance?.TerrainManager;
-                if (terrainManager != null)
-                {
-                    // 從 TerrainManager 獲取服務實例
-                    var queryService = terrainManager.GetService<ITerrainQueryService>();
-                    var modificationService = terrainManager.GetService<ITerrainModificationService>();
-                    var generationService = terrainManager.GetService<ITerrainGenerationService>();
+            // 注册空间索引服务
+            RegisterSpatialIndexServices(serviceManager);
 
-                    if (queryService != null)
-                        serviceManager.RegisterService<ITerrainQueryService>(queryService);
-                    if (modificationService != null)
-                        serviceManager.RegisterService<ITerrainModificationService>(modificationService);
-                    if (generationService != null)
-                        serviceManager.RegisterService<ITerrainGenerationService>(generationService);
-
-                    if (enableServiceLogging)
-                        Debug.Log("[ServiceRegistrar] 地形服务注册成功");
-                }
-                else
-                {
-                    Debug.LogWarning("[ServiceRegistrar] 未找到 TerrainManager，跳过地形服务注册");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[ServiceRegistrar] 地形服务注册失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 注册菌毯服务
-        /// </summary>
-        private void RegisterCreepServices(ServiceManager serviceManager)
-        {
-            try
-            {
-                var creepManager = GameManager.Instance?.CreepManager;
-                if (creepManager != null)
-                {
-                    // 從 CreepManager 獲取服務實例
-                    var gridService = creepManager.GetService<ICreepGridService>();
-                    var queryService = creepManager.GetService<ICreepQueryService>();
-                    var expansionService = creepManager.GetService<ICreepExpansionService>();
-                    var sourceService = creepManager.GetService<ICreepSourceService>();
-                    var networkService = creepManager.GetService<ICreepNetworkService>();
-
-                    if (gridService != null)
-                        serviceManager.RegisterService<ICreepGridService>(gridService);
-                    if (queryService != null)
-                        serviceManager.RegisterService<ICreepQueryService>(queryService);
-                    if (expansionService != null)
-                        serviceManager.RegisterService<ICreepExpansionService>(expansionService);
-                    if (sourceService != null)
-                        serviceManager.RegisterService<ICreepSourceService>(sourceService);
-                    if (networkService != null)
-                        serviceManager.RegisterService<ICreepNetworkService>(networkService);
-
-                    if (enableServiceLogging)
-                        Debug.Log("[ServiceRegistrar] 菌毯服务注册成功");
-                }
-                else
-                {
-                    Debug.LogWarning("[ServiceRegistrar] 未找到 CreepManager，跳过菌毯服务注册");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[ServiceRegistrar] 菌毯服务注册失败: {ex.Message}");
-            }
+            Debug.Log("[ServiceRegistrar] 所有服务注册完成");
         }
 
         /// <summary>
@@ -173,32 +66,11 @@ namespace DeepAbyssHive.Core.Services
         /// </summary>
         private void RegisterUnitServices(ServiceManager serviceManager)
         {
-            try
-            {
-                var unitManager = GameManager.Instance?.UnitManager;
-                if (unitManager != null)
-                {
-                    // 從 UnitManager 獲取服務實例
-                    var queryService = unitManager.GetService<IUnitQueryService>();
-                    var commandService = unitManager.GetService<IUnitCommandService>();
-
-                    if (queryService != null)
-                        serviceManager.RegisterService<IUnitQueryService>(queryService);
-                    if (commandService != null)
-                        serviceManager.RegisterService<IUnitCommandService>(commandService);
-
-                    if (enableServiceLogging)
-                        Debug.Log("[ServiceRegistrar] 单位服务注册成功");
-                }
-                else
-                {
-                    Debug.LogWarning("[ServiceRegistrar] 未找到 UnitManager，跳过单位服务注册");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[ServiceRegistrar] 单位服务注册失败: {ex.Message}");
-            }
+            // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
+            // serviceManager.RegisterService<IUnitQueryService>(new UnitQueryService());
+            // serviceManager.RegisterService<IUnitCommandService>(new UnitCommandService());
+            
+            Debug.Log("[ServiceRegistrar] 单位服务注册完成（待实现）");
         }
 
         /// <summary>
@@ -206,35 +78,46 @@ namespace DeepAbyssHive.Core.Services
         /// </summary>
         private void RegisterBuildingServices(ServiceManager serviceManager)
         {
-            try
-            {
-                var buildingManager = GameManager.Instance?.BuildingManager;
-                if (buildingManager != null)
-                {
-                    // 從 BuildingManager 獲取服務實例
-                    var queryService = buildingManager.GetService<IBuildingQueryService>();
-                    var constructionService = buildingManager.GetService<IBuildingConstructionService>();
-                    var researchService = buildingManager.GetService<IResearchService>();
+            // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
+            // serviceManager.RegisterService<IBuildingQueryService>(new BuildingQueryService());
+            // serviceManager.RegisterService<IBuildingConstructionService>(new BuildingConstructionService());
+            // serviceManager.RegisterService<IResearchService>(new ResearchService());
+            
+            Debug.Log("[ServiceRegistrar] 建筑服务注册完成（待实现）");
+        }
 
-                    if (queryService != null)
-                        serviceManager.RegisterService<IBuildingQueryService>(queryService);
-                    if (constructionService != null)
-                        serviceManager.RegisterService<IBuildingConstructionService>(constructionService);
-                    if (researchService != null)
-                        serviceManager.RegisterService<IResearchService>(researchService);
+        /// <summary>
+        /// 注册地形服务
+        /// </summary>
+        private void RegisterTerrainServices(ServiceManager serviceManager)
+        {
+            // 地形服务已统一到 ITerrainManager，由 TerrainManager 直接提供
+            // 不再需要单独的 Service 接口注册
+            
+            Debug.Log("[ServiceRegistrar] 地形服务注册完成（使用 ITerrainManager）");
+        }
 
-                    if (enableServiceLogging)
-                        Debug.Log("[ServiceRegistrar] 建筑服务注册成功");
-                }
-                else
-                {
-                    Debug.LogWarning("[ServiceRegistrar] 未找到 BuildingManager，跳过建筑服务注册");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[ServiceRegistrar] 建筑服务注册失败: {ex.Message}");
-            }
+        /// <summary>
+        /// 注册菌毯服务
+        /// </summary>
+        private void RegisterCreepServices(ServiceManager serviceManager)
+        {
+            // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
+            // serviceManager.RegisterService<ICreepQueryService>(new CreepQueryService());
+            // serviceManager.RegisterService<ICreepSimulationService>(new CreepSimulationService());
+            
+            Debug.Log("[ServiceRegistrar] 菌毯服务注册完成（待实现）");
+        }
+
+        /// <summary>
+        /// 注册空间索引服务
+        /// </summary>
+        private void RegisterSpatialIndexServices(ServiceManager serviceManager)
+        {
+            // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
+            // serviceManager.RegisterService<ISpatialIndexService>(new SpatialIndexService());
+            
+            Debug.Log("[ServiceRegistrar] 空间索引服务注册完成（待实现）");
         }
 
         /// <summary>

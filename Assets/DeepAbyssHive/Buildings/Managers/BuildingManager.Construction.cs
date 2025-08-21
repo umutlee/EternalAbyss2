@@ -1,93 +1,90 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
-using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Buildings.Enums;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
     /// <summary>
-    /// BuildingManager 建造功能 - 委托给 IBuildingConstructionService
-    /// 保持向后兼容的API，内部委托给建造服务处理
+    /// BuildingManager 建造/升级/修理 逻辑
+    /// 说明：
+    /// - 本文件为partial占位，不改变任何对外API与行为
+    /// - 后续将把 StartConstruction/StartUpgrade/RepairBuilding/
+    ///   UpdateConstructionProgress/UpdateUpgradeProgress/UpdateRepairProgress 等迁移至此
     /// </summary>
     public partial class BuildingManager
     {
+        // 注意：CreateBuilding方法已在主文件中实现，这里不重复定义
+        // 主文件中有两个CreateBuilding方法：
+        // - public int CreateBuilding(BuildingData buildingData) - 接口方法
+        // - private int CreateBuilding(BuildingType type, Vector3 position, int ownerId) - 实现方法
+
+        // 注意：以下方法已在主文件中实现，这里不重复定义：
+        // - public bool UpgradeBuilding(int buildingId) - 已在主文件中实现
+        // - public void RepairBuilding(int buildingId) - 已在主文件中实现（注意参数不同）
+        // - public void DestroyBuilding(int buildingId) - 已在主文件中实现（注意返回类型不同）
+
         /// <summary>
-        /// 取消建造（委托给建造服务）
+        /// 取消建造
         /// </summary>
-        public bool CancelConstruction(int constructionId)
+        /// <param name="buildingId">建筑ID</param>
+        /// <returns>是否成功取消</returns>
+        public bool CancelConstruction(int buildingId)
         {
-            return _constructionService?.CancelConstruction(constructionId) ?? false;
+            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
+            {
+                return false;
+            }
+
+            if (buildingData.State == BuildingState.Operational)
+            {
+                return false; // 已完成建造，无法取消
+            }
+
+            DestroyBuilding(buildingId);
+            return true;
         }
 
         /// <summary>
-        /// 完成建造（委托给建造服务）
+        /// 获取建造进度
         /// </summary>
-        public int CompleteConstruction(int constructionId)
+        /// <param name="buildingId">建筑ID</param>
+        /// <returns>建造进度（0-1）</returns>
+        public float GetConstructionProgress(int buildingId)
         {
-            return _constructionService?.CompleteConstruction(constructionId) ?? -1;
+            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
+            {
+                return 0f;
+            }
+
+            return buildingData.ConstructionProgress;
         }
 
         /// <summary>
-        /// 取消升级（委托给建造服务）
+        /// 设置建造进度
         /// </summary>
-        public bool CancelUpgrade(int buildingId)
+        /// <param name="buildingId">建筑ID</param>
+        /// <param name="progress">进度（0-1）</param>
+        /// <returns>是否成功设置</returns>
+        public bool SetConstructionProgress(int buildingId, float progress)
         {
-            return _constructionService?.CancelUpgrade(buildingId) ?? false;
-        }
+            if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
+            {
+                return false;
+            }
 
-        /// <summary>
-        /// 修理建筑（委托给建造服务）
-        /// </summary>
-        public bool RepairBuilding(int buildingId, float repairAmount = -1f)
-        {
-            return _constructionService?.RepairBuilding(buildingId, repairAmount) ?? false;
-        }
+            buildingData.ConstructionProgress = Mathf.Clamp01(progress);
+            
+            if (buildingData.ConstructionProgress >= 1f && buildingData.State == BuildingState.UnderConstruction)
+            {
+                buildingData.State = BuildingState.Operational;
+                buildingData.Health = buildingData.MaxHealth;
+                Debug.Log($"[BuildingManager] 建筑建造完成: ID={buildingId}");
+            }
 
-        /// <summary>
-        /// 设置建筑状态（委托给建造服务）
-        /// </summary>
-        public bool SetBuildingState(int buildingId, BuildingState state)
-        {
-            return _constructionService?.SetBuildingState(buildingId, state) ?? false;
-        }
-
-        /// <summary>
-        /// 暂停/恢复建筑功能（委托给建造服务）
-        /// </summary>
-        public bool SetBuildingPaused(int buildingId, bool paused)
-        {
-            return _constructionService?.SetBuildingPaused(buildingId, paused) ?? false;
-        }
-
-        /// <summary>
-        /// 获取建造进度（委托给建造服务）
-        /// </summary>
-        public float GetConstructionProgress(int constructionId)
-        {
-            return _constructionService?.GetConstructionProgress(constructionId) ?? 0f;
-        }
-
-        /// <summary>
-        /// 获取升级进度（委托给建造服务）
-        /// </summary>
-        public float GetUpgradeProgress(int buildingId)
-        {
-            return _constructionService?.GetUpgradeProgress(buildingId) ?? 0f;
-        }
-
-        /// <summary>
-        /// 加速建造（委托给建造服务）
-        /// </summary>
-        public bool AccelerateConstruction(int constructionId, float speedMultiplier)
-        {
-            return _constructionService?.AccelerateConstruction(constructionId, speedMultiplier) ?? false;
-        }
-
-        /// <summary>
-        /// 加速升级（委托给建造服务）
-        /// </summary>
-        public bool AccelerateUpgrade(int buildingId, float speedMultiplier)
-        {
-            return _constructionService?.AccelerateUpgrade(buildingId, speedMultiplier) ?? false;
+            _buildings[buildingId] = buildingData;
+            return true;
         }
     }
 }

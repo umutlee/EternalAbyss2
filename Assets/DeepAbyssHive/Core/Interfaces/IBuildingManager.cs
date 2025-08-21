@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using DeepAbyssHive.Buildings;
+using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Buildings.Enums;
 
 namespace DeepAbyssHive.Core.Interfaces

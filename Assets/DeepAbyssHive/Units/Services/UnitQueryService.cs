@@ -19,7 +19,7 @@ namespace DeepAbyssHive.Units.Services
         private readonly Dictionary<int, UnitHotData> _unitHotData;
         private readonly Dictionary<int, UnitColdData> _unitColdData;
         private readonly Dictionary<int, SpatialNode> _unitSpatialNodes;
-        private readonly ISpatialIndex<SpatialNode> _spatialIndex;
+        private readonly ISpatialIndex _spatialIndex;
         private readonly string _serviceName = "UnitQueryService";
         #endregion
 
@@ -41,7 +41,7 @@ namespace DeepAbyssHive.Units.Services
             Dictionary<int, UnitHotData> unitHotData,
             Dictionary<int, UnitColdData> unitColdData,
             Dictionary<int, SpatialNode> unitSpatialNodes,
-            ISpatialIndex<SpatialNode> spatialIndex)
+            ISpatialIndex spatialIndex)
         {
             _unitHotData = unitHotData ?? throw new System.ArgumentNullException(nameof(unitHotData));
             _unitColdData = unitColdData ?? throw new System.ArgumentNullException(nameof(unitColdData));
@@ -89,7 +89,7 @@ namespace DeepAbyssHive.Units.Services
             if (_spatialIndex != null)
             {
                 // 使用空间索引查询
-                List<SpatialNode> spatialResults = _spatialIndex.QueryRange(center, Vector3.one * radius * 2);
+                List<SpatialNode> spatialResults = _spatialIndex.QueryRange(center, new Vector3(radius * 2, radius * 2, radius * 2));
                 
                 foreach (var spatialNode in spatialResults)
                 {
@@ -97,7 +97,7 @@ namespace DeepAbyssHive.Units.Services
                     {
                         int unitId = spatialNode.Id;
                         var unitData = GetUnitDataInternal(unitId);
-                        if (unitData.HasValue && (playerId == -1 || unitData.Value.PlayerId == playerId))
+                        if (unitData.HasValue && (playerId == -1 || GetUnitPlayerId(unitData.Value) == playerId))
                         {
                             unitsInRange.Add(unitData.Value);
                         }
@@ -115,7 +115,7 @@ namespace DeepAbyssHive.Units.Services
                     if (Vector3.Distance(hotData.Position, center) <= radius)
                     {
                         var unitData = GetUnitDataInternal(unitId);
-                        if (unitData.HasValue && (playerId == -1 || unitData.Value.PlayerId == playerId))
+                        if (unitData.HasValue && (playerId == -1 || GetUnitPlayerId(unitData.Value) == playerId))
                         {
                             unitsInRange.Add(unitData.Value);
                         }

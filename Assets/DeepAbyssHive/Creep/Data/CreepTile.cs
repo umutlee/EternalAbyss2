@@ -4,27 +4,7 @@ using DeepAbyssHive.Creep.Enums;
 
 namespace DeepAbyssHive.Creep.Data
 {
-    /// <summary>
-    /// 菌毯瓦片状态
-    /// </summary>
-    public enum CreepTileStatus
-    {
-        Healthy,
-        Growing,
-        Starving,
-        Dying,
-        Dead
-    }
-
-    /// <summary>
-    /// 菌毯瓦片类型
-    /// </summary>
-    public enum CreepTileType
-    {
-        Basic,
-        Enhanced,
-        Specialized
-    }
+    // 枚举已移至 DeepAbyssHive.Creep.Enums.CreepEnums.cs
 
     /// <summary>
     /// 菌毯瓦片数据
@@ -65,8 +45,8 @@ namespace DeepAbyssHive.Creep.Data
             GrowthLevel = 0f;
             GrowthRate = 0.1f;
             IsActive = true;
-            Status = CreepTileStatus.Growing;
-            TileType = CreepTileType.Basic;
+            Status = CreepTileStatus.Healthy; // 使用统一枚举中的值
+            TileType = CreepTileType.Creep;   // 使用统一枚举中的值
         }
     }
 }

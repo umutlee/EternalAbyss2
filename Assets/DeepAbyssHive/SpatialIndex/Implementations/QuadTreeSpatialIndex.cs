@@ -2,7 +2,9 @@ using UnityEngine;
 using Unity.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using DeepAbyssHive.SpatialIndex.Interfaces;
+using SpatialISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
+using CoreISpatialIndex = DeepAbyssHive.Core.Interfaces.ISpatialIndex;
+using SIRaycastHit = DeepAbyssHive.SpatialIndex.Data.RaycastHit;
 using DeepAbyssHive.SpatialIndex.Data;
 
 namespace DeepAbyssHive.SpatialIndex.Implementations
@@ -11,7 +13,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
     /// 四叉树空间索引实现
     /// 用于高效的2D空间查询和管理
     /// </summary>
-    public class QuadTreeSpatialIndex : ISpatialIndex<SpatialNode>
+    public class QuadTreeSpatialIndex : SpatialISpatialIndex
     {
         [Header("四叉树配置")]
         [SerializeField] private Bounds _worldBounds;
@@ -186,7 +188,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             float startTime = Time.realtimeSinceStartup;
             
             _queryResults.Clear();
-            Bounds queryBounds = new Bounds(position, Vector3.one * radius * 2);
+            Bounds queryBounds = new Bounds(position, new Vector3(radius * 2, radius * 2, radius * 2));
             
             QueryRangeRecursive(_root, queryBounds, _queryResults);
             
@@ -230,7 +232,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             float startTime = Time.realtimeSinceStartup;
             
             _queryResults.Clear();
-            Bounds queryBounds = new Bounds(position, Vector3.one * maxDistance * 2);
+            Bounds queryBounds = new Bounds(position, new Vector3(maxDistance * 2, maxDistance * 2, maxDistance * 2));
             
             QueryRangeRecursive(_root, queryBounds, _queryResults);
             

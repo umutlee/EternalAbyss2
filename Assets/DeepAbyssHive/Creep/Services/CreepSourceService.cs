@@ -102,12 +102,12 @@ namespace DeepAbyssHive.Creep.Services
             _creepSources.Remove(sourceId);
 
             // 从玩家源点列表中移除
-            if (_playerSources.TryGetValue(source.PlayerId, out List<int> playerSourceList))
+            if (_playerSources.TryGetValue(source.NetworkId, out List<int> playerSourceList))
             {
                 playerSourceList.Remove(sourceId);
                 if (playerSourceList.Count == 0)
                 {
-                    _playerSources.Remove(source.PlayerId);
+                    _playerSources.Remove(source.NetworkId);
                 }
             }
 
@@ -142,7 +142,7 @@ namespace DeepAbyssHive.Creep.Services
 
             foreach (var source in _creepSources.Values)
             {
-                if (playerId != -1 && source.PlayerId != playerId)
+                if (playerId != -1 && source.NetworkId != playerId)
                     continue;
 
                 float distance = Vector3.Distance(center, source.Position);
@@ -250,7 +250,7 @@ namespace DeepAbyssHive.Creep.Services
 
             // 创建新的合并源点
             CreepSourceType mergedType = (CreepSourceType)Mathf.Max((int)source1.SourceType, (int)source2.SourceType);
-            int mergedSourceId = CreateCreepSource(mergedPosition, source1.PlayerId, mergedType, totalStrength);
+            int mergedSourceId = CreateCreepSource(mergedPosition, source1.NetworkId, mergedType, totalStrength);
 
             // 移除原来的源点
             RemoveCreepSource(sourceId1);
@@ -269,7 +269,7 @@ namespace DeepAbyssHive.Creep.Services
             float remainingStrength = originalSource.Strength * (1f - strengthRatio);
 
             // 创建新源点
-            int newSourceId = CreateCreepSource(newPosition, originalSource.PlayerId, originalSource.SourceType, newStrength);
+            int newSourceId = CreateCreepSource(newPosition, originalSource.NetworkId, originalSource.SourceType, newStrength);
 
             // 更新原源点强度
             UpdateSourceStrength(sourceId, remainingStrength);

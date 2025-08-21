@@ -20,7 +20,7 @@ namespace DeepAbyssHive.Units.Services
         private readonly Dictionary<int, UnitColdData> _unitColdData;
         private readonly Dictionary<int, GameObject> _unitGameObjects;
         private readonly Dictionary<int, SpatialNode> _unitSpatialNodes;
-        private readonly ISpatialIndex<SpatialNode> _spatialIndex;
+        private readonly ISpatialIndex _spatialIndex;
         private readonly Dictionary<UnitType, string> _unitPrefabPaths;
         private readonly UnitConfigSO _config;
         private int _nextUnitId;
@@ -46,7 +46,7 @@ namespace DeepAbyssHive.Units.Services
             Dictionary<int, UnitColdData> unitColdData,
             Dictionary<int, GameObject> unitGameObjects,
             Dictionary<int, SpatialNode> unitSpatialNodes,
-            ISpatialIndex<SpatialNode> spatialIndex,
+            ISpatialIndex spatialIndex,
             Dictionary<UnitType, string> unitPrefabPaths,
             Dictionary<string, EvolutionPath> evolutionPaths,
             Dictionary<string, EnvironmentAdaptation> environmentAdaptations,
@@ -144,7 +144,7 @@ namespace DeepAbyssHive.Units.Services
                 }
                 
                 // 创建空间节点
-                SpatialNode spatialNode = new SpatialNode(unitId, position, Vector3.one * baseAttributes.SightRange);
+                SpatialNode spatialNode = new SpatialNode(unitId, position, new Vector3(baseAttributes.SightRange, baseAttributes.SightRange, baseAttributes.SightRange));
                 
                 // 添加到字典
                 _unitColdData[unitId] = coldData;
