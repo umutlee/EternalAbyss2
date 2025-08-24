@@ -4,7 +4,10 @@ using System.Linq;
 using UnityEngine;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
-using DeepAbyssHive.Creep.Enums;
+// 使用别名解决枚举冲突
+using DataNS = DeepAbyssHive.Creep.Data;
+using EnumsNS = DeepAbyssHive.Creep.Enums;
+using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -33,7 +36,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// <param name="ownerId">所有者ID</param>
         /// <param name="sourceType">源点类型</param>
         /// <returns>源点ID，失败返回-1</returns>
-        public int CreateCreepSourcePoint(Vector3 worldPosition, float radius, int ownerId, CreepSourceType sourceType = CreepSourceType.Enhanced)
+        public int CreateCreepSourcePoint(Vector3 worldPosition, float radius, int ownerId, DataNS.CreepSourceType sourceType = DataNS.CreepSourceType.CreepTumor)
         {
             var gridPos = WorldToGridPosition(worldPosition);
             
@@ -358,13 +361,15 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         /// <param name="sourceType">源点类型</param>
         /// <returns>强度值</returns>
-        private float CalculateSourceStrength(CreepSourceType sourceType)
+        private float CalculateSourceStrength(DataNS.CreepSourceType sourceType)
         {
             return sourceType switch
             {
-                CreepSourceType.Enhanced => 100f,
-                CreepSourceType.Specialized => 50f,
-                CreepSourceType.Basic => 25f,
+                DataNS.CreepSourceType.MainHive => 100f,
+                DataNS.CreepSourceType.SubHive => 75f,
+                DataNS.CreepSourceType.CreepTumor => 50f,
+                DataNS.CreepSourceType.CreepColony => 40f,
+                DataNS.CreepSourceType.SpawningPool => 30f,
                 _ => 10f
             };
         }
@@ -374,14 +379,16 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         /// <param name="sourceType">源点类型</param>
         /// <returns>瓦片类型</returns>
-        private CreepTileType GetTileTypeForSource(CreepSourceType sourceType)
+        private EnumsNS.CreepTileType GetTileTypeForSource(DataNS.CreepSourceType sourceType)
         {
             return sourceType switch
             {
-                CreepSourceType.Enhanced => CreepTileType.Core,
-                CreepSourceType.Specialized => CreepTileType.Core,
-                CreepSourceType.Basic => CreepTileType.Creep,
-                _ => CreepTileType.Creep
+                DataNS.CreepSourceType.MainHive => EnumsNS.CreepTileType.Core,
+                DataNS.CreepSourceType.SubHive => EnumsNS.CreepTileType.Core,
+                DataNS.CreepSourceType.CreepTumor => EnumsNS.CreepTileType.Core,
+                DataNS.CreepSourceType.SpawningPool => EnumsNS.CreepTileType.Core,
+                DataNS.CreepSourceType.EvolutionChamber => EnumsNS.CreepTileType.Core,
+                _ => EnumsNS.CreepTileType.Creep
             };
         }
         
@@ -507,7 +514,4 @@ namespace DeepAbyssHive.Creep.Managers
         
         #endregion
     }
-    
-    // 注意：CreepSource 已在 DeepAbyssHive.Creep.Data 命名空间中定义为结构体
-    #endregion
 }

@@ -6,6 +6,8 @@ using DeepAbyssHive.SpatialIndex.Enums;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Implementations;
+using SIRaycastHit = DeepAbyssHive.SpatialIndex.Data.RaycastHit;
+using URaycastHit = UnityEngine.RaycastHit;
 
 namespace DeepAbyssHive.SpatialIndex.Services
 {
@@ -16,8 +18,8 @@ namespace DeepAbyssHive.SpatialIndex.Services
     public class SpatialIndexService : ISpatialIndexService, IUpdatableService, IService
     {
         // 空间索引实例
-        private SpatialISpatialIndex _spatialIndex;
-        private Dictionary<string, SpatialISpatialIndex> _categoryIndices;
+        private ISpatialIndex _spatialIndex;
+        private Dictionary<string, ISpatialIndex> _categoryIndices;
         
         // 对象管理
         private Dictionary<int, SpatialNode> _allNodes;
@@ -60,7 +62,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
             }
             else
             {
-                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds.size.x, _maxDepth, _maxObjectsPerNode) as SpatialISpatialIndex;
+                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds, _maxDepth, _maxObjectsPerNode);
             }
 
             // 初始化数据结构

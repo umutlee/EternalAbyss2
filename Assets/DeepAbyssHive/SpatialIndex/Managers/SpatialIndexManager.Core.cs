@@ -1,11 +1,12 @@
-using UnityEngine;
 using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
+using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Core.Interfaces;
-using DeepAbyssHive.SpatialIndex.Interfaces;
+using DeepAbyssHive.SpatialIndex.Config;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Implementations;
-using DeepAbyssHive.SpatialIndex.Config;
-using DeepAbyssHive.Core.Config;
+using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
 {
@@ -33,8 +34,8 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         [SerializeField] private Color _boundsColor = Color.green;
 
         // 空间索引实例
-        private ISpatialIndex _spatialIndex;
-        private Dictionary<string, ISpatialIndex> _categoryIndices;
+        private DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex _spatialIndex;
+        private Dictionary<string, DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex> _categoryIndices;
         
         // 对象管理
         private Dictionary<int, SpatialNode> _allNodes;
@@ -47,6 +48,9 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         private float _totalQueryTime = 0f;
         private int _frameQueries = 0;
         
+        // 配置
+        private SpatialIndexConfigSO _config;
+        
         // 事件
         public event System.Action<SpatialNode> OnNodeAdded;
         public event System.Action<SpatialNode> OnNodeRemoved;
@@ -55,6 +59,37 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         // IManager接口实现
         public bool IsInitialized { get; private set; }
         public string ManagerName => "SpatialIndexManager";
+    
+        // === IManager / IUpdatable / IFixedUpdatable / ILateUpdatable 实现 ===
+        private bool _isPaused = false;
+
+        public void Update(float dt)
+        {
+            if (!IsInitialized || _isPaused) return;
+            ProcessPendingOperations();
+            // 目前 SpatialIndex 不需要逐帧更新；必要時可在此轉發到 _activeIndex
+        }
+
+        public void FixedUpdate(float fixedDt)
+        {
+            if (!IsInitialized || _isPaused) return;
+            // 目前 SpatialIndex 無固定步進需求
+        }
+
+        public void LateUpdate(float dt)
+        {
+            if (!IsInitialized || _isPaused) return;
+            // 目前 SpatialIndex 無 LateUpdate 需求
+        }
+
+        public void Pause()  { _isPaused = true;  }
+        public void Resume() { _isPaused = false; }
+
+        public string GetManagerName() => ManagerName;
+
+                
+        // 属性
+        public bool UseOctree => _useOctree;
 
         /// <summary>
         /// <summary>
@@ -112,113 +147,11 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         }
 
         /// <summary>
-        /// 更新管理器
-        /// </summary>
-        /// <param name="deltaTime">时间增量</param>
-        private void Update()
-        {
-            UpdateManager();
-        }
-
-        /// <summary>
-        /// 更新管理器
-        /// </summary>
-        public void UpdateManager()
-        {
-            if (!IsInitialized) return;
-
-            // 处理待处理的操作
-            if (!_enableBatching && IsInitialized)
-            {
-                ProcessPendingOperations();
-            }
-
-            // 重置帧查询计数
-            _frameQueries = 0;
-        }
-
-        /// <summary>
-        /// 固定更新管理器
-        /// </summary>
-        /// <param name="fixedDeltaTime">固定时间增量</param>
-        private void FixedUpdate()
-        {
-            // 固定更新逻辑
-        }
-
-        // IUpdatable接口实现
-        void IUpdatable.Update(float deltaTime)
-        {
-            UpdateManager();
-        }
-
-        // IFixedUpdatable接口实现
-        void IFixedUpdatable.FixedUpdate(float fixedDeltaTime)
-        {
-            // 需要時加入固定更新邏輯
-        }
-
-        // ILateUpdatable接口实现
-        void ILateUpdatable.LateUpdate(float deltaTime)
-        {
-            // 需要時加入後更新邏輯
-        }
-
-        // IManager接口实现
-        void IManager.Update(float deltaTime)
-        {
-            UpdateManager();
-        }
-
-        void IManager.FixedUpdate(float fixedDeltaTime)
-        {
-            // 需要時加入固定更新邏輯
-        }
-
-        void IManager.LateUpdate(float deltaTime)
-        {
-            // 需要時加入後更新邏輯
-        }
-
-        public bool IsPaused { get; private set; }
-
-        /// <summary>
-        /// 暂停管理器
-        /// </summary>
-        public void Pause()
-        {
-            // 暂停逻辑
-        }
-
-        /// <summary>
-        /// 恢复管理器
-        /// </summary>
-        public void Resume()
-        {
-            // 恢复逻辑
-        }
-
-        /// <summary>
-        /// 获取管理器名称
-        /// </summary>
-        /// <returns>管理器名称</returns>
-        public string GetManagerName()
-        {
-            return ManagerName;
-        }
-
-        /// <summary>
-        /// 清理管理器
+        /// 清理资源
         /// </summary>
         public void Cleanup()
         {
             if (!IsInitialized) return;
-
-            _spatialIndex?.Clear();
-            foreach (var index in _categoryIndices.Values)
-            {
-                index?.Clear();
-            }
 
             _categoryIndices.Clear();
             _allNodes.Clear();
@@ -229,6 +162,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             IsInitialized = false;
             Debug.Log($"[{ManagerName}] 清理完成");
         }
+    
 
         /// <summary>
         /// <summary>
@@ -305,6 +239,6 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             GUILayout.Label(GetPerformanceStats());
             GUILayout.EndArea();
         }
-
+        
     }
 }

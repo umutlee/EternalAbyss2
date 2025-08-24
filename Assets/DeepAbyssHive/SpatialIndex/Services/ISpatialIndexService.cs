@@ -4,6 +4,8 @@ using Unity.Collections;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.SpatialIndex.Enums;
 using DeepAbyssHive.SpatialIndex.Data;
+using SIRaycastHit = DeepAbyssHive.SpatialIndex.Data.RaycastHit;
+using URaycastHit = UnityEngine.RaycastHit;
 
 namespace DeepAbyssHive.SpatialIndex.Services
 {
@@ -63,7 +65,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
         /// <param name="maxDistance">最大距离</param>
         /// <param name="objectType">对象类型过滤</param>
         /// <returns>碰撞的对象ID列表</returns>
-        List<RaycastHit> QueryRaycast(Ray ray, float maxDistance = float.MaxValue, SpatialObjectType objectType = SpatialObjectType.All);
+        List<SIRaycastHit> QueryRaycast(Ray ray, float maxDistance = float.MaxValue, SpatialObjectType objectType = SpatialObjectType.All);
 
         /// <summary>
         /// 查询最近的对象

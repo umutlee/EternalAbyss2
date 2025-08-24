@@ -7,6 +7,7 @@ namespace DeepAbyssHive.Core.Interfaces
     /// 空间索引接口
     /// 用于高效的空间查询和管理
     /// </summary>
+    [System.Obsolete("请使用 DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex 接口")]
     public interface ISpatialIndex
     {
         /// <summary>

@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using UnityEngine;
 using Unity.Collections;
+using UnityEngine;
 using DeepAbyssHive.Core.Services;
-using DeepAbyssHive.Creep.Data;
-using DeepAbyssHive.Creep.Enums;
 using DeepAbyssHive.Creep.Config;
+using DeepAbyssHive.Creep.Data;
+using CreepExpansionType = DeepAbyssHive.Creep.Data.CreepExpansionType;
 
 namespace DeepAbyssHive.Creep.Services
 {
@@ -219,10 +219,12 @@ namespace DeepAbyssHive.Creep.Services
             // 根据扩张类型调整成本
             switch (expansionType)
             {
-                case CreepExpansionType.Fast:
+                case CreepExpansionType.Rapid:
                     return baseCost * 1.5f;
-                case CreepExpansionType.Reinforced:
+                case CreepExpansionType.Defensive:
                     return baseCost * 2f;
+                case CreepExpansionType.Aggressive:
+                    return baseCost * 2.5f;
                 case CreepExpansionType.Normal:
                 default:
                     return baseCost;
@@ -463,10 +465,12 @@ namespace DeepAbyssHive.Creep.Services
 
             switch (expansionType)
             {
-                case CreepExpansionType.Fast:
+                case CreepExpansionType.Rapid:
                     return basePriority * 1.5f;
-                case CreepExpansionType.Reinforced:
+                case CreepExpansionType.Defensive:
                     return basePriority * 0.8f;
+                case CreepExpansionType.Aggressive:
+                    return basePriority * 1.2f;
                 case CreepExpansionType.Normal:
                 default:
                     return basePriority;
@@ -480,10 +484,12 @@ namespace DeepAbyssHive.Creep.Services
 
             switch (expansionType)
             {
-                case CreepExpansionType.Fast:
+                case CreepExpansionType.Rapid:
                     return baseDuration * 0.5f;
-                case CreepExpansionType.Reinforced:
+                case CreepExpansionType.Defensive:
                     return baseDuration * 2f;
+                case CreepExpansionType.Aggressive:
+                    return baseDuration * 0.8f;
                 case CreepExpansionType.Normal:
                 default:
                     return baseDuration;

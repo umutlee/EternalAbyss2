@@ -2,6 +2,8 @@ using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Data;
+// 使用别名解决枚举冲突
+using DataNS = DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Enums;
 using System;
 
@@ -32,7 +34,7 @@ namespace DeepAbyssHive.Creep.Managers
         public bool CreateCreepSource(Vector3 position, float radius, int ownerId)
         {
             // 调用Sources模块的方法创建源点
-            var sourceId = CreateCreepSourcePoint(position, radius, ownerId, CreepSourceType.Basic);
+            var sourceId = CreateCreepSourcePoint(position, radius, ownerId, DataNS.CreepSourceType.Basic);
             return sourceId != -1;
         }
         

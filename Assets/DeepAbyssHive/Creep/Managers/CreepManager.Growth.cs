@@ -6,6 +6,8 @@ using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Creep.Enums;
+using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
+using CreepExpansionType = DeepAbyssHive.Creep.Data.CreepExpansionType;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -245,21 +247,6 @@ namespace DeepAbyssHive.Creep.Managers
         
         #region 扩张执行
         
-        /// <summary>
-        /// 根据源点类型获取瓦片类型
-        /// </summary>
-        /// <param name="sourceType">源点类型</param>
-        /// <returns>瓦片类型</returns>
-        private CreepTileType GetTileTypeForSource(CreepSourceType sourceType)
-        {
-            return sourceType switch
-            {
-                CreepSourceType.Enhanced => CreepTileType.Core,
-                CreepSourceType.Specialized => CreepTileType.Core,
-                CreepSourceType.Basic => CreepTileType.Creep,
-                _ => CreepTileType.Creep
-            };
-        }
         
         /// <summary>
         /// 尝试扩张菌毯到指定位置

@@ -2,7 +2,10 @@ using UnityEngine;
 using Unity.Collections;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Creep.Data;
-using DeepAbyssHive.Creep.Enums;
+// 使用别名解决枚举冲突
+using EnumsNS = DeepAbyssHive.Creep.Enums;
+// 强制使用Data版本的枚举（Enums版本已标记为Legacy）
+using CreepExpansionType = DeepAbyssHive.Creep.Data.CreepExpansionType;
 
 namespace DeepAbyssHive.Creep.Services
 {

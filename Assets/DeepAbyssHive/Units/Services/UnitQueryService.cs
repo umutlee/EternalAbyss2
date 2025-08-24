@@ -1,392 +1,321 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-using Unity.Collections;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.Units.Enums;
-using DeepAbyssHive.SpatialIndex.Interfaces;
+using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.SpatialIndex;
 
 namespace DeepAbyssHive.Units.Services
 {
     /// <summary>
     /// 单位查询服务实现
-    /// 提供所有单位相关的只读查询功能
+    /// 负责单位的空间查询和筛选操作
     /// </summary>
-    public class UnitQueryService : IUnitQueryService, IQueryService, IService
+    public partial class UnitQueryService : IUnitQueryService, IQueryService, IService
     {
         #region 私有字段
-        private readonly Dictionary<int, UnitHotData> _unitHotData;
-        private readonly Dictionary<int, UnitColdData> _unitColdData;
-        private readonly Dictionary<int, SpatialNode> _unitSpatialNodes;
-        private readonly ISpatialIndex _spatialIndex;
-        private readonly string _serviceName = "UnitQueryService";
+
+        private ISpatialIndexService _spatialIndexService;
+        private bool _isInitialized = false;
+
         #endregion
 
-        #region IService属性实现
-        public string ServiceName => _serviceName;
-        public bool IsInitialized { get; private set; }
-        public bool IsQueryAvailable => IsInitialized;
+        #region 属性
+
+        public string ServiceName => "UnitQueryService";
+        public bool IsInitialized => _isInitialized;
+
         #endregion
 
         #region 构造函数
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="unitHotData">单位热数据字典</param>
-        /// <param name="unitColdData">单位冷数据字典</param>
-        /// <param name="unitSpatialNodes">单位空间节点字典</param>
-        /// <param name="spatialIndex">空间索引</param>
-        public UnitQueryService(
-            Dictionary<int, UnitHotData> unitHotData,
-            Dictionary<int, UnitColdData> unitColdData,
-            Dictionary<int, SpatialNode> unitSpatialNodes,
-            ISpatialIndex spatialIndex)
+
+        public UnitQueryService(ISpatialIndexService spatialIndexService)
         {
-            _unitHotData = unitHotData ?? throw new System.ArgumentNullException(nameof(unitHotData));
-            _unitColdData = unitColdData ?? throw new System.ArgumentNullException(nameof(unitColdData));
-            _unitSpatialNodes = unitSpatialNodes ?? throw new System.ArgumentNullException(nameof(unitSpatialNodes));
-            _spatialIndex = spatialIndex;
-            IsInitialized = true;
+            _spatialIndexService = spatialIndexService;
         }
+
         #endregion
 
-        #region IService接口实现
-        /// <summary>
-        /// 初始化服务
-        /// </summary>
+        #region IService 实现
+
         public void Initialize()
         {
-            if (IsInitialized)
-                return;
-                
-            Debug.Log($"[{_serviceName}] 初始化单位查询服务");
-            IsInitialized = true;
+            if (_isInitialized) return;
+            
+            _isInitialized = true;
         }
 
-        /// <summary>
-        /// 清理服务
-        /// </summary>
         public void Cleanup()
         {
-            Debug.Log($"[{_serviceName}] 清理单位查询服务");
-            IsInitialized = false;
+            if (!_isInitialized) return;
+            
+            _isInitialized = false;
         }
+
+        public void Pause()
+        {
+            // 查询服务无需暂停逻辑
+        }
+
+        public void Resume()
+        {
+            // 查询服务无需恢复逻辑
+        }
+
         #endregion
 
-        #region IUnitQueryService接口实现
-        /// <summary>
-        /// 获取指定范围内的单位
-        /// </summary>
-        /// <param name="center">中心位置</param>
-        /// <param name="radius">搜索半径</param>
-        /// <param name="playerId">玩家ID（-1表示所有玩家）</param>
-        /// <returns>单位数组（需要调用者Dispose）</returns>
-        public NativeArray<UnitData> GetUnitsInRange(Vector3 center, float radius, int playerId = -1)
+        #region IUnitQueryService 实现
+
+        public List<SpatialNode> GetUnitsInRange(Vector3 center, float radius)
         {
-            List<UnitData> unitsInRange = new List<UnitData>();
-
-            if (_spatialIndex != null)
-            {
-                // 使用空间索引查询
-                List<SpatialNode> spatialResults = _spatialIndex.QueryRange(center, new Vector3(radius * 2, radius * 2, radius * 2));
-                
-                foreach (var spatialNode in spatialResults)
-                {
-                    if (Vector3.Distance(spatialNode.Position, center) <= radius)
-                    {
-                        int unitId = spatialNode.Id;
-                        var unitData = GetUnitDataInternal(unitId);
-                        if (unitData.HasValue && (playerId == -1 || GetUnitPlayerId(unitData.Value) == playerId))
-                        {
-                            unitsInRange.Add(unitData.Value);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // 如果没有空间索引，使用暴力搜索
-                foreach (var pair in _unitHotData)
-                {
-                    int unitId = pair.Key;
-                    UnitHotData hotData = pair.Value;
-                    
-                    if (Vector3.Distance(hotData.Position, center) <= radius)
-                    {
-                        var unitData = GetUnitDataInternal(unitId);
-                        if (unitData.HasValue && (playerId == -1 || GetUnitPlayerId(unitData.Value) == playerId))
-                        {
-                            unitsInRange.Add(unitData.Value);
-                        }
-                    }
-                }
-            }
-
-            // 转换为NativeArray
-            NativeArray<UnitData> result = new NativeArray<UnitData>(unitsInRange.Count, Allocator.Temp);
-            for (int i = 0; i < unitsInRange.Count; i++)
-            {
-                result[i] = unitsInRange[i];
-            }
-
-            return result;
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            return _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
         }
 
-        /// <summary>
-        /// 获取指定类型的单位
-        /// </summary>
-        /// <param name="unitType">单位类型</param>
-        /// <param name="playerId">玩家ID（-1表示所有玩家）</param>
-        /// <returns>单位数组（需要调用者Dispose）</returns>
-        public NativeArray<UnitData> GetUnitsOfType(UnitType unitType, int playerId = -1)
+        public List<SpatialNode> GetUnitsOfType(UnitType unitType)
         {
-            List<UnitData> unitsOfType = new List<UnitData>();
-
-            foreach (var pair in _unitColdData)
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var allNodes = _spatialIndexService.QueryAll().ToSpatialNodes();
+            return allNodes.Where(node => 
             {
-                int unitId = pair.Key;
-                UnitColdData coldData = pair.Value;
-
-                if (coldData.Type == unitType && (playerId == -1 || coldData.OwnerId == playerId))
+                if (node.Data is UnitColdData unitData)
                 {
-                    var unitData = GetUnitDataInternal(unitId);
-                    if (unitData.HasValue)
-                    {
-                        unitsOfType.Add(unitData.Value);
-                    }
+                    return unitData.UnitType == unitType;
                 }
-            }
-
-            // 转换为NativeArray
-            NativeArray<UnitData> result = new NativeArray<UnitData>(unitsOfType.Count, Allocator.Temp);
-            for (int i = 0; i < unitsOfType.Count; i++)
-            {
-                result[i] = unitsOfType[i];
-            }
-
-            return result;
+                return false;
+            }).ToList();
         }
 
-        /// <summary>
-        /// 获取玩家的所有单位
-        /// </summary>
-        /// <param name="playerId">玩家ID</param>
-        /// <returns>单位数组（需要调用者Dispose）</returns>
-        public NativeArray<UnitData> GetPlayerUnits(int playerId)
+        public List<SpatialNode> GetUnitsOfPlayer(int playerId)
         {
-            List<UnitData> playerUnits = new List<UnitData>();
-
-            foreach (var pair in _unitColdData)
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var allNodes = _spatialIndexService.QueryAll().ToSpatialNodes();
+            return allNodes.Where(node => 
             {
-                int unitId = pair.Key;
-                UnitColdData coldData = pair.Value;
-
-                if (coldData.OwnerId == playerId)
+                if (node.Data is UnitColdData unitData)
                 {
-                    var unitData = GetUnitDataInternal(unitId);
-                    if (unitData.HasValue)
-                    {
-                        playerUnits.Add(unitData.Value);
-                    }
+                    return GetUnitPlayerId(unitData) == playerId;
+                }
+                return false;
+            }).ToList();
+        }
+
+        public List<SpatialNode> GetUnitsInRangeOfPlayer(Vector3 center, float radius, int playerId)
+        {
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Where(node => 
+            {
+                if (node.Data is UnitColdData unitData)
+                {
+                    return GetUnitPlayerId(unitData) == playerId;
+                }
+                return false;
+            }).ToList();
+        }
+
+        public List<SpatialNode> GetUnitsInRangeOfType(Vector3 center, float radius, UnitType unitType, int playerId)
+        {
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Where(node => 
+            {
+                if (node.Data is UnitColdData unitData)
+                {
+                    return GetUnitPlayerId(unitData) == playerId && unitData.UnitType == unitType;
+                }
+                return false;
+            }).ToList();
+        }
+
+        public SpatialNode GetNearestUnit(Vector3 position)
+        {
+            if (!_isInitialized) return null;
+            
+            var nearestNodes = _spatialIndexService.QueryNearest(position, 1).ToSpatialNodes();
+            return nearestNodes.FirstOrDefault();
+        }
+
+        public SpatialNode GetNearestUnitOfType(Vector3 position, UnitType unitType)
+        {
+            if (!_isInitialized) return null;
+            
+            var allNodes = _spatialIndexService.QueryAll().ToSpatialNodes();
+            var unitsOfType = allNodes.Where(node => 
+            {
+                if (node.Data is UnitColdData unitData)
+                {
+                    return unitData.UnitType == unitType;
+                }
+                return false;
+            });
+
+            SpatialNode nearest = null;
+            float minDistance = float.MaxValue;
+
+            foreach (var node in unitsOfType)
+            {
+                float distance = Vector3.Distance(position, node.Position);
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    nearest = node;
                 }
             }
 
-            // 转换为NativeArray
-            NativeArray<UnitData> result = new NativeArray<UnitData>(playerUnits.Count, Allocator.Temp);
-            for (int i = 0; i < playerUnits.Count; i++)
+            return nearest;
+        }
+
+        public List<SpatialNode> GetUnitsInRangeByType(Vector3 center, float radius, UnitType unitType, int playerId)
+        {
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Where(node => 
             {
-                result[i] = playerUnits[i];
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 获取单位数据
-        /// </summary>
-        /// <param name="unitId">单位ID</param>
-        /// <returns>单位数据，如果不存在返回null</returns>
-        public UnitData? GetUnitData(int unitId)
-        {
-            return GetUnitDataInternal(unitId);
-        }
-
-        /// <summary>
-        /// 检查单位是否存在
-        /// </summary>
-        /// <param name="unitId">单位ID</param>
-        /// <returns>是否存在</returns>
-        public bool UnitExists(int unitId)
-        {
-            return _unitHotData.ContainsKey(unitId) && _unitColdData.ContainsKey(unitId);
-        }
-
-        /// <summary>
-        /// 获取单位数量统计
-        /// </summary>
-        /// <param name="playerId">玩家ID</param>
-        /// <returns>单位数量统计</returns>
-        public Dictionary<UnitType, int> GetUnitCounts(int playerId)
-        {
-            Dictionary<UnitType, int> counts = new Dictionary<UnitType, int>();
-
-            foreach (var pair in _unitColdData)
-            {
-                UnitColdData coldData = pair.Value;
-
-                if (coldData.OwnerId == playerId)
-                {
-                    if (counts.ContainsKey(coldData.Type))
-                    {
-                        counts[coldData.Type]++;
-                    }
-                    else
-                    {
-                        counts[coldData.Type] = 1;
-                    }
-                }
-            }
-
-            return counts;
-        }
-
-        /// <summary>
-        /// 获取最近的敌方单位
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="playerId">玩家ID</param>
-        /// <param name="maxDistance">最大距离</param>
-        /// <returns>最近的敌方单位ID，如果没有返回-1</returns>
-        public int GetNearestEnemyUnit(Vector3 position, int playerId, float maxDistance = float.MaxValue)
-        {
-            int nearestUnitId = -1;
-            float nearestDistance = maxDistance;
-
-            foreach (var pair in _unitHotData)
-            {
-                int unitId = pair.Key;
-                UnitHotData hotData = pair.Value;
-
-                if (_unitColdData.TryGetValue(unitId, out var coldData) && coldData.OwnerId != playerId)
-                {
-                    float distance = Vector3.Distance(hotData.Position, position);
-                    if (distance < nearestDistance)
-                    {
-                        nearestDistance = distance;
-                        nearestUnitId = unitId;
-                    }
-                }
-            }
-
-            return nearestUnitId;
-        }
-
-        /// <summary>
-        /// 获取最近的友方单位
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="playerId">玩家ID</param>
-        /// <param name="maxDistance">最大距离</param>
-        /// <returns>最近的友方单位ID，如果没有返回-1</returns>
-        public int GetNearestFriendlyUnit(Vector3 position, int playerId, float maxDistance = float.MaxValue)
-        {
-            int nearestUnitId = -1;
-            float nearestDistance = maxDistance;
-
-            foreach (var pair in _unitHotData)
-            {
-                int unitId = pair.Key;
-                UnitHotData hotData = pair.Value;
-
-                if (_unitColdData.TryGetValue(unitId, out var coldData) && coldData.OwnerId == playerId)
-                {
-                    float distance = Vector3.Distance(hotData.Position, position);
-                    if (distance < nearestDistance)
-                    {
-                        nearestDistance = distance;
-                        nearestUnitId = unitId;
-                    }
-                }
-            }
-
-            return nearestUnitId;
-        }
-
-        /// <summary>
-        /// 检查位置是否被单位占用
-        /// </summary>
-        /// <param name="position">位置</param>
-        /// <param name="radius">检查半径</param>
-        /// <returns>是否被占用</returns>
-        public bool IsPositionOccupied(Vector3 position, float radius = 1f)
-        {
-            foreach (var pair in _unitHotData)
-            {
-                UnitHotData hotData = pair.Value;
-                if (Vector3.Distance(hotData.Position, position) <= radius)
+                if (node.Data is UnitColdData unitData && unitData.UnitType == unitType && GetUnitPlayerId(unitData) == playerId)
                 {
                     return true;
                 }
-            }
-            return false;
+                return false;
+            }).ToList();
         }
 
-        /// <summary>
-        /// 获取单位的移动路径
-        /// </summary>
-        /// <param name="unitId">单位ID</param>
-        /// <returns>移动路径点列表</returns>
-        public List<Vector3> GetUnitPath(int unitId)
+        public List<SpatialNode> GetEnemyUnitsInRange(Vector3 center, float radius, int playerId)
         {
-            if (_unitHotData.TryGetValue(unitId, out var hotData))
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Where(node => 
             {
-                return hotData.MovementPath ?? new List<Vector3>();
-            }
-            return new List<Vector3>();
+                if (node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) != playerId)
+                {
+                    return true;
+                }
+                return false;
+            }).ToList();
         }
 
-        /// <summary>
-        /// 获取单位的当前状态
-        /// </summary>
-        /// <param name="unitId">单位ID</param>
-        /// <returns>单位状态</returns>
-        public UnitState GetUnitState(int unitId)
+        public List<SpatialNode> GetAlliedUnitsInRange(Vector3 center, float radius, int playerId)
         {
-            if (_unitHotData.TryGetValue(unitId, out var hotData))
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Where(node => 
             {
-                return hotData.State;
-            }
-            return UnitState.Idle;
+                if (node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) == playerId)
+                {
+                    return true;
+                }
+                return false;
+            }).ToList();
         }
+
+        public bool HasUnitsInRange(Vector3 center, float radius)
+        {
+            if (!_isInitialized) return false;
+            
+            var nodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return nodes.Any();
+        }
+
+        public bool HasUnitsOfTypeInRange(Vector3 center, float radius, UnitType unitType)
+        {
+            if (!_isInitialized) return false;
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Any(node => 
+            {
+                if (node.Data is UnitColdData unitData)
+                {
+                    return unitData.UnitType == unitType;
+                }
+                return false;
+            });
+        }
+
+        public int CountUnitsInRange(Vector3 center, float radius)
+        {
+            if (!_isInitialized) return 0;
+            
+            var nodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return nodes.Count;
+        }
+
+        public int CountUnitsOfTypeInRange(Vector3 center, float radius, UnitType unitType)
+        {
+            if (!_isInitialized) return 0;
+            
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return spatialNodes.Count(node => 
+            {
+                if (node.Data is UnitColdData unitData)
+                {
+                    return unitData.UnitType == unitType;
+                }
+                return false;
+            });
+        }
+
+        public List<SpatialNode> GetUnitsWithinDistance(Vector3 position, float maxDistance)
+        {
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            return GetUnitsInRange(position, maxDistance);
+        }
+
+        public List<SpatialNode> GetVisibleUnits(Vector3 viewerPosition, float viewRange, int viewerPlayerId)
+        {
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            var spatialNodes = _spatialIndexService.QueryRange(viewerPosition, viewRange).ToSpatialNodes();
+            return spatialNodes.Where(node => 
+            {
+                if (node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) != viewerPlayerId)
+                {
+                    // 这里可以添加视线检查逻辑
+                    return true;
+                }
+                return false;
+            }).ToList();
+        }
+
+        public List<SpatialNode> GetUnitsInArea(Bounds area)
+        {
+            if (!_isInitialized) return new List<SpatialNode>();
+            
+            // 使用区域中心和最大半径进行查询
+            float radius = Mathf.Max(area.size.x, area.size.y, area.size.z) * 0.5f;
+            var candidates = _spatialIndexService.QueryRange(area.center, radius).ToSpatialNodes();
+            
+            return candidates.Where(node => area.Contains(node.Position)).ToList();
+        }
+
         #endregion
 
         #region 私有方法
+
         /// <summary>
-        /// 内部获取单位数据方法
+        /// <summary>
+        /// 获取单位的玩家ID
         /// </summary>
-        /// <param name="unitId">单位ID</param>
-        /// <returns>单位数据</returns>
-        private UnitData? GetUnitDataInternal(int unitId)
+        /// <param name="unitData">单位数据</param>
+        /// <returns>玩家ID</returns>
+        private int GetUnitPlayerId(UnitColdData unitData)
         {
-            if (_unitHotData.TryGetValue(unitId, out var hotData) && 
-                _unitColdData.TryGetValue(unitId, out var coldData))
-            {
-                return new UnitData
-                {
-                    Id = unitId,
-                    Type = coldData.Type,
-                    PlayerId = coldData.OwnerId,
-                    Position = hotData.Position,
-                    Rotation = hotData.Rotation,
-                    State = hotData.State,
-                    Health = hotData.Health,
-                    MaxHealth = coldData.Attributes.MaxHealth,
-                    Attributes = coldData.Attributes
-                };
-            }
-            return null;
+            // UnitColdData中没有PlayerId属性，这里返回默认值
+            // 实际项目中应该从其他地方获取玩家ID，比如从UnitHotData或其他组件
+            return 0; // 默认玩家ID
         }
+
         #endregion
     }
 }

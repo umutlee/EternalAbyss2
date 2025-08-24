@@ -2,9 +2,7 @@ using UnityEngine;
 using Unity.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using SpatialISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
-using CoreISpatialIndex = DeepAbyssHive.Core.Interfaces.ISpatialIndex;
-using SIRaycastHit = DeepAbyssHive.SpatialIndex.Data.RaycastHit;
+using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 
 namespace DeepAbyssHive.SpatialIndex.Implementations
@@ -13,7 +11,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
     /// 八叉树空间索引实现
     /// 用于高效的3D空间查询和管理
     /// </summary>
-    public class OctreeSpatialIndex : SpatialISpatialIndex
+    public class OctreeSpatialIndex : Interfaces.ISpatialIndex
     {
         [Header("八叉树配置")]
         [SerializeField] private Bounds _worldBounds;
@@ -134,7 +132,22 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 插入对象到空间索引
         /// </summary>
-        public void Insert(SpatialNode obj, Vector3 position, Vector3 size)
+        public void Insert(object obj, Vector3 position, Vector3 size)
+        {
+            if (obj is SpatialNode spatialNode)
+            {
+                Insert(spatialNode, position, size);
+            }
+            else
+            {
+                Debug.LogWarning($"OctreeSpatialIndex: 尝试插入非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
+            }
+        }
+        
+        /// <summary>
+        /// 插入SpatialNode对象到空间索引
+        /// </summary>
+        private void Insert(SpatialNode obj, Vector3 position, Vector3 size)
         {
             if (obj == null) return;
 
@@ -161,7 +174,22 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 更新对象在空间索引中的位置
         /// </summary>
-        public void Update(SpatialNode obj, Vector3 oldPosition, Vector3 newPosition, Vector3 size)
+        public void Update(object obj, Vector3 oldPosition, Vector3 newPosition, Vector3 size)
+        {
+            if (obj is SpatialNode spatialNode)
+            {
+                Update(spatialNode, oldPosition, newPosition, size);
+            }
+            else
+            {
+                Debug.LogWarning($"OctreeSpatialIndex: 尝试更新非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
+            }
+        }
+        
+        /// <summary>
+        /// 更新SpatialNode对象在空间索引中的位置
+        /// </summary>
+        private void Update(SpatialNode obj, Vector3 oldPosition, Vector3 newPosition, Vector3 size)
         {
             if (obj == null || !_objects.ContainsKey(obj.Id)) return;
 
@@ -185,7 +213,22 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 从空间索引中移除对象
         /// </summary>
-        public void Remove(SpatialNode obj, Vector3 position, Vector3 size)
+        public void Remove(object obj, Vector3 position, Vector3 size)
+        {
+            if (obj is SpatialNode spatialNode)
+            {
+                Remove(spatialNode, position, size);
+            }
+            else
+            {
+                Debug.LogWarning($"OctreeSpatialIndex: 尝试移除非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
+            }
+        }
+        
+        /// <summary>
+        /// 从空间索引中移除SpatialNode对象
+        /// </summary>
+        private void Remove(SpatialNode obj, Vector3 position, Vector3 size)
         {
             if (obj == null || !_objects.ContainsKey(obj.Id)) return;
 
@@ -232,9 +275,9 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         }
 
         /// <summary>
-        /// 查询指定区域内的所有对象（重载方法）
+        /// 查询指定区域内的所有对象
         /// </summary>
-        public List<SpatialNode> QueryRange(Vector3 center, Vector3 size)
+        public List<object> QueryRange(Vector3 center, Vector3 size)
         {
             float startTime = Time.realtimeSinceStartup;
             
@@ -244,7 +287,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             QueryRangeRecursive(_root, queryBounds, _queryResults);
             
             UpdateQueryStats(Time.realtimeSinceStartup - startTime);
-            return new List<SpatialNode>(_queryResults);
+            return _queryResults.Cast<object>().ToList();
         }
 
         /// <summary>
@@ -305,19 +348,19 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 查询指定点最近的对象
         /// </summary>
-        public List<SpatialNode> QueryNearest(Vector3 position, float maxDistance, int maxResults)
+        public List<object> QueryNearest(Vector3 position, float maxDistance, int maxResults)
         {
             var query = new SpatialQuery(position, maxDistance)
                 .WithMaxResults(maxResults)
                 .WithSort(SpatialQuery.SortType.Distance);
             
-            return Query(query);
+            return Query(query).Cast<object>().ToList();
         }
 
         /// <summary>
         /// 查询与射线相交的对象
         /// </summary>
-        public List<SpatialNode> QueryRaycast(Ray ray, float maxDistance)
+        public List<object> QueryRaycast(Ray ray, float maxDistance)
         {
             float startTime = Time.realtimeSinceStartup;
             
@@ -325,7 +368,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             QueryRaycastRecursive(_root, ray, maxDistance, _queryResults);
             
             UpdateQueryStats(Time.realtimeSinceStartup - startTime);
-            return new List<SpatialNode>(_queryResults);
+            return _queryResults.Cast<object>().ToList();
         }
 
         /// <summary>

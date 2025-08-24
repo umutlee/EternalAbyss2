@@ -1,7 +1,7 @@
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
-using DeepAbyssHive.Creep.Enums;
 using DeepAbyssHive.Creep.Data;
+using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
 
 namespace DeepAbyssHive.Creep.Services
 {

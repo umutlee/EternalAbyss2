@@ -11,7 +11,7 @@ namespace DeepAbyssHive.Terrain.Interfaces
     /// 地形查询服务接口
     /// 负责地形数据查询、路径查找和地形分析
     /// </summary>
-    public interface ITerrainQueryService : IService
+    public interface ITerrainQueryService
     {
         /// <summary>
         /// 获取指定世界坐标处的地形块

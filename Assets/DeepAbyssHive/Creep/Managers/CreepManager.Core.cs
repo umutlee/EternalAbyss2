@@ -8,6 +8,7 @@ using DeepAbyssHive.Buildings.Managers;
 using DeepAbyssHive.Creep.Config;
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Creep.Enums;
+using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -141,7 +142,7 @@ namespace DeepAbyssHive.Creep.Managers
         private readonly Dictionary<Vector2Int, CreepData> _creepGrid = new Dictionary<Vector2Int, CreepData>();
         private readonly Dictionary<Vector2Int, CreepTile> _creepTiles = new Dictionary<Vector2Int, CreepTile>();
         private readonly HashSet<Vector2Int> _activeCreepCells = new HashSet<Vector2Int>();
-        private ISpatialIndex _spatialIndex;
+        private DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex _spatialIndex;
         private BuildingManager _buildingManager;
         private CreepConfigSO _config;
         
@@ -163,7 +164,7 @@ namespace DeepAbyssHive.Creep.Managers
         
         // 事件定义
         public System.Action<CreepStatistics> OnStatisticsUpdated;
-        public System.Action<Vector3, float> OnCreepExpanded;
+        // OnCreepExpanded 已移至 CreepManager.cs 中定义
 
         #endregion
 
@@ -404,68 +405,7 @@ namespace DeepAbyssHive.Creep.Managers
             }
         }
 
-        /// <summary>
-        /// 获取菌毯统计信息
-        /// </summary>
-        public CreepStatistics GetCreepStatistics()
-        {
-            var stats = new CreepStatistics();
-            
-            stats.TotalTiles = _creepTiles.Count;
-            stats.ActiveTiles = _activeCreepCells.Count;
-            
-            float totalHealth = 0f;
-            int healthyCount = 0, growingCount = 0, starvingCount = 0, dyingCount = 0;
-            int basicCount = 0, enhancedCount = 0, specializedCount = 0;
-            
-            foreach (var tile in _creepTiles.Values)
-            {
-                if (tile.IsActive)
-                {
-                    totalHealth += tile.Health;
-                    
-                    // 按状态统计
-                    switch (tile.Status)
-                    {
-                        case CreepTileStatus.Healthy: healthyCount++; break;
-                        case CreepTileStatus.Weakened: growingCount++; break;
-                        case CreepTileStatus.Collapsing: dyingCount++; break;
-                    }
-                    
-                    // 按类型统计
-                    switch (tile.TileType)
-                    {
-                        case CreepTileType.Creep: basicCount++; break;
-                        case CreepTileType.Core: enhancedCount++; break;
-                        case CreepTileType.Frontier: specializedCount++; break;
-                    }
-                    
-                    stats.TotalResourcesGenerated += tile.TotalResourcesGenerated;
-                }
-            }
-            
-            stats.TotalHealth = totalHealth;
-            stats.AverageHealth = stats.ActiveTiles > 0 ? totalHealth / stats.ActiveTiles : 0f;
-            stats.TotalCoverage = stats.ActiveTiles * _gridCellSize * _gridCellSize;
-            stats.TotalArea = _gridWidth * _gridHeight * _gridCellSize * _gridCellSize;
-            
-            // 状态统计
-            stats.HealthyTiles = healthyCount;
-            stats.GrowingTiles = growingCount;
-            stats.StarvingTiles = starvingCount;
-            stats.DyingTiles = dyingCount;
-            
-            // 类型统计
-            stats.BasicTiles = basicCount;
-            stats.EnhancedTiles = enhancedCount;
-            stats.SpecializedTiles = specializedCount;
-            
-            // 连接区域数量（需要调用Query模块的方法）
-            var isolatedRegions = GetIsolatedRegions();
-            stats.ConnectedRegions = isolatedRegions?.Count ?? 0;
-            
-            return stats;
-        }
+        // GetCreepStatistics() 方法已移至 CreepManager.Query.cs 中实现
 
         #endregion
     }

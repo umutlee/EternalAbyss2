@@ -3,11 +3,12 @@ using System;
 namespace DeepAbyssHive.Creep.Enums
 {
     /// <summary>
-    /// 菌毯源點類型枚舉
+    /// 菌毯源點類型枚舉（已过时）
     /// 定義不同類型的菌毯生成源點
     /// </summary>
     [Serializable]
-    public enum CreepSourceType
+    [Obsolete("请使用 DeepAbyssHive.Creep.Data.CreepSourceType 代替")]
+    public enum Legacy_CreepSourceType
     {
         Unknown = 0,
         Manual = 1,
@@ -43,11 +44,12 @@ namespace DeepAbyssHive.Creep.Enums
     }
 
     /// <summary>
-    /// 菌毯擴張類型枚舉
+    /// 菌毯擴張類型枚舉（已过时）
     /// 定義不同的菌毯擴張模式和行為
     /// </summary>
     [Serializable]
-    public enum CreepExpansionType
+    [Obsolete("请使用 DeepAbyssHive.Creep.Data.CreepExpansionType 代替")]
+    public enum Legacy_CreepExpansionType
     {
         Normal = 0,
         Fast = 1,

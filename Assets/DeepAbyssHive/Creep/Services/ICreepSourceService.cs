@@ -2,7 +2,10 @@ using UnityEngine;
 using Unity.Collections;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Creep.Data;
-using DeepAbyssHive.Creep.Enums;
+// 使用别名解决枚举冲突
+using DataNS = DeepAbyssHive.Creep.Data;
+// 强制使用Data版本的枚举（Enums版本已标记为Legacy）
+using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
 
 namespace DeepAbyssHive.Creep.Services
 {
@@ -20,7 +23,7 @@ namespace DeepAbyssHive.Creep.Services
         /// <param name="sourceType">源点类型</param>
         /// <param name="strength">初始强度</param>
         /// <returns>源点ID</returns>
-        int CreateCreepSource(Vector3 position, int playerId, CreepSourceType sourceType, float strength = 1.0f);
+        int CreateCreepSource(Vector3 position, int playerId, DataNS.CreepSourceType sourceType, float strength = 1.0f);
 
         /// <summary>
         /// 移除菌毯源点
@@ -73,7 +76,7 @@ namespace DeepAbyssHive.Creep.Services
         /// </summary>
         /// <param name="sourceId">源点ID</param>
         /// <param name="sourceType">新类型</param>
-        void UpdateSourceType(int sourceId, CreepSourceType sourceType);
+        void UpdateSourceType(int sourceId, DataNS.CreepSourceType sourceType);
 
         /// <summary>
         /// 激活源点

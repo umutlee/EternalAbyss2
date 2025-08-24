@@ -10,6 +10,7 @@ using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.Units.Config;
 using DeepAbyssHive.Core.Config;
 using IUnitManager = DeepAbyssHive.Units.Interfaces.IUnitManager;
+using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -23,7 +24,7 @@ namespace DeepAbyssHive.Units.Managers
         private Dictionary<int, UnitColdData> _unitColdData = new Dictionary<int, UnitColdData>();
         private Dictionary<int, GameObject> _unitGameObjects = new Dictionary<int, GameObject>();
         private Dictionary<int, SpatialNode> _unitSpatialNodes = new Dictionary<int, SpatialNode>();
-        private ISpatialIndex _spatialIndex;
+        private DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex _spatialIndex;
         private int _nextUnitId = 1;
         private bool _isInitialized = false;
         private bool _isPaused = false;

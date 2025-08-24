@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using UnityEngine;
 using Unity.Collections;
+using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Creep.Data;
-using DeepAbyssHive.Creep.Enums;
+using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
 
 namespace DeepAbyssHive.Creep.Services
 {
@@ -69,18 +69,15 @@ namespace DeepAbyssHive.Creep.Services
         {
             int sourceId = _nextSourceId++;
             
-            var source = new CreepSource
-            {
-                SourceId = sourceId,
-                Position = position,
-                PlayerId = playerId,
-                SourceType = sourceType,
-                Strength = Mathf.Clamp01(strength),
-                IsActive = true,
-                CreationTime = Time.time,
-                LastUpdateTime = Time.time,
-                InfluenceRadius = CalculateInfluenceRadius(sourceType, strength)
-            };
+            var source = new CreepSource();
+            source.SourceId = sourceId;
+            source.Position = position;
+            source.Type = sourceType;
+            source.Strength = Mathf.Clamp01(strength);
+            source.IsActive = true;
+            source.CreationTime = Time.time;
+            source.Radius = CalculateInfluenceRadius(sourceType, strength);
+            source.NetworkId = 0;
 
             _creepSources[sourceId] = source;
 
