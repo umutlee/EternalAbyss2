@@ -45,7 +45,7 @@ namespace DeepAbyssHive.Creep.Data
             GrowthLevel = 0f;
             GrowthRate = 0.1f;
             IsActive = true;
-            Status = CreepTileStatus.Healthy; // 使用统一枚举中的值
+            Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy; // 使用统一枚举中的值
             TileType = CreepTileType.Creep;   // 使用统一枚举中的值
         }
     }

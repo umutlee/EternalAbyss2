@@ -167,7 +167,7 @@ namespace DeepAbyssHive.Units.Managers
                     attributes.BuildSpeed = 0f;
                     break;
                     
-                case UnitType.AcidSprayer:
+                case (DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.AcidSprayer:
                     attributes.MaxHealth = 60f;
                     attributes.MoveSpeed = 3f;
                     attributes.AttackDamage = 12f;
@@ -178,7 +178,7 @@ namespace DeepAbyssHive.Units.Managers
                     attributes.BuildSpeed = 0f;
                     break;
                     
-                case UnitType.Tank:
+                case (DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.Tank:
                     attributes.MaxHealth = 200f;
                     attributes.MoveSpeed = 2f;
                     attributes.AttackDamage = 20f;
@@ -200,7 +200,7 @@ namespace DeepAbyssHive.Units.Managers
                     attributes.BuildSpeed = 0f;
                     break;
                     
-                case UnitType.Flyer:
+                case (DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.Flyer:
                     attributes.MaxHealth = 70f;
                     attributes.MoveSpeed = 4f;
                     attributes.AttackDamage = 10f;

@@ -210,10 +210,10 @@ namespace DeepAbyssHive.Units.Managers
                 // 使用默认硬编码路径作为后备
                 _unitPrefabPaths[UnitType.Worker] = "Prefabs/Units/Worker";
                 _unitPrefabPaths[UnitType.Warrior] = "Prefabs/Units/Warrior";
-                _unitPrefabPaths[UnitType.AcidSprayer] = "Prefabs/Units/AcidSprayer";
-                _unitPrefabPaths[UnitType.Tank] = "Prefabs/Units/Tank";
+                _unitPrefabPaths[(DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.AcidSprayer] = "Prefabs/Units/AcidSprayer";
+                _unitPrefabPaths[(DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.Tank] = "Prefabs/Units/Tank";
                 _unitPrefabPaths[UnitType.Scout] = "Prefabs/Units/Scout";
-                _unitPrefabPaths[UnitType.Flyer] = "Prefabs/Units/Flyer";
+                _unitPrefabPaths[(DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.Flyer] = "Prefabs/Units/Flyer";
                 _unitPrefabPaths[UnitType.Queen] = "Prefabs/Units/Queen";
                 Debug.Log($"[{_managerName}] 使用默认预制体路径配置");
             }

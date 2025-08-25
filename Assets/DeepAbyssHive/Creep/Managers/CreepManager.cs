@@ -34,7 +34,7 @@ namespace DeepAbyssHive.Creep.Managers
         public bool CreateCreepSource(Vector3 position, float radius, int ownerId)
         {
             // 调用Sources模块的方法创建源点
-            var sourceId = CreateCreepSourcePoint(position, radius, ownerId, DataNS.CreepSourceType.Basic);
+            var sourceId = CreateCreepSourcePoint(position, radius, ownerId, DataNS.DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic);
             return sourceId != -1;
         }
         

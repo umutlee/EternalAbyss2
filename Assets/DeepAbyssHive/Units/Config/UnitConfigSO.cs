@@ -19,7 +19,7 @@ namespace DeepAbyssHive.Units.Config
         {
             new UnitPrefabPath { unitType = UnitType.Worker, prefabPath = "Prefabs/Units/Worker" },
             new UnitPrefabPath { unitType = UnitType.Warrior, prefabPath = "Prefabs/Units/Warrior" },
-            new UnitPrefabPath { unitType = UnitType.AcidSprayer, prefabPath = "Prefabs/Units/AcidSprayer" },
+            new UnitPrefabPath { unitType = (DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.AcidSprayer, prefabPath = "Prefabs/Units/AcidSprayer" },
             new UnitPrefabPath { unitType = UnitType.Hunter, prefabPath = "Prefabs/Units/Hunter" },
             new UnitPrefabPath { unitType = UnitType.Guardian, prefabPath = "Prefabs/Units/Guardian" },
             new UnitPrefabPath { unitType = UnitType.Scout, prefabPath = "Prefabs/Units/Scout" },

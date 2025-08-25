@@ -52,7 +52,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 _maxBuildingUpdatesPerFrame = _config.performanceConfig.maxUpdatesPerFrame;
                 _buildingPlacementGridSize = _config.constructionConfig.placementCheckRadius;
                 
-                Debug.Log($"[{_managerName}] 配置加载成功: {_config.configName}");
+                Debug.Log($"[{_managerName}] 配置加载成功: {_config.ConfigName()}");
             }
             else
             {

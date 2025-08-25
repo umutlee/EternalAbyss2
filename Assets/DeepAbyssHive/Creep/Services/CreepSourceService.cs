@@ -346,13 +346,13 @@ namespace DeepAbyssHive.Creep.Services
                     // 按类型统计
                     switch (source.SourceType)
                     {
-                        case CreepSourceType.Basic:
+                        case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic:
                             stats.SourcesByType_Basic++;
                             break;
-                        case CreepSourceType.Enhanced:
+                        case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Enhanced:
                             stats.SourcesByType_Enhanced++;
                             break;
-                        case CreepSourceType.Specialized:
+                        case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Specialized:
                             stats.SourcesByType_Specialized++;
                             break;
                     }
@@ -398,13 +398,13 @@ namespace DeepAbyssHive.Creep.Services
             
             switch (sourceType)
             {
-                case CreepSourceType.Basic:
+                case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic:
                     baseRadius = 10f;
                     break;
-                case CreepSourceType.Enhanced:
+                case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Enhanced:
                     baseRadius = 15f;
                     break;
-                case CreepSourceType.Specialized:
+                case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Specialized:
                     baseRadius = 20f;
                     break;
             }

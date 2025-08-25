@@ -56,7 +56,7 @@ namespace DeepAbyssHive.Terrain.Services
         {
             Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
             
-            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is TerrainChunk terrainChunk)
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is ITerrainChunk terrainChunk)
             {
                 return terrainChunk;
             }
@@ -405,7 +405,7 @@ namespace DeepAbyssHive.Terrain.Services
         public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunk(int chunkX, int chunkZ)
         {
             Vector2Int chunkCoord = new Vector2Int(chunkX, chunkZ);
-            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is TerrainChunk terrainChunk)
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is ITerrainChunk terrainChunk)
             {
                 return terrainChunk;
             }
@@ -454,7 +454,7 @@ namespace DeepAbyssHive.Terrain.Services
                     
                     if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
                     {
-                        if (chunk is TerrainChunk terrainChunk)
+                        if (chunk is ITerrainChunk terrainChunk)
                         {
                             chunks.Add(terrainChunk);
                         }
@@ -663,7 +663,7 @@ namespace DeepAbyssHive.Terrain.Services
                         int lodLevel = Mathf.Clamp(Mathf.FloorToInt(distance / (ViewDistance / MaxLODLevels)), 0, MaxLODLevels - 1);
                         
                         // 更新LOD级别（如果地形块支持）
-                        if (chunk is TerrainChunk terrainChunk)
+                        if (chunk is ITerrainChunk terrainChunk)
                         {
                             // terrainChunk.SetLODLevel(lodLevel);
                         }

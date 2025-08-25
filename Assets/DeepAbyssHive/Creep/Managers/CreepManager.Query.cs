@@ -164,7 +164,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public List<CreepTile> GetHealthyCreepTiles()
         {
-            return GetCreepTilesByStatus(CreepTileStatus.Healthy);
+            return GetCreepTilesByStatus(DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy);
         }
         
         /// <summary>
@@ -181,7 +181,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         public List<CreepTile> GetGrowingCreepTiles()
         {
-            return GetCreepTilesByStatus(CreepTileStatus.Healthy);
+            return GetCreepTilesByStatus(DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy);
         }
         
         #endregion
@@ -323,13 +323,13 @@ namespace DeepAbyssHive.Creep.Managers
                 
                 switch (tile.Status)
                 {
-                    case CreepTileStatus.Healthy:
+                    case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
                         stats.HealthyTiles++;
                         break;
-                    case CreepTileStatus.Weakened:
+                    case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
                         stats.GrowingTiles++;
                         break;
-                    case CreepTileStatus.Collapsing:
+                    case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
                         stats.DyingTiles++;
                         break;
                 }

@@ -108,7 +108,7 @@ namespace DeepAbyssHive.Creep.Managers
                 // 如果没有其他源点支持，标记为衰减
                 if (!HasNearbyNutritionSource(gridPos))
                 {
-                    tile.Status = CreepTileStatus.Weakened;
+                    tile.Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened;
                 }
             }
             

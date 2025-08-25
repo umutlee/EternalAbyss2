@@ -259,13 +259,13 @@ namespace DeepAbyssHive.Creep.Managers
             // 根据状态更新瓦片
             switch (tile.Status)
             {
-                case CreepTileStatus.Healthy:
+                case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
                     // 健康状态下不需要特殊处理
                     break;
-                case CreepTileStatus.Weakened:
+                case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
                     UpdateWeakenedTile(tile, deltaTime);
                     break;
-                case CreepTileStatus.Collapsing:
+                case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
                     UpdateCollapsingTile(tile, deltaTime);
                     break;
             }
@@ -289,7 +289,7 @@ namespace DeepAbyssHive.Creep.Managers
             tile.Health = Mathf.Max(0f, tile.Health - starvationRate * deltaTime);
             if (tile.Health <= _minDecayDensity * tile.MaxHealth)
             {
-                tile.Status = CreepTileStatus.Collapsing;
+                tile.Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing;
             }
         }
 
@@ -374,7 +374,7 @@ namespace DeepAbyssHive.Creep.Managers
                 WorldPosition = worldPos,
                 IsNutritionSource = false,
                 TileType = CreepTileType.Creep,
-                Status = CreepTileStatus.Healthy,
+                Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy,
                 Health = 50f,
                 MaxHealth = 100f,
                 GrowthLevel = 0f,
