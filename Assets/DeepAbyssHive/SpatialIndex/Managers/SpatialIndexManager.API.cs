@@ -48,15 +48,14 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             // 添加到分类索引
             if (!_categoryIndices.ContainsKey(node.Category))
             {
+                // 創建對應類型的空間索引實例
                 if (_useOctree)
                 {
-                    // TODO: 需要实现OctreeSpatialIndex类或使用现有的空间索引实现
-                    Debug.LogWarning("[SpatialIndexManager] OctreeSpatialIndex类型未找到，使用默认索引");
+                    _categoryIndices[node.Category] = new QuadTreeSpatialIndex(); // 暫時使用 QuadTree 實現
                 }
                 else
                 {
-                    // TODO: 需要实现QuadTreeSpatialIndex类或使用现有的空间索引实现
-                    Debug.LogWarning("[SpatialIndexManager] QuadTreeSpatialIndex类型未找到，使用默认索引");
+                    _categoryIndices[node.Category] = new QuadTreeSpatialIndex();
                 }
             }
             _categoryIndices[node.Category].Insert(node, node.Position, node.Bounds.size);
@@ -298,14 +297,16 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         {
             if (!IsInitialized) return;
 
-            // TODO: 需要检查ISpatialIndex接口是否包含Optimize方法
-            // _spatialIndex.Optimize();
-            // foreach (var index in _categoryIndices.Values)
-            // {
-            //     index.Optimize();
-            // }
+            // 優化主索引
+            _spatialIndex?.Optimize();
             
-            Debug.Log($"[{ManagerName}] 空间索引优化方法暂时禁用，等待接口实现");
+            // 優化分類索引
+            foreach (var index in _categoryIndices.Values)
+            {
+                index?.Optimize();
+            }
+            
+            Debug.Log($"[{ManagerName}] 空间索引优化完成");
 
             Debug.Log($"[{ManagerName}] 空间索引优化完成");
         }
