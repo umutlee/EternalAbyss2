@@ -65,6 +65,64 @@ namespace DeepAbyssHive.Units.Data
         public bool CanFlee;
         
         /// <summary>
+        /// 无参数构造函数
+        /// </summary>
+        public UnitColdData()
+        {
+            UnitType = UnitType.Drone;
+            UnitName = "Default Unit";
+            Description = "";
+            Level = 1;
+            Experience = 0f;
+            ExperienceToNextLevel = 100f;
+            
+            BaseHealth = 100f;
+            BaseEnergy = 100f;
+            BaseShield = 0f;
+            BaseMoveSpeed = 5f;
+            BaseAttackDamage = 10f;
+            BaseAttackRange = 2f;
+            BaseAttackSpeed = 1f;
+            BaseArmor = 1f;
+            
+            HealthGrowth = 10f;
+            EnergyGrowth = 5f;
+            DamageGrowth = 1.5f;
+            ArmorGrowth = 0.2f;
+            SpeedGrowth = 0.1f;
+            
+            EnvironmentAdaptation = new Dictionary<EnvironmentType, float>();
+            PreferredEnvironment = EnvironmentType.Normal;
+            EnvironmentAdaptationRate = 0.1f;
+            
+            EvolutionPath = new List<UnitType>();
+            EvolutionRequirements = new Dictionary<UnitType, float>();
+            CanEvolve = false;
+            NextEvolution = UnitType.Drone;
+            
+            AvailableSkills = new List<string>();
+            SkillCooldowns = new Dictionary<string, float>();
+            SkillDamage = new Dictionary<string, float>();
+            
+            CreationCost = new Dictionary<string, float>
+            {
+                ["Biomass"] = 50f,
+                ["Energy"] = 25f
+            };
+            MaintenanceCost = new Dictionary<string, float>
+            {
+                ["Energy"] = 1f
+            };
+            EvolutionCost = 100f;
+            
+            AggroRange = 8f;
+            PatrolRadius = 5f;
+            FleeHealthThreshold = 0.2f;
+            IsAggressive = true;
+            CanFlee = true;
+        }
+
+        /// <summary>
         /// 构造函数
         /// </summary>
         public UnitColdData(UnitType unitType, string unitName = "")

@@ -17,11 +17,11 @@ namespace DeepAbyssHive.Units.Data
         // 舊 MovementPath → 先提供後備欄位（若現用有 Path/Waypoints，可改為直通）
         public List<Vector3> MovementPath { get => _compatMovementPath ??= new List<Vector3>(); set => _compatMovementPath = value; }
 
-        private int _compatId;
-        private UnitState _compatState;
-        private float _compatStateTimer;
-        private int _compatTargetId;
-        private float _compatActionTimer;
-        private List<Vector3> _compatMovementPath;
+        private int _compatId = 0;
+        private UnitState _compatState = UnitState.Idle;
+        private float _compatStateTimer = 0f;
+        private int _compatTargetId = -1;
+        private float _compatActionTimer = 0f;
+        private List<Vector3> _compatMovementPath = null;
     }
 }

@@ -73,14 +73,14 @@ namespace DeepAbyssHive.Units.Services
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            return _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            return _spatialIndexService.QueryRange(center, radius, SpatialObjectType.Unit).ToSpatialNodes();
         }
 
         public List<SpatialNode> GetUnitsOfType(UnitType unitType)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var allNodes = _spatialIndexService.QueryAll().ToSpatialNodes();
+            var allNodes = _spatialIndexService.QueryRange(Vector3.zero, float.MaxValue, SpatialObjectType.Unit).ToSpatialNodes();
             return allNodes.Where(node => 
             {
                 if (node.Data is UnitColdData unitData)
@@ -110,7 +110,7 @@ namespace DeepAbyssHive.Units.Services
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
+            var spatialNodes = _spatialIndexService.QueryRange(center, radius, SpatialObjectType.Unit).ToSpatialNodes();
             return spatialNodes.Where(node => 
             {
                 if (node.Data is UnitColdData unitData)
@@ -140,7 +140,10 @@ namespace DeepAbyssHive.Units.Services
         {
             if (!_isInitialized) return null;
             
-            var nearestNodes = _spatialIndexService.QueryNearest(position, 1).ToSpatialNodes();
+            int nearestId = _spatialIndexService.QueryNearest(position, SpatialObjectType.Unit);
+            if (nearestId == -1) return null;
+            var objectInfo = _spatialIndexService.GetObjectInfo(nearestId);
+            return objectInfo?.ToSpatialNode();
             return nearestNodes.FirstOrDefault();
         }
 

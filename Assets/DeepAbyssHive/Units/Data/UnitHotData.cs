@@ -53,6 +53,48 @@ namespace DeepAbyssHive.Units.Data
         public float CreationTime;
         
         /// <summary>
+        /// 无参数构造函数
+        /// </summary>
+        public UnitHotData()
+        {
+            UnitId = 0;
+            UnitType = UnitType.Drone;
+            CurrentState = UnitState.Idle;
+            PlayerId = 0;
+            
+            Position = Vector3.zero;
+            Velocity = Vector3.zero;
+            TargetPosition = Vector3.zero;
+            MoveSpeed = 5f;
+            RotationSpeed = 180f;
+            Rotation = Quaternion.identity;
+            
+            Health = 100f;
+            MaxHealth = 100f;
+            Energy = 100f;
+            MaxEnergy = 100f;
+            Shield = 0f;
+            MaxShield = 0f;
+            
+            TargetUnitId = -1;
+            AttackCooldown = 0f;
+            LastAttackTime = 0f;
+            IsInCombat = false;
+            CombatRange = 3f;
+            
+            IsSelected = false;
+            IsVisible = true;
+            IsMoving = false;
+            IsAttacking = false;
+            IsIdle = true;
+            
+            var currentTime = Time.time;
+            LastUpdateTime = currentTime;
+            StateChangeTime = currentTime;
+            CreationTime = currentTime;
+        }
+
+        /// <summary>
         /// 构造函数
         /// </summary>
         public UnitHotData(int unitId, UnitType unitType, Vector3 position, int playerId = 0)

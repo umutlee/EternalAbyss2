@@ -223,25 +223,26 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            // 更新单位状态
-            hotData.State = UnitState.Moving;
-            hotData.TargetId = -1;
-            hotData.StateTimer = 0f;
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.State = UnitState.Moving;
+            updatedHotData.TargetId = -1;
+            updatedHotData.StateTimer = 0f;
             
             // 计算移动方向
-            Vector3 direction = (targetPosition - hotData.Position).normalized;
+            Vector3 direction = (targetPosition - updatedHotData.Position).normalized;
             
             // 设置速度
-            hotData.Velocity = direction * coldData.Attributes.MoveSpeed;
+            updatedHotData.Velocity = direction * coldData.Attributes.MoveSpeed;
             
             // 更新旋转
             if (direction != Vector3.zero)
             {
-                hotData.Rotation = Quaternion.LookRotation(direction);
+                updatedHotData.Rotation = Quaternion.LookRotation(direction);
             }
             
-            // 更新数据
-            _unitHotData[unitId] = hotData;
+            // 回設到字典
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 移动单位: ID={unitId}, 目标位置={targetPosition}");
             return true;
@@ -268,25 +269,26 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            // 更新攻击者状态
-            attackerHotData.State = UnitState.Attacking;
-            attackerHotData.TargetId = targetId;
-            attackerHotData.StateTimer = 0f;
+            // 取值→修改→回設模式
+            var updatedAttackerData = attackerHotData;
+            updatedAttackerData.State = UnitState.Attacking;
+            updatedAttackerData.TargetId = targetId;
+            updatedAttackerData.StateTimer = 0f;
             
             // 计算方向
-            Vector3 direction = (targetHotData.Position - attackerHotData.Position).normalized;
+            Vector3 direction = (targetHotData.Position - updatedAttackerData.Position).normalized;
             
             // 更新旋转
             if (direction != Vector3.zero)
             {
-                attackerHotData.Rotation = Quaternion.LookRotation(direction);
+                updatedAttackerData.Rotation = Quaternion.LookRotation(direction);
             }
             
             // 停止移动
-            attackerHotData.Velocity = Vector3.zero;
+            updatedAttackerData.Velocity = Vector3.zero;
             
-            // 更新数据
-            _unitHotData[attackerId] = attackerHotData;
+            // 回設到字典
+            _unitHotData[attackerId] = updatedAttackerData;
             
             Debug.Log($"[{_serviceName}] 攻击目标: 攻击者={attackerId}, 目标={targetId}");
             return true;
@@ -306,25 +308,26 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            // 更新攻击者状态
-            hotData.State = UnitState.Attacking;
-            hotData.TargetId = -1; // 攻击位置时没有目标ID
-            hotData.StateTimer = 0f;
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.State = UnitState.Attacking;
+            updatedHotData.TargetId = -1; // 攻击位置时没有目标ID
+            updatedHotData.StateTimer = 0f;
             
             // 计算方向
-            Vector3 direction = (targetPosition - hotData.Position).normalized;
+            Vector3 direction = (targetPosition - updatedHotData.Position).normalized;
             
             // 更新旋转
             if (direction != Vector3.zero)
             {
-                hotData.Rotation = Quaternion.LookRotation(direction);
+                updatedHotData.Rotation = Quaternion.LookRotation(direction);
             }
             
             // 停止移动
-            hotData.Velocity = Vector3.zero;
+            updatedHotData.Velocity = Vector3.zero;
             
-            // 更新数据
-            _unitHotData[attackerId] = hotData;
+            // 回設到字典
+            _unitHotData[attackerId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 攻击位置: 攻击者={attackerId}, 目标位置={targetPosition}");
             return true;
@@ -343,14 +346,15 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            // 更新单位状态
-            hotData.State = UnitState.Idle;
-            hotData.TargetId = -1;
-            hotData.Velocity = Vector3.zero;
-            hotData.StateTimer = 0f;
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.State = UnitState.Idle;
+            updatedHotData.TargetId = -1;
+            updatedHotData.Velocity = Vector3.zero;
+            updatedHotData.StateTimer = 0f;
             
-            // 更新数据
-            _unitHotData[unitId] = hotData;
+            // 回設到字典
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 停止单位: ID={unitId}");
             return true;
@@ -372,17 +376,18 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            // 更新单位状态
-            hotData.State = UnitState.Evolving;
-            hotData.StateTimer = 5f; // 简化的进化时间
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.State = UnitState.Evolving;
+            updatedHotData.StateTimer = 5f; // 简化的进化时间
             
-            // 更新单位类型
-            coldData.Type = targetType;
-            coldData.Evolution.Level++;
+            var updatedColdData = coldData;
+            updatedColdData.Type = targetType;
+            updatedColdData.Evolution.Level++;
             
-            // 更新数据
-            _unitHotData[unitId] = hotData;
-            _unitColdData[unitId] = coldData;
+            // 回設到字典
+            _unitHotData[unitId] = updatedHotData;
+            _unitColdData[unitId] = updatedColdData;
             
             Debug.Log($"[{_serviceName}] 单位进化: ID={unitId}, 目标类型={targetType}");
             return true;
@@ -402,8 +407,10 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            hotData.State = state;
-            _unitHotData[unitId] = hotData;
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.State = state;
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 设置单位状态: ID={unitId}, 状态={state}");
             return true;
@@ -424,31 +431,36 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
+            // 取值→修改→回設模式
+            var updatedColdData = coldData;
+            var updatedAttributes = updatedColdData.Attributes;
+            
             // 根据属性类型修改对应属性
             switch (attributeType)
             {
                 case UnitAttributeType.MaxHealth:
-                    coldData.Attributes.MaxHealth = value;
+                    updatedAttributes.MaxHealth = value;
                     break;
                 case UnitAttributeType.Attack:
-                    coldData.Attributes.AttackDamage = value;
+                    updatedAttributes.AttackDamage = value;
                     break;
                 case UnitAttributeType.Defense:
                     // 假设防御影响生命值
-                    coldData.Attributes.MaxHealth *= (1 + value * 0.1f);
+                    updatedAttributes.MaxHealth *= (1 + value * 0.1f);
                     break;
                 case UnitAttributeType.Speed:
-                    coldData.Attributes.MoveSpeed = value;
+                    updatedAttributes.MoveSpeed = value;
                     break;
                 case UnitAttributeType.AttackRange:
-                    coldData.Attributes.AttackRange = value;
+                    updatedAttributes.AttackRange = value;
                     break;
                 case UnitAttributeType.AttackSpeed:
-                    coldData.Attributes.AttackSpeed = value;
+                    updatedAttributes.AttackSpeed = value;
                     break;
             }
             
-            _unitColdData[unitId] = coldData;
+            updatedColdData.Attributes = updatedAttributes;
+            _unitColdData[unitId] = updatedColdData;
             
             Debug.Log($"[{_serviceName}] 修改单位属性: ID={unitId}, 属性={attributeType}, 值={value}");
             return true;
@@ -469,8 +481,10 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            hotData.Health = Mathf.Min(hotData.Health + healAmount, coldData.Attributes.MaxHealth);
-            _unitHotData[unitId] = hotData;
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.Health = Mathf.Min(updatedHotData.Health + healAmount, coldData.Attributes.MaxHealth);
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 治疗单位: ID={unitId}, 治疗量={healAmount}, 当前生命={hotData.Health}");
             return true;
@@ -491,15 +505,17 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            hotData.Health = Mathf.Max(0, hotData.Health - damage);
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.Health = Mathf.Max(0, updatedHotData.Health - damage);
             
             // 检查单位是否死亡
-            if (hotData.Health <= 0)
+            if (updatedHotData.Health <= 0)
             {
-                hotData.State = UnitState.Dead;
+                updatedHotData.State = UnitState.Dead;
             }
             
-            _unitHotData[unitId] = hotData;
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 伤害单位: ID={unitId}, 伤害={damage}, 类型={damageType}, 剩余生命={hotData.Health}");
             return true;
@@ -519,11 +535,14 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            
             // 根据行为类型设置相应状态
             switch (behaviorType)
             {
                 case UnitBehaviorType.Idle:
-                    hotData.State = UnitState.Idle;
+                    updatedHotData.State = UnitState.Idle;
                     break;
                 case UnitBehaviorType.Aggressive:
                     // 可以设置特殊标记或状态
@@ -533,7 +552,7 @@ namespace DeepAbyssHive.Units.Services
                     break;
             }
             
-            _unitHotData[unitId] = hotData;
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 设置单位行为: ID={unitId}, 行为={behaviorType}");
             return true;
@@ -553,11 +572,12 @@ namespace DeepAbyssHive.Units.Services
                 return false;
             }
             
-            // 更新单位状态
-            hotData.State = UnitState.Adapting;
-            hotData.StateTimer = 8f; // 简化的适应时间
+            // 取值→修改→回設模式
+            var updatedHotData = hotData;
+            updatedHotData.State = UnitState.Adapting;
+            updatedHotData.StateTimer = 8f; // 简化的适应时间
             
-            _unitHotData[unitId] = hotData;
+            _unitHotData[unitId] = updatedHotData;
             
             Debug.Log($"[{_serviceName}] 单位适应环境: ID={unitId}, 环境={environmentType}");
             return true;

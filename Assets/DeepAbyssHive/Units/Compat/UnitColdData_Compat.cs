@@ -28,13 +28,13 @@ namespace DeepAbyssHive.Units.Data
         public List<object> AdaptiveTraits { get => _compatAdaptiveTraits ??= new List<object>(); set => _compatAdaptiveTraits = value; }
         public string PrefabPath { get => _compatPrefabPath; set => _compatPrefabPath = value; }
 
-        private int _compatId;
-        private UnitType _compatType;
-        private int _compatOwnerId;
-        private UnitAttributes _compatAttributes;
-        private UnitAttributes? _compatBaseAttributes;
-        private object _compatEvolution;
-        private List<object> _compatAdaptiveTraits;
-        private string _compatPrefabPath;
+        private int _compatId = 0;
+        private UnitType _compatType = UnitType.Drone;
+        private int _compatOwnerId = 0;
+        private UnitAttributes _compatAttributes = default;
+        private UnitAttributes? _compatBaseAttributes = null;
+        private object _compatEvolution = null;
+        private List<object> _compatAdaptiveTraits = null;
+        private string _compatPrefabPath = "";
     }
 }

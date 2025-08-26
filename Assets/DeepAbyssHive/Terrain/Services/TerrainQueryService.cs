@@ -53,12 +53,20 @@ namespace DeepAbyssHive.Terrain.Services
 
         #region ITerrainQueryService 实现
         public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunkAt(Vector3 worldPosition)
+        public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunkAt(Vector3 worldPosition)
         {
             Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
             
-            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is DeepAbyssHive.Terrain.Data.TerrainChunk terrainChunk)
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
             {
-                return terrainChunk;
+                // 優先以介面處理，必要時安全 cast
+                if (chunk is DeepAbyssHive.Terrain.Data.TerrainChunk terrainChunk)
+                {
+                    return terrainChunk;
+                }
+                
+                // 如果不是具體類型，創建一個包裝或返回默認值
+                // 這裡可以根據需要實現介面到具體類型的轉換邏輯
             }
             
             return default;

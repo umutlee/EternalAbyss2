@@ -100,8 +100,8 @@ namespace DeepAbyssHive.Creep.Services
             if (_spatialIndex != null)
             {
                 Vector3 worldPos = GridToWorldPosition(gridPosition);
-                Vector3 size = new Vector3(_gridCellSize, _gridCellSize, _gridCellSize);
-                _spatialIndex.Insert(data, worldPos, size);
+                Bounds bounds = new Bounds(worldPos, new Vector3(_gridCellSize, _gridCellSize, _gridCellSize));
+                _spatialIndex.Insert(data, worldPos, bounds.extents);
             }
         }
 
@@ -122,8 +122,8 @@ namespace DeepAbyssHive.Creep.Services
                 if (_spatialIndex != null)
                 {
                     Vector3 worldPos = GridToWorldPosition(gridPosition);
-                    Vector3 size = new Vector3(_gridCellSize, _gridCellSize, _gridCellSize);
-                    _spatialIndex.Remove(data, worldPos, size);
+                    Bounds bounds = new Bounds(worldPos, new Vector3(_gridCellSize, _gridCellSize, _gridCellSize));
+                    _spatialIndex.Remove(data, worldPos, bounds.extents);
                 }
             }
         }

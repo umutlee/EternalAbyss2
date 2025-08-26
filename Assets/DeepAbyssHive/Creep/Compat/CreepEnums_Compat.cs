@@ -1,14 +1,13 @@
 using DeepAbyssHive.Creep.Data;
-using DeepAbyssHive.Creep.Enums;
 
 namespace DeepAbyssHive.Creep.Compat
 {
     public static class CreepSourceTypeCompat
     {
-        public const CreepSourceType Basic = (CreepSourceType)2;
-        public const CreepSourceType Enhanced = (CreepSourceType)3;
-        public const CreepSourceType Specialized = (CreepSourceType)4;
-        public const CreepSourceType Manual = (CreepSourceType)1;
+        public static readonly CreepSourceType Basic = CreepSourceType.CreepColony;
+        public static readonly CreepSourceType Enhanced = CreepSourceType.CreepTumor;
+        public static readonly CreepSourceType Specialized = CreepSourceType.SubHive;
+        public static readonly CreepSourceType Manual = CreepSourceType.MainHive;
     }
     
     /// <summary>

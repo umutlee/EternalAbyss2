@@ -278,7 +278,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 查询指定区域内的所有对象
         /// </summary>
-        public List<object> QueryRange(Vector3 center, Vector3 size)
+        public List<SpatialNode> QueryRange(Vector3 center, Vector3 size)
         {
             float startTime = Time.realtimeSinceStartup;
             
@@ -349,7 +349,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 查询指定点最近的对象
         /// </summary>
-        public List<object> QueryNearest(Vector3 position, float maxDistance, int maxResults)
+        public List<SpatialNode> QueryNearest(Vector3 position, float maxDistance, int maxResults)
         {
             var query = new SpatialQuery(position, maxDistance)
                 .WithMaxResults(maxResults)
@@ -361,7 +361,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// <summary>
         /// 查询与射线相交的对象
         /// </summary>
-        public List<object> QueryRaycast(Ray ray, float maxDistance)
+        public List<SpatialNode> QueryRaycast(Ray ray, float maxDistance)
         {
             float startTime = Time.realtimeSinceStartup;
             
