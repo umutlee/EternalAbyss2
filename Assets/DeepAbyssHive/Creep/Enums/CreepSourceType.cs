@@ -1,7 +1,6 @@
-namespace DeepAbyssHive.Creep.Data
-namespace DeepAbyssHive.Creep.Data
+namespace DeepAbyssHive.Creep.Enums
+namespace DeepAbyssHive.Creep.Enums
 {
-    // 同名不同命名空間，暫時容忍；後續統一一處即可
     public enum CreepSourceType
     {
         Unknown = 0,
