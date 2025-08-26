@@ -91,7 +91,7 @@ namespace DeepAbyssHive.Buildings.Services
         /// </summary>
         /// <param name="buildingId">建筑ID</param>
         /// <returns>生产队列</returns>
-        List<ProductionItem> GetProductionQueue(int buildingId);
+        List<ProductionQueueItem> GetProductionQueue(int buildingId);
 
         /// <summary>
         /// 获取建筑的当前状态
@@ -142,9 +142,9 @@ namespace DeepAbyssHive.Buildings.Services
     }
 
     /// <summary>
-    /// 生产项目
+    /// 生产队列项目
     /// </summary>
-    public struct ProductionItem
+    public struct ProductionQueueItem
     {
         public string ItemId;
         public string ItemName;
