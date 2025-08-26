@@ -8,7 +8,7 @@ namespace DeepAbyssHive.Terrain.Data
     /// 用于描述对地形的修改操作
     /// </summary>
     [System.Serializable]
-    public struct TerrainModification
+    public partial struct TerrainModification
     {
         /// <summary>
         /// 是否改变地形类型

@@ -9,7 +9,7 @@ namespace DeepAbyssHive.Units.Data
     /// 用于低频访问的数据，如属性、技能、进化路径等
     /// </summary>
     [System.Serializable]
-    public struct UnitColdData
+    public partial struct UnitColdData
     {
         [Header("基础属性")]
         public UnitType UnitType;

@@ -1,0 +1,437 @@
+---
+description: 
+globs:
+alwaysApply: true
+---
+## **1\) 先移除/取代會直接報錯的壞 Compat**
+
+### **1.1 替換檔：`Assets/DeepAbyssHive/Buildings/Compat/BuildingState_Compat.cs`**
+
+**操作**：整檔覆蓋（此檔目前引用了不存在的 `BuildingState.Built` 直接造成 CS0117）
+
+**新內容**：
+
+`using DeepAbyssHive.Buildings.Enums;`
+
+`namespace DeepAbyssHive.Buildings.Compat`  
+`{`  
+    `/// <summary>`  
+    `/// 建築狀態兼容層：目前僅提供無害的 Normalize，避免引用不存在的舊枚舉值（例如 Built）。`  
+    `/// 後續如需從舊值映射，可在這裡補對應表，但不要直接引用不存在的枚舉成員。`  
+    `/// </summary>`  
+    `public static class BuildingStateCompat`  
+    `{`  
+        `public static BuildingState Normalize(this BuildingState s) => s;`  
+    `}`  
+`}`
+
+---
+
+## **2\) 把核心資料結構標記為 partial（讓我們能在 Compat 檔補齊舊字段）**
+
+若以下任一檔案的型別宣告**不是** `public partial struct|class`，請改成 `partial`；其餘內容不動。
+
+### **2.1 修改檔：**
+
+* `Assets/DeepAbyssHive/Creep/Data/CreepSource.cs`
+
+* `Assets/DeepAbyssHive/Creep/Data/CreepData.cs`
+
+* `Assets/DeepAbyssHive/Units/Data/UnitColdData.cs`
+
+* `Assets/DeepAbyssHive/Units/Data/UnitHotData.cs`
+
+* `Assets/DeepAbyssHive/Units/Data/UnitData.cs`
+
+* `Assets/DeepAbyssHive/Units/Data/UnitAttributes.cs`
+
+* `Assets/DeepAbyssHive/Terrain/Data/TerrainModification.cs`
+
+* `Assets/DeepAbyssHive/SpatialIndex/Data/SpatialNode.cs`
+
+* （如有）`Assets/DeepAbyssHive/Terrain/Data/TerrainChunk.cs`
+
+**操作**：把第一行型別宣告調整為 `public partial struct XXX` 或 `public partial class XXX`（依原本是 struct 或 class 來改），其餘不動。
+
+---
+
+## **3\) 新增 Compat partial：補齊舊屬性/欄位名稱**
+
+這些檔案都是**新增**，放在對應模組下的 `Compat/` 目錄。  
+ 若底層已存在等價欄位，則做「直通 alias」；若不存在，先給一個後備 backing field，確保能編譯。
+
+### **3.1 新增檔：`Assets/DeepAbyssHive/Creep/Compat/CreepSource_Compat.cs`**
+
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.Creep.Data`  
+`{`  
+    `public partial struct CreepSource`  
+    `{`  
+        `// 舊名 PlayerId → 暫無對應，先給後備欄位`  
+        `public int PlayerId { get => _compatPlayerId; set => _compatPlayerId = value; }`  
+        `private int _compatPlayerId;`
+
+        `// 舊名 InfluenceRadius → 新結構裡是 Radius`  
+        `public float InfluenceRadius { get => Radius; set => Radius = value; }`
+
+        `// 舊名 SourceType → 新結構裡是 Type`  
+        `public int SourceType { get => Type; set => Type = value; }`
+
+        `// 舊名 LastUpdateTime → 同名直通（若底層已存在同名欄位則直通；否則後備欄位）`  
+        `public float LastUpdateTime { get => _compatLastUpdateTime; set => _compatLastUpdateTime = value; }`  
+        `private float _compatLastUpdateTime;`  
+    `}`  
+`}`
+
+### **3.2 新增檔：`Assets/DeepAbyssHive/Creep/Compat/CreepData_Compat.cs`**
+
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.Creep.Data`  
+`{`  
+    `public partial struct CreepData`  
+    `{`  
+        `// 舊版常用的三個字段：先補後備欄位（若未來有對應，改為直通）`  
+        `public int NetworkId { get => _compatNetworkId; set => _compatNetworkId = value; }`  
+        `public bool IsActive { get => _compatIsActive; set => _compatIsActive = value; }`  
+        `public float Strength { get => _compatStrength; set => _compatStrength = value; }`
+
+        `// 舊名 Timestamp → 新結構常用 LastUpdateTime`  
+        `public float Timestamp { get => LastUpdateTime; set => LastUpdateTime = value; }`
+
+        `private int _compatNetworkId;`  
+        `private bool _compatIsActive;`  
+        `private float _compatStrength;`  
+    `}`  
+`}`
+
+### **3.3 新增檔：`Assets/DeepAbyssHive/Units/Compat/UnitAttributes_Compat.cs`**
+
+`namespace DeepAbyssHive.Units.Data`  
+`{`  
+    `public partial struct UnitAttributes`  
+    `{`  
+        `// 舊代碼使用 MaxEnergy，現結構多為 MaxHealth → 提供別名`  
+        `public float MaxEnergy { get => MaxHealth; set => MaxHealth = value; }`
+
+        `// 舊代碼使用 DetectionRange，現結構多為 SightRange → 提供別名`  
+        `public float DetectionRange { get => SightRange; set => SightRange = value; }`  
+    `}`  
+`}`
+
+### **3.4 新增檔：`Assets/DeepAbyssHive/Units/Compat/UnitColdData_Compat.cs`**
+
+`using System.Collections.Generic;`  
+`using DeepAbyssHive.Units.Enums;`
+
+`namespace DeepAbyssHive.Units.Data`  
+`{`  
+    `public partial struct UnitColdData`  
+    `{`  
+        `// 舊代碼常用字段：若底層已有對應（如 UnitId/UnitType/EvolutionInfo），請改為直通`  
+        `public int Id { get => _compatId; set => _compatId = value; }               // 若已有 UnitId，改為直通`  
+        `public UnitType Type { get => _compatType; set => _compatType = value; }    // 若已有 UnitType (enum/int)，改為直通轉型`  
+        `public int OwnerId { get => _compatOwnerId; set => _compatOwnerId = value; }`
+
+        `public UnitAttributes BaseAttributes`  
+        `{`  
+            `get => _compatBaseAttributes ?? _compatAttributes;   // 盡量回傳現用 Attributes`  
+            `set`  
+            `{`  
+                `_compatBaseAttributes = value;`  
+                `_compatAttributes = value;`  
+            `}`  
+        `}`
+
+        `public UnitAttributes Attributes { get => _compatAttributes; set => _compatAttributes = value; }`
+
+        `// 舊名 Evolution → 新結構多為 EvolutionInfo`  
+        `public object Evolution { get => _compatEvolution; set => _compatEvolution = value; }`
+
+        `public List<object> AdaptiveTraits { get => _compatAdaptiveTraits ??= new List<object>(); set => _compatAdaptiveTraits = value; }`  
+        `public string PrefabPath { get => _compatPrefabPath; set => _compatPrefabPath = value; }`
+
+        `private int _compatId;`  
+        `private UnitType _compatType;`  
+        `private int _compatOwnerId;`  
+        `private UnitAttributes _compatAttributes;`  
+        `private UnitAttributes _compatBaseAttributes;`  
+        `private object _compatEvolution;`  
+        `private List<object> _compatAdaptiveTraits;`  
+        `private string _compatPrefabPath;`  
+    `}`  
+`}`
+
+### **3.5 新增檔：`Assets/DeepAbyssHive/Units/Compat/UnitHotData_Compat.cs`**
+
+`using System.Collections.Generic;`  
+`using DeepAbyssHive.Units.Enums;`  
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.Units.Data`  
+`{`  
+    `public partial struct UnitHotData`  
+    `{`  
+        `public int Id { get => _compatId; set => _compatId = value; } // 若已有 UnitId，改為直通`  
+        `public UnitState State { get => _compatState; set => _compatState = value; }`  
+        `public float StateTimer { get => _compatStateTimer; set => _compatStateTimer = value; }`  
+        `public int TargetId { get => _compatTargetId; set => _compatTargetId = value; }`
+
+        `// 舊 ActionTimer → 先提供後備欄位`  
+        `public float ActionTimer { get => _compatActionTimer; set => _compatActionTimer = value; }`
+
+        `// 舊 MovementPath → 先提供後備欄位（若現用有 Path/Waypoints，可改為直通）`  
+        `public List<Vector3> MovementPath { get => _compatMovementPath ??= new List<Vector3>(); set => _compatMovementPath = value; }`
+
+        `private int _compatId;`  
+        `private UnitState _compatState;`  
+        `private float _compatStateTimer;`  
+        `private int _compatTargetId;`  
+        `private float _compatActionTimer;`  
+        `private List<Vector3> _compatMovementPath;`  
+    `}`  
+`}`
+
+### **3.6 新增檔：`Assets/DeepAbyssHive/Units/Compat/UnitData_Compat.cs`**
+
+`using DeepAbyssHive.Units.Enums;`
+
+`namespace DeepAbyssHive.Units.Data`  
+`{`  
+    `public partial struct UnitData`  
+    `{`  
+        `// 舊代碼常見字段映射`  
+        `public string UnitName { get => _compatUnitName; set => _compatUnitName = value; }`  
+        `public float MoveSpeed { get => Speed; set => Speed = value; }`  
+        `public float AttackCooldown { get => _compatAttackCooldown; set => _compatAttackCooldown = value; }`
+
+        `// 舊代碼有把 int UnitType 當 enum 用的情形 → 提供 enum 視圖`  
+        `public UnitType UnitTypeEnum { get => (UnitType)UnitType; set => UnitType = (int)value; }`
+
+        `public float DetectionRange { get => _compatDetectionRange; set => _compatDetectionRange = value; }`  
+        `public string AttackSound { get => _compatAttackSound; set => _compatAttackSound = value; }`  
+        `public string DeathSound  { get => _compatDeathSound; set => _compatDeathSound = value; }`
+
+        `private string _compatUnitName;`  
+        `private float _compatAttackCooldown;`  
+        `private float _compatDetectionRange;`  
+        `private string _compatAttackSound;`  
+        `private string _compatDeathSound;`  
+    `}`  
+`}`
+
+### **3.7 新增檔：`Assets/DeepAbyssHive/Terrain/Compat/TerrainModification_Compat.cs`**
+
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.Terrain.Data`  
+`{`  
+    `public partial struct TerrainModification`  
+    `{`  
+        `// 舊名 Position/Value/Type/Timestamp/TerrainTypeValue/Falloff 等 → 優先直通現欄位；沒有就後備`  
+        `public Vector3 Position { get => _compatPosition; set => _compatPosition = value; }`  
+        `public float Radius    { get => _compatRadius;    set => _compatRadius = value; }`  
+        `public float Value     { get => _compatValue;     set => _compatValue = value; }`  
+        `public int   Type      { get => _compatType;      set => _compatType = value; } // 若現用是 ModificationType(enum)，上層代碼可用映射`  
+        `public float Timestamp { get => _compatTimestamp; set => _compatTimestamp = value; }`
+
+        `// 舊名 TerrainTypeValue → 先兼容為 int`  
+        `public int TerrainTypeValue { get => _compatTerrainTypeValue; set => _compatTerrainTypeValue = value; }`
+
+        `public float Falloff { get => _compatFalloff; set => _compatFalloff = value; }`
+
+        `private Vector3 _compatPosition;`  
+        `private float _compatRadius;`  
+        `private float _compatValue;`  
+        `private int _compatType;`  
+        `private float _compatTimestamp;`  
+        `private int _compatTerrainTypeValue;`  
+        `private float _compatFalloff;`  
+    `}`  
+`}`
+
+### **3.8 新增檔：`Assets/DeepAbyssHive/SpatialIndex/Compat/SpatialNode_Compat.cs`**
+
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.SpatialIndex.Data`  
+`{`  
+    `public partial class SpatialNode`  
+    `{`  
+        `// 舊代碼常用 Data → 新版若移除，這裡先提供一個可用的暫存`  
+        `public object Data { get => _compatData; set => _compatData = value; }`  
+        `private object _compatData;`  
+    `}`  
+`}`
+
+---
+
+## **4\) 修正 ISpatialIndex 相關（避免 List\<object\> 導致一串 CS0029/CS1061）**
+
+這一坨錯大多是「接口返回 `List<object>`，呼叫方當成 `List<SpatialNode>` 用」。  
+ 為了快速恢復編譯，我們不大改現有實作，改在**包一層實作 stub**讓編譯過，之後再逐步落實邏輯。
+
+### **4.1（可選其一，建議先用 A）**
+
+**A. 在 QuadTreeSpatialIndex 上提供接口 stub（不破壞現有行為，先讓編譯過）**
+
+#### **4.1.1 修改檔：`Assets/DeepAbyssHive/SpatialIndex/QuadTreeSpatialIndex.cs`**
+
+**操作**：在類宣告後面加上接口實作 `: Interfaces.ISpatialIndex`（不要動現有方法）
+
+#### **4.1.2 新增檔：`Assets/DeepAbyssHive/SpatialIndex/Compat/QuadTreeSpatialIndex.Compat.cs`**
+
+`using System.Collections.Generic;`  
+`using DeepAbyssHive.SpatialIndex.Data;`  
+`using DeepAbyssHive.SpatialIndex.Interfaces;`  
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.SpatialIndex`  
+`{`  
+    `// 把 ISpatialIndex 的方法補成可編譯的 stub；後續再把真邏輯接進來。`  
+    `public partial class QuadTreeSpatialIndex : ISpatialIndex`  
+    `{`  
+        `public void Add(object obj, Vector3 position, Vector3 size) { /* TODO: 接上真實邏輯 */ }`  
+        `public void Remove(object obj, Vector3 position, Vector3 size) { /* TODO */ }`  
+        `public void Update(object obj, Vector3 oldPos, Vector3 newPos, Vector3 size) { /* TODO */ }`
+
+        `public List<SpatialNode> Query(Bounds area) => new List<SpatialNode>();`  
+        `public List<SpatialNode> Query(Vector3 center, float radius) => new List<SpatialNode>();`  
+        `public List<SpatialNode> Raycast(Vector3 origin, Vector3 direction, float distance) => new List<SpatialNode>();`
+
+        `public int Count => 0;`  
+        `public void Clear() { /* TODO */ }`  
+    `}`  
+`}`
+
+**（說明）** 這樣可以解掉：
+
+* `SpatialIndexManager.Core.cs` 的「不能轉成 ISpatialIndex」
+
+* `SpatialIndexManager.API.cs` / `SpatialIndexService.cs` 一串和 `List<object>`/`Data`/`Category` 相關的錯
+
+後續若要把 `Query()` 真正返回 `SpatialNode`，我們再把你現有四分樹上的節點/物件包成 `SpatialNode` 後回傳即可。
+
+---
+
+## **5\) TerrainManager 缺失私有欄位（\_chunkSize/\_tileSize/\_noiseScale/\_heightScale/\_seed/\_loadRadius…）**
+
+### **5.1 新增檔：`Assets/DeepAbyssHive/Terrain/Managers/TerrainManager.Fields.cs`**
+
+`using UnityEngine;`
+
+`namespace DeepAbyssHive.Terrain.Managers`  
+`{`  
+    `public partial class TerrainManager : MonoBehaviour`  
+    `{`  
+        `[SerializeField] private int _chunkSize = 16;`  
+        `[SerializeField] private float _tileSize = 1f;`  
+        `[SerializeField] private int _loadRadius = 4;`
+
+        `[SerializeField] private float _noiseScale = 0.05f;`  
+        `[SerializeField] private float _heightScale = 10f;`  
+        `[SerializeField] private int _seed = 1337;`  
+        `[SerializeField] private int _maxModificationsPerFrame = 64;`  
+    `}`  
+`}`
+
+---
+
+## **6\) 單點錯誤的安全替換（避免 signature 不符）**
+
+這些是「少數行」造成的高噪音錯誤，做最小替換讓它們符合現在的 API。
+
+### **6.1 `Assets/DeepAbyssHive/Units/Core/Unit.cs`**
+
+* `Cannot apply '?.' to UnitData` → 把 `someUnitData?.XXX` 改成 `someUnitData_Compat.XXX`（先用 null 判斷）
+
+* `int → UnitType` → 把直接賦值 `UnitType t = data.UnitType;` 改成 `UnitType t = data.UnitTypeEnum;`
+
+**操作**：正則替換（全檔）
+
+* `UnitType\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*([a-zA-Z_][a-zA-Z0-9_]*?)\.UnitType\s*;`  
+   → `UnitType \1 = \2.UnitTypeEnum;`
+
+若有 `data?.` 用在 `UnitData` 上，改為：
+
+`// 原：if (data?.EvolutionOptions != null) ...`  
+`// 改：`  
+`if (/* data 是否存在 */ true) { /* 直接用 data 的 compat 屬性 */ }`
+
+（codebuddy 可以幫你把 `data?.X` 改成先判 null 再用 `data.X`。）
+
+### **6.2 `Assets/DeepAbyssHive/Buildings/Services/BuildingConstructionService.cs`**
+
+* `Property 'BuildingData.Type' is read only` → 請改為呼叫對應的 set/初始化方法；暫時用兼容層：  
+   在 `BuildingData` 的 partial（如已有就同檔新增）補：
+
+`namespace DeepAbyssHive.Buildings.Data`  
+`{`  
+    `public partial struct BuildingData`  
+    `{`  
+        `public void SetType(int value) { _compatType = value; }`  
+        `public int GetTypeCompat() => _compatType;`
+
+        `private int _compatType;`  
+    `}`  
+`}`
+
+然後把原本賦值 `bd.Type = ...;` 改為 `bd.SetType(...);`
+
+（這一條如果 codebuddy 不好做，你先標註 TODO，之後我幫你把 BuildingData 原檔勾一下真實賦值路徑。）
+
+### **6.3 `Assets/DeepAbyssHive/Buildings/Services/BuildingQueryService.cs`**
+
+* 多處 `GetBuildingPlayerId(...)` 不存在 → 先新增工具方法：
+
+**在同檔加：**
+
+`private static int GetBuildingPlayerId(in DeepAbyssHive.Buildings.Data.BuildingData bd)`  
+`{`  
+    `// 先返回 0；若 BuildingData 內有 OwnerId/PlayerId，改為直通`  
+    `return 0;`  
+`}`
+
+---
+
+## **7\) Terrain/TerrainChunk 界面不匹配（ITerrainChunk ↔ TerrainChunk）**
+
+### **7.1 在 `Assets/DeepAbyssHive/Terrain/Data/TerrainChunk.cs` 加上 `partial`（見第 2 節）**
+
+### **7.2 新增檔：`Assets/DeepAbyssHive/Terrain/Compat/TerrainChunk_Compat.cs`**
+
+`namespace DeepAbyssHive.Terrain.Data`  
+`{`  
+    `public partial struct TerrainChunk : DeepAbyssHive.Terrain.Interfaces.ITerrainChunk`  
+    `{`  
+        `// 若 ITerrainChunk 有屬性/方法就補齊 stub，先讓轉型與賦值通過`  
+        `// 例如：`  
+        `// public Vector2Int Coordinates { get; set; }`  
+        `// public UnityEngine.Bounds Bounds { get; set; }`  
+    `}`  
+`}`
+
+---
+
+## **8\) 刪掉已不需要的 Creep Enum 壞映射（你之前已修掉 Healthy/Weakened/Collapsing，那塊容易引爆）**
+
+### **8.1 若仍存在 `Assets/DeepAbyssHive/Creep/Compat/CreepEnums_Compat.cs` 引用不存在的枚舉值**
+
+**操作**：將其內容全部註解或刪檔（保留空檔也可）。後續需要映射，再用「字串/字典」安全轉換，不要直引用不存在的枚舉成員。
+
+---
+
+# **執行順序建議**
+
+1. 第 1 節先覆蓋 `BuildingState_Compat.cs`（減 2 個錯）
+
+2. 第 2、3 節：把所有 DTO/結構標 `partial` 並加 Compat partial（會消掉絕大多數「不存在屬性」類錯誤）
+
+3. 第 4 節：加上 `QuadTreeSpatialIndex` 的 I/F stub（清一大坨 SpatialIndex 錯）
+
+4. 第 5 節：補 TerrainManager 欄位（清 TerrainManager.\* 的變數不存在錯）
+
+5. 第 6、7 節：單點替換 & ITerrainChunk 兼容
+
+6. 第 8 節：清掉殘留壞 Compat

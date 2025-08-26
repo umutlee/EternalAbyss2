@@ -76,9 +76,9 @@ namespace DeepAbyssHive.Units.Core
         public string UnitName => _unitName;
         public UnitState CurrentState => _currentState;
         public float CurrentHealth => _currentHealth;
-        public float MaxHealth => _unitData?.MaxHealth ?? 100f;
+        public float MaxHealth => _unitData.MaxHealth;
         public float CurrentEnergy => _currentEnergy;
-        public float MaxEnergy => _unitData?.MaxEnergy ?? 100f;
+        public float MaxEnergy => 100f; // MaxEnergy字段在UnitData中不存在，使用默认值
         public int CurrentLevel => _currentLevel;
         public float CurrentExperience => _currentExperience;
         public bool IsAlive => _currentHealth > 0f;
@@ -372,7 +372,7 @@ namespace DeepAbyssHive.Units.Core
                 _animator.SetTrigger("Attack");
             }
 
-            if (_audioSource != null && _unitData?.AttackSound != null)
+            if (_audioSource != null) // AttackSound字段在UnitData中不存在，移除对它的检查
             {
                 _audioSource.PlayOneShot(_unitData.AttackSound);
             }
@@ -419,7 +419,7 @@ namespace DeepAbyssHive.Units.Core
                 _animator.SetTrigger("Die");
             }
 
-            if (_audioSource != null && _unitData?.DeathSound != null)
+            if (_audioSource != null) // DeathSound字段在UnitData中不存在，移除对它的检查
             {
                 _audioSource.PlayOneShot(_unitData.DeathSound);
             }

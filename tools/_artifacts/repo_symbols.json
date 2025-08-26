@@ -1,6 +1,6 @@
 {
   "files_scanned": 5263,
-  "total_types": 9375,
+  "total_types": 9376,
   "index": {
     "ShaderData": [
       {
@@ -15578,6 +15578,11 @@
         "fqn": "UnityEngine.UI.by",
         "kind": "class",
         "file": "Library/PackageCache/com.unity.ugui@1.0.0/Runtime/UI/Core/DefaultControls.cs"
+      },
+      {
+        "fqn": "DeepAbyssHive.Creep.Compat.by",
+        "kind": "enum",
+        "file": "Assets/DeepAbyssHive/Creep/Compat/CreepEnums_Compat.cs"
       }
     ],
     "fsReflectedConverter": [

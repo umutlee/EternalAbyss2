@@ -6,11 +6,11 @@ namespace DeepAbyssHive.Terrain.Data
     /// 地形块数据
     /// </summary>
     [System.Serializable]
-    public struct TerrainChunk
+    public partial struct TerrainChunk
     {
         public Vector2Int ChunkCoord;
         public Vector3 WorldPosition;
-        public float[,] HeightMap;
+        // removed duplicate field; keep the property version declared elsewhere
         public int[,] TypeMap;
         public bool IsGenerated;
         public bool IsModified;

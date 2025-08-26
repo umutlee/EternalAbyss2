@@ -7,7 +7,7 @@ namespace DeepAbyssHive.SpatialIndex
     /// <summary>
     /// 四叉树空间索引实现
     /// </summary>
-    public class QuadTreeSpatialIndex
+    public partial class QuadTreeSpatialIndex : Interfaces.ISpatialIndex
     {
         private QuadTreeNode _root;
         private float _worldSize;

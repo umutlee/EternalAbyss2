@@ -6,7 +6,7 @@ namespace DeepAbyssHive.Creep.Data
     /// 菌毯数据类
     /// </summary>
     [System.Serializable]
-    public class CreepData
+    public partial class CreepData
     {
         [SerializeField] private Vector3 _position;
         [SerializeField] private float _density;
@@ -82,14 +82,7 @@ namespace DeepAbyssHive.Creep.Data
             set => _sourceRadius = Mathf.Max(0f, value); 
         }
         
-        /// <summary>
-        /// 最后更新时间
-        /// </summary>
-        public float LastUpdateTime 
-        { 
-            get => _lastUpdateTime; 
-            set => _lastUpdateTime = value; 
-        }
+        // removed duplicate auto-property; keep the field version declared elsewhere
         
         /// <summary>
         /// 构造函数

@@ -6,7 +6,7 @@ namespace DeepAbyssHive.Units.Data
     /// 单位属性数据结构
     /// </summary>
     [System.Serializable]
-    public struct UnitAttributes
+    public partial struct UnitAttributes
     {
         /// <summary>
         /// 最大生命值

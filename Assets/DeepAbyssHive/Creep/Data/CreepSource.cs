@@ -7,7 +7,7 @@ namespace DeepAbyssHive.Creep.Data
     /// 菌毯源点
     /// </summary>
     [System.Serializable]
-    public struct CreepSource
+    public partial struct CreepSource
     {
         public int SourceId;
         public Vector3 Position;

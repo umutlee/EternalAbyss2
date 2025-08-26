@@ -8,7 +8,7 @@ namespace DeepAbyssHive.SpatialIndex.Data
     /// 用于存储空间索引中的对象信息
     /// </summary>
     [System.Serializable]
-    public class SpatialNode
+    public partial class SpatialNode
     {
         [Header("基础信息")]
         [SerializeField] private int _id;

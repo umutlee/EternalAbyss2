@@ -6,7 +6,7 @@ namespace DeepAbyssHive.Units.Data
     /// 单位数据结构（值类型，用于NativeArray）
     /// </summary>
     [System.Serializable]
-    public struct UnitData
+    public partial struct UnitData
     {
         public int UnitId;
         public Vector3 Position;

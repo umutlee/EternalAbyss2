@@ -3,8 +3,9 @@ using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
-using DeepAbyssHive.SpatialIndex.Interfaces;
+using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.SpatialIndex.Enums;
 using DeepAbyssHive.Units.Config;
 
 namespace DeepAbyssHive.Units.Services
@@ -20,7 +21,7 @@ namespace DeepAbyssHive.Units.Services
         private readonly Dictionary<int, UnitColdData> _unitColdData;
         private readonly Dictionary<int, GameObject> _unitGameObjects;
         private readonly Dictionary<int, SpatialNode> _unitSpatialNodes;
-        private readonly ISpatialIndex _spatialIndex;
+        private readonly ISpatialIndexService _spatialIndex;
         private readonly Dictionary<UnitType, string> _unitPrefabPaths;
         private readonly UnitConfigSO _config;
         private int _nextUnitId;
@@ -46,7 +47,7 @@ namespace DeepAbyssHive.Units.Services
             Dictionary<int, UnitColdData> unitColdData,
             Dictionary<int, GameObject> unitGameObjects,
             Dictionary<int, SpatialNode> unitSpatialNodes,
-            ISpatialIndex spatialIndex,
+            ISpatialIndexService spatialIndex,
             Dictionary<UnitType, string> unitPrefabPaths,
             Dictionary<string, EvolutionPath> evolutionPaths,
             Dictionary<string, EnvironmentAdaptation> environmentAdaptations,
@@ -144,7 +145,8 @@ namespace DeepAbyssHive.Units.Services
                 }
                 
                 // 创建空间节点
-                SpatialNode spatialNode = new SpatialNode(unitId, position, new Vector3(baseAttributes.SightRange, baseAttributes.SightRange, baseAttributes.SightRange));
+                Bounds bounds = new Bounds(position, new Vector3(baseAttributes.SightRange, baseAttributes.SightRange, baseAttributes.SightRange));
+                SpatialNode spatialNode = new SpatialNode(unitId, unitGameObject, position, bounds);
                 
                 // 添加到字典
                 _unitColdData[unitId] = coldData;
@@ -155,7 +157,7 @@ namespace DeepAbyssHive.Units.Services
                 // 添加到空间索引
                 if (_spatialIndex != null)
                 {
-                    _spatialIndex.Add(spatialNode);
+                    _spatialIndex.AddObject(unitId, position, bounds, SpatialObjectType.Unit);
                 }
                 
                 Debug.Log($"[{_serviceName}] 创建单位成功: ID={unitId}, 类型={unitType}, 位置={position}");
@@ -180,7 +182,7 @@ namespace DeepAbyssHive.Units.Services
                 // 从空间索引移除
                 if (_spatialIndex != null && _unitSpatialNodes.TryGetValue(unitId, out var spatialNode))
                 {
-                    _spatialIndex.Remove(spatialNode);
+                    _spatialIndex.RemoveObject(unitId);
                 }
                 
                 // 销毁游戏对象

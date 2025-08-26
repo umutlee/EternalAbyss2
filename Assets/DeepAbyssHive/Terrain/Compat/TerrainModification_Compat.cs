@@ -1,16 +1,24 @@
-
 using UnityEngine;
 
-namespace DeepAbyssHive.Terrain.Compat
+namespace DeepAbyssHive.Terrain.Data
 {
-    /// 舊名讀取器（暫回預設，後續補真實映射）
-    public static class TerrainModificationCompat
+    public partial struct TerrainModification
     {
-        public static Vector3 Position(object mod) => Vector3.zero;
-        public static float Radius(object mod) => 0f;
-        public static float TerrainTypeValue(object mod) => 0f;
-        public static float Value(object mod) => 0f;
-        public static int Type(object mod) => 0;
-        public static float Timestamp(object mod) => 0f;
+        // 舊名 Position/Value/Type/Timestamp/TerrainTypeValue/Falloff 等 → 優先直通現欄位；沒有就後備
+        public Vector3 Position { get => _compatPosition; set => _compatPosition = value; }
+        public float Radius    { get => radius; set => radius = value; }  // 直通現有欄位
+        public float Value     { get => _compatValue; set => _compatValue = value; }
+        public int   Type      { get => (int)modificationType; set => modificationType = (TerrainModificationType)value; } // 直通現有欄位
+        public float Timestamp { get => _compatTimestamp; set => _compatTimestamp = value; }
+
+        // 舊名 TerrainTypeValue → 先兼容為 int
+        public int TerrainTypeValue { get => (int)newTerrainType; set => newTerrainType = (DeepAbyssHive.Terrain.Enums.TerrainType)value; }
+
+        public float Falloff { get => _compatFalloff; set => _compatFalloff = value; }
+
+        private Vector3 _compatPosition;
+        private float _compatValue;
+        private float _compatTimestamp;
+        private float _compatFalloff;
     }
 }

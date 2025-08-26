@@ -9,7 +9,7 @@ namespace DeepAbyssHive.Units.Data
     /// 用于高频访问的数据，如位置、状态、生命值等
     /// </summary>
     [System.Serializable]
-    public struct UnitHotData
+    public partial struct UnitHotData
     {
         [Header("基础信息")]
         public int UnitId;

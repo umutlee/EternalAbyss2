@@ -37,7 +37,7 @@ Step 3：產生最小差異（unified diff）
 
 Step 4：記錄變更
 
-修改完成後，必須呼叫 write_neo4j_cypher 把此次改動寫入 Neo4j 形成 Change 節點，並填入：
+修改完成後，必須使用Tool: write_neo4j_cypher ，然後使用 WRITE_CHANGE 搭配 neo4j-update-changes-rules.mdc 裡的params，把此次改動寫入 Neo4j 形成 Change 節點，並填入：
 
 summary：一句話摘要。
 
