@@ -183,7 +183,7 @@ namespace DeepAbyssHive.Core.Services
             }
 
             // 反向清理（与初始化顺序相反）
-            var sortedServices = SortServicesByDependencies().Reverse();
+            var sortedServices = SortServicesByDependencies().AsEnumerable().Reverse();
 
             foreach (var service in sortedServices)
             {

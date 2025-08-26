@@ -30,7 +30,7 @@ namespace DeepAbyssHive.Buildings.Tests
             Debug.Log("=== BuildingManager配置系统测试开始 ===");
             
             // 1. 测试配置加载
-            var config = ConfigManager.GetConfig<BuildingConfigSO>("BuildingConfig");
+            var config = ConfigManager.GetConfig<BuildingConfigSO>();
             if (config != null)
             {
                 Debug.Log($"✓ 配置加载成功: {config.ConfigName}");

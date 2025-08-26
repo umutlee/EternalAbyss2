@@ -101,7 +101,7 @@ namespace DeepAbyssHive.Creep.Services
             {
                 Vector3 worldPos = GridToWorldPosition(gridPosition);
                 Vector3 size = new Vector3(_gridCellSize, _gridCellSize, _gridCellSize);
-                _spatialIndex.Insert(data, worldPos, new Bounds(worldPos, size));
+                _spatialIndex.Insert(data, worldPos, size);
             }
         }
 
@@ -123,7 +123,7 @@ namespace DeepAbyssHive.Creep.Services
                 {
                     Vector3 worldPos = GridToWorldPosition(gridPosition);
                     Vector3 size = new Vector3(_gridCellSize, _gridCellSize, _gridCellSize);
-                    _spatialIndex.Remove(data, worldPos, new Bounds(worldPos, size));
+                    _spatialIndex.Remove(data, worldPos, size);
                 }
             }
         }

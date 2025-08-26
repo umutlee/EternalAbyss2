@@ -237,7 +237,7 @@ namespace DeepAbyssHive.Buildings.Services
 
             foreach (var building in _buildings.Values)
             {
-                if (building.buildingType != buildingType || GetBuildingPlayerId(building) != playerId)
+                if (building.BuildingType != buildingType || GetBuildingPlayerId(building) != playerId)
                     continue;
 
                 float distanceSquared = (building.Position - position).sqrMagnitude;
@@ -390,6 +390,8 @@ namespace DeepAbyssHive.Buildings.Services
             // 实际实现中应该查询CreepManager
             return true;
         }
+
+        private static int GetBuildingPlayerId(BuildingData b) => b.OwnerId;
 
         private float GetTerrainHeight(Vector3 position)
         {

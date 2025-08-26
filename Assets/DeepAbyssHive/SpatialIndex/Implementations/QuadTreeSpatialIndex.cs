@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.SpatialIndex;
 
 namespace DeepAbyssHive.SpatialIndex.Implementations
 {
@@ -264,7 +265,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             QueryRangeRecursive(_root, queryBounds, _queryResults);
             
             UpdateQueryStats(Time.realtimeSinceStartup - startTime);
-            return _queryResults.Cast<object>().ToList();
+            return _queryResults.Cast<object>().ToList().ToSpatialNodes();
         }
 
         /// <summary>
@@ -287,7 +288,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
                 .ToList();
             
             UpdateQueryStats(Time.realtimeSinceStartup - startTime);
-            return sortedResults.Cast<object>().ToList();
+            return sortedResults.Cast<object>().ToList().ToSpatialNodes();
         }
 
         /// <summary>
@@ -301,7 +302,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             QueryRaycastRecursive(_root, ray, maxDistance, _queryResults);
             
             UpdateQueryStats(Time.realtimeSinceStartup - startTime);
-            return _queryResults.Cast<object>().ToList();
+            return _queryResults.Cast<object>().ToList().ToSpatialNodes();
         }
 
         /// <summary>

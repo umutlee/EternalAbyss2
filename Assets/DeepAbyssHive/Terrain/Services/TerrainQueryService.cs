@@ -56,7 +56,7 @@ namespace DeepAbyssHive.Terrain.Services
         {
             Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
             
-            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is ITerrainChunk terrainChunk)
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is DeepAbyssHive.Terrain.Data.TerrainChunk terrainChunk)
             {
                 return terrainChunk;
             }
@@ -454,7 +454,7 @@ namespace DeepAbyssHive.Terrain.Services
                     
                     if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
                     {
-                        if (chunk is ITerrainChunk terrainChunk)
+                        if (chunk is DeepAbyssHive.Terrain.Data.TerrainChunk terrainChunk)
                         {
                             chunks.Add(terrainChunk);
                         }
