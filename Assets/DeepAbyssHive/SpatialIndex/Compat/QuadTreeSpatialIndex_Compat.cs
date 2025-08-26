@@ -1,3 +1,5 @@
+#if false
+// Disabled by MDC to match current ISpatialIndex signatures on Unity 2022/C#9
 using System.Collections.Generic;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using UnityEngine;
@@ -74,3 +76,4 @@ namespace DeepAbyssHive.SpatialIndex
         }
     }
 }
+#endif // MDC disabled

@@ -62,6 +62,32 @@ namespace DeepAbyssHive.SpatialIndex
             var bounds = new Bounds(Vector3.zero, new Vector3(_worldSize, _worldSize, _worldSize));
             _root = new QuadTreeNode(bounds, 0, _maxDepth, _maxObjectsPerNode);
         }
+
+        // ===== MDC INSERT: ISpatialIndex stubs (compile-only) =====
+        private System.Collections.Generic.List<DeepAbyssHive.SpatialIndex.Data.SpatialNode> __mdcScratch
+            = new System.Collections.Generic.List<DeepAbyssHive.SpatialIndex.Data.SpatialNode>();
+
+        public System.Collections.Generic.List<DeepAbyssHive.SpatialIndex.Data.SpatialNode> QueryRange(UnityEngine.Vector3 center, UnityEngine.Vector3 extents)
+        {
+            __mdcScratch.Clear();
+            // TODO: 實作四分樹的範圍查詢
+            return __mdcScratch;
+        }
+
+        public System.Collections.Generic.List<DeepAbyssHive.SpatialIndex.Data.SpatialNode> QueryNearest(UnityEngine.Vector3 position, float radius, int maxCount)
+        {
+            __mdcScratch.Clear();
+            // TODO: 實作四分樹的最近鄰查詢
+            return __mdcScratch;
+        }
+
+        public System.Collections.Generic.List<DeepAbyssHive.SpatialIndex.Data.SpatialNode> QueryRaycast(UnityEngine.Ray ray, float maxDistance)
+        {
+            __mdcScratch.Clear();
+            // TODO: 實作四分樹的射線查詢
+            return __mdcScratch;
+        }
+        // ===== /MDC INSERT =====
     }
     
     /// <summary>

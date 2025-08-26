@@ -52,7 +52,7 @@ namespace DeepAbyssHive.Terrain.Services
         #endregion
 
         #region ITerrainQueryService 实现
-        public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunkAt(Vector3 worldPosition)
+       
         public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunkAt(Vector3 worldPosition)
         {
             Vector2Int chunkCoord = WorldToChunkCoord(worldPosition);
