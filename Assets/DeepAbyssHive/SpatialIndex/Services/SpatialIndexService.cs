@@ -15,7 +15,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
     /// 空间索引服务实现
     /// 提供高效的空间查询和管理功能
     /// </summary>
-    public class SpatialIndexService : ISpatialIndexService, IUpdatableService, IService
+    public partial class SpatialIndexService : ISpatialIndexService, IUpdatableService, IService
     {
         // 空间索引实例
         private ISpatialIndex _spatialIndex;
