@@ -7,6 +7,8 @@ using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex;
+using DeepAbyssHive.SpatialIndex.Enums;
+using Unity.Collections;
 
 namespace DeepAbyssHive.Units.Services
 {
@@ -73,107 +75,192 @@ namespace DeepAbyssHive.Units.Services
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            return _spatialIndexService.QueryRange(center, radius, SpatialObjectType.Unit).ToSpatialNodes();
+            // 获取空间索引中的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象
+            List<SpatialNode> result = new List<SpatialNode>(unitIds.Length);
+            foreach (int id in unitIds)
+            {
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null)
+                {
+                    result.Add(node);
+                }
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetUnitsOfType(UnitType unitType)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var allNodes = _spatialIndexService.QueryRange(Vector3.zero, float.MaxValue, SpatialObjectType.Unit).ToSpatialNodes();
-            return allNodes.Where(node => 
+            // 获取所有单位ID
+            NativeArray<int> allUnitIds = _spatialIndexService.QueryAllIds(SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选类型
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in allUnitIds)
             {
-                if (node.Data is UnitColdData unitData)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && unitData.UnitType == unitType)
                 {
-                    return unitData.UnitType == unitType;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (allUnitIds.IsCreated)
+            {
+                allUnitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetUnitsOfPlayer(int playerId)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var allNodes = _spatialIndexService.QueryAll().ToSpatialNodes();
-            return allNodes.Where(node => 
+            // 获取所有单位ID
+            NativeArray<int> allUnitIds = _spatialIndexService.QueryAllIds(SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选玩家
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in allUnitIds)
             {
-                if (node.Data is UnitColdData unitData)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) == playerId)
                 {
-                    return GetUnitPlayerId(unitData) == playerId;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (allUnitIds.IsCreated)
+            {
+                allUnitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetUnitsInRangeOfPlayer(Vector3 center, float radius, int playerId)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius, SpatialObjectType.Unit).ToSpatialNodes();
-            return spatialNodes.Where(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选玩家
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) == playerId)
                 {
-                    return GetUnitPlayerId(unitData) == playerId;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetUnitsInRangeOfType(Vector3 center, float radius, UnitType unitType, int playerId)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return spatialNodes.Where(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选类型和玩家
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && 
+                    unitData.UnitType == unitType && GetUnitPlayerId(unitData) == playerId)
                 {
-                    return GetUnitPlayerId(unitData) == playerId && unitData.UnitType == unitType;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public SpatialNode GetNearestUnit(Vector3 position)
         {
             if (!_isInitialized) return null;
             
-            int nearestId = _spatialIndexService.QueryNearest(position, SpatialObjectType.Unit);
-            if (nearestId == -1) return null;
-            var objectInfo = _spatialIndexService.GetObjectInfo(nearestId);
-            return objectInfo?.ToSpatialNode();
-            return nearestNodes.FirstOrDefault();
+            // 获取最近的单位ID
+            NativeArray<int> nearestIds = _spatialIndexService.QueryNearestIds(position, 1, SpatialObjectType.Unit);
+            
+            // 转换为SpatialNode对象
+            SpatialNode result = null;
+            if (nearestIds.Length > 0)
+            {
+                result = _spatialIndexService.GetNodeById(nearestIds[0]);
+            }
+            
+            // 释放NativeArray
+            if (nearestIds.IsCreated)
+            {
+                nearestIds.Dispose();
+            }
+            
+            return result;
         }
 
         public SpatialNode GetNearestUnitOfType(Vector3 position, UnitType unitType)
         {
             if (!_isInitialized) return null;
             
-            var allNodes = _spatialIndexService.QueryAll().ToSpatialNodes();
-            var unitsOfType = allNodes.Where(node => 
-            {
-                if (node.Data is UnitColdData unitData)
-                {
-                    return unitData.UnitType == unitType;
-                }
-                return false;
-            });
-
+            // 获取所有单位ID
+            NativeArray<int> allUnitIds = _spatialIndexService.QueryAllIds(SpatialObjectType.Unit);
+            
+            // 筛选类型并找出最近的
             SpatialNode nearest = null;
             float minDistance = float.MaxValue;
-
-            foreach (var node in unitsOfType)
+            
+            foreach (int id in allUnitIds)
             {
-                float distance = Vector3.Distance(position, node.Position);
-                if (distance < minDistance)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && unitData.UnitType == unitType)
                 {
-                    minDistance = distance;
-                    nearest = node;
+                    float distance = Vector3.Distance(position, node.Position);
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        nearest = node;
+                    }
                 }
             }
-
+            
+            // 释放NativeArray
+            if (allUnitIds.IsCreated)
+            {
+                allUnitIds.Dispose();
+            }
+            
             return nearest;
         }
 
@@ -181,91 +268,173 @@ namespace DeepAbyssHive.Units.Services
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return spatialNodes.Where(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选类型和玩家
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData && unitData.UnitType == unitType && GetUnitPlayerId(unitData) == playerId)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && 
+                    unitData.UnitType == unitType && GetUnitPlayerId(unitData) == playerId)
                 {
-                    return true;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetEnemyUnitsInRange(Vector3 center, float radius, int playerId)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return spatialNodes.Where(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选敌方单位
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) != playerId)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) != playerId)
                 {
-                    return true;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetAlliedUnitsInRange(Vector3 center, float radius, int playerId)
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return spatialNodes.Where(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选友方单位
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) == playerId)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) == playerId)
                 {
-                    return true;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public bool HasUnitsInRange(Vector3 center, float radius)
         {
             if (!_isInitialized) return false;
             
-            var nodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return nodes.Any();
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            bool result = unitIds.Length > 0;
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public bool HasUnitsOfTypeInRange(Vector3 center, float radius, UnitType unitType)
         {
             if (!_isInitialized) return false;
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return spatialNodes.Any(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 检查是否有指定类型的单位
+            bool result = false;
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && unitData.UnitType == unitType)
                 {
-                    return unitData.UnitType == unitType;
+                    result = true;
+                    break;
                 }
-                return false;
-            });
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public int CountUnitsInRange(Vector3 center, float radius)
         {
             if (!_isInitialized) return 0;
             
-            var nodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return nodes.Count;
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            int count = unitIds.Length;
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return count;
         }
 
         public int CountUnitsOfTypeInRange(Vector3 center, float radius, UnitType unitType)
         {
             if (!_isInitialized) return 0;
             
-            var spatialNodes = _spatialIndexService.QueryRange(center, radius).ToSpatialNodes();
-            return spatialNodes.Count(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(center, radius, SpatialObjectType.Unit);
+            
+            // 计算指定类型的单位数量
+            int count = 0;
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && unitData.UnitType == unitType)
                 {
-                    return unitData.UnitType == unitType;
+                    count++;
                 }
-                return false;
-            });
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return count;
         }
 
         public List<SpatialNode> GetUnitsWithinDistance(Vector3 position, float maxDistance)
@@ -279,16 +448,28 @@ namespace DeepAbyssHive.Units.Services
         {
             if (!_isInitialized) return new List<SpatialNode>();
             
-            var spatialNodes = _spatialIndexService.QueryRange(viewerPosition, viewRange).ToSpatialNodes();
-            return spatialNodes.Where(node => 
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(viewerPosition, viewRange, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选可见单位
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
             {
-                if (node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) != viewerPlayerId)
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && node.Data is UnitColdData unitData && GetUnitPlayerId(unitData) != viewerPlayerId)
                 {
                     // 这里可以添加视线检查逻辑
-                    return true;
+                    result.Add(node);
                 }
-                return false;
-            }).ToList();
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         public List<SpatialNode> GetUnitsInArea(Bounds area)
@@ -297,16 +478,34 @@ namespace DeepAbyssHive.Units.Services
             
             // 使用区域中心和最大半径进行查询
             float radius = Mathf.Max(area.size.x, area.size.y, area.size.z) * 0.5f;
-            var candidates = _spatialIndexService.QueryRange(area.center, radius).ToSpatialNodes();
             
-            return candidates.Where(node => area.Contains(node.Position)).ToList();
+            // 获取范围内的单位ID
+            NativeArray<int> unitIds = _spatialIndexService.QueryRangeIds(area.center, radius, SpatialObjectType.Unit);
+            
+            // 将ID转换为SpatialNode对象并筛选在区域内的单位
+            List<SpatialNode> result = new List<SpatialNode>();
+            foreach (int id in unitIds)
+            {
+                SpatialNode node = _spatialIndexService.GetNodeById(id);
+                if (node != null && area.Contains(node.Position))
+                {
+                    result.Add(node);
+                }
+            }
+            
+            // 释放NativeArray
+            if (unitIds.IsCreated)
+            {
+                unitIds.Dispose();
+            }
+            
+            return result;
         }
 
         #endregion
 
         #region 私有方法
 
-        /// <summary>
         /// <summary>
         /// 获取单位的玩家ID
         /// </summary>

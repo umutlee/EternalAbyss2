@@ -372,10 +372,8 @@ namespace DeepAbyssHive.Units.Core
                 _animator.SetTrigger("Attack");
             }
 
-            if (_audioSource != null) // AttackSound字段在UnitData中不存在，移除对它的检查
-            {
-                _audioSource.PlayOneShot(_unitData.AttackSound);
-            }
+            // 使用AudioHelper播放攻擊音效
+            AudioHelper.PlaySound("attackSoundPath");
         }
 
         /// <summary>
@@ -419,10 +417,8 @@ namespace DeepAbyssHive.Units.Core
                 _animator.SetTrigger("Die");
             }
 
-            if (_audioSource != null) // DeathSound字段在UnitData中不存在，移除对它的检查
-            {
-                _audioSource.PlayOneShot(_unitData.DeathSound);
-            }
+            // 使用AudioHelper播放死亡音效
+            AudioHelper.PlaySound("deathSoundPath");
 
             // 禁用碰撞器
             if (_collider != null)

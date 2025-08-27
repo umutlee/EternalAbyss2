@@ -46,11 +46,6 @@ namespace DeepAbyssHive.SpatialIndex
             return new List<SpatialNode>();
         }
 
-        public void Clear()
-        {
-            // TODO: clear internal data structure
-        }
-
         public void Rebuild()
         {
             // TODO: rebuild from current entries if you maintain a cache

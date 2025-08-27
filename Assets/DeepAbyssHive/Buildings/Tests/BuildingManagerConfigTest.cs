@@ -1,3 +1,4 @@
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using UnityEngine;
 using DeepAbyssHive.Buildings.Managers;
 using DeepAbyssHive.Buildings.Config;
@@ -66,3 +67,4 @@ namespace DeepAbyssHive.Buildings.Tests
         }
     }
 }
+#endif

@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.SpatialIndex.Extensions;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
 {

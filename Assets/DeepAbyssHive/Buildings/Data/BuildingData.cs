@@ -21,7 +21,11 @@ namespace DeepAbyssHive.Buildings.Data
         /// <summary>
         /// 建筑类型（兼容性别名）
         /// </summary>
-        public BuildingType Type => BuildingType;
+        public BuildingType Type
+        {
+          get => BuildingType;
+          set => BuildingType = value;
+        }
         
         /// <summary>
         /// 所有者ID
