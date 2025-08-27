@@ -1,13 +1,12 @@
 namespace DeepAbyssHive.Creep.Data
-namespace DeepAbyssHive.Creep.Data
 {
-    // 同名不同命名空間，暫時容忍；後續統一一處即可
-    public enum CreepSourceType
+    /// <summary>菌毯來源類型（與現有呼叫對齊，包括 CreepTumor）。</summary>
+    public enum CreepSourceType : int
     {
-        Unknown = 0,
-        Node = 1,
-        Spawner = 2,
-        Organic = 3,
-        CreepTumor = 4
+        Unknown    = 0,
+        Nest       = 1,
+        Node       = 2,
+        HiveCore   = 3,
+        CreepTumor = 4,
     }
 }

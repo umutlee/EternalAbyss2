@@ -1,12 +1,12 @@
 namespace DeepAbyssHive.Creep.Enums
-namespace DeepAbyssHive.Creep.Enums
 {
-    public enum CreepSourceType
+    /// <summary>臨時鏡像，後續可統一到 DeepAbyssHive.Creep.Data。</summary>
+    public enum CreepSourceType : int
     {
-        Unknown = 0,
-        Node = 1,
-        Spawner = 2,
-        Organic = 3,
-        CreepTumor = 4
+        Unknown    = 0,
+        Nest       = 1,
+        Node       = 2,
+        HiveCore   = 3,
+        CreepTumor = 4,
     }
 }
