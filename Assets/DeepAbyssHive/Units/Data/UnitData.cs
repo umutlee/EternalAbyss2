@@ -20,5 +20,16 @@ namespace DeepAbyssHive.Units.Data
         public int Level;
         public bool IsAlive;
         public float LastUpdateTime;
+        
+        // 相容欄位（供舊程式碼引用）
+        public float MaxEnergy;
+        public object EvolutionOptions;
+        // 以下欄位已移至 UnitData_Compat.cs 作為屬性實現
+        // public string AttackSound;
+        // public string DeathSound;
+        // public string UnitName;
+        // public float MoveSpeed;
+        // public float AttackCooldown;
+        // public float DetectionRange;
     }
 }
