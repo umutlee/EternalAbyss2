@@ -140,7 +140,7 @@ namespace DeepAbyssHive.Buildings.Services
                 Level = 1,
                 Health = template.MaxHealth,
                 MaxHealth = template.MaxHealth,
-                State = DeepAbyssHive.Buildings.Compat.BuildingStateCompat.Active,
+                State = BuildingState.Active,
                 ConstructionTime = construction.TotalTime,
                 LastUpdateTime = Time.time
             };
@@ -272,7 +272,7 @@ namespace DeepAbyssHive.Buildings.Services
 
         public bool SetBuildingPaused(int buildingId, bool paused)
         {
-            return SetBuildingState(buildingId, paused ? BuildingState.Paused : DeepAbyssHive.Buildings.Compat.BuildingStateCompat.Active);
+            return SetBuildingState(buildingId, paused ? BuildingState.Paused : BuildingState.Active);
         }
 
         public float GetConstructionProgress(int constructionId)

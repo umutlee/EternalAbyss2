@@ -1,13 +1,24 @@
 
+using System.Linq;
 using Unity.Collections;
 using UnityEngine;
 
 namespace DeepAbyssHive.SpatialIndex.Services
 {
-    /// 對 ISpatialIndexService 的兼容擴充：補舊呼叫點會用到的方法（全回 default）
+    /// <summary>對 ISpatialIndexService 的兼容擴充：提供實際橋接</summary>
     public static class ISpatialIndexService_CompatExtensions
     {
-        public static NativeArray<int> QueryAll(this ISpatialIndexService svc) => default;
-        public static NativeArray<int> QueryRange(this ISpatialIndexService svc, Bounds bounds) => default;
+        public static NativeArray<int> QueryAll(this ISpatialIndexService svc)
+        {
+            if (svc is SpatialIndexService impl)
+            {
+                var list = impl.QueryAll(DeepAbyssHive.SpatialIndex.Enums.SpatialObjectType.All).Select(n => n.Id);
+                return DeepAbyssHive.Common.Collections.NativeArrayCompat.ToNativeArray(list);
+            }
+            return new NativeArray<int>(0, Allocator.Temp);
+        }
+
+        public static NativeArray<int> QueryRange(this ISpatialIndexService svc, Bounds bounds)
+            => svc.QueryBounds(bounds, DeepAbyssHive.SpatialIndex.Enums.SpatialObjectType.All);
     }
 }

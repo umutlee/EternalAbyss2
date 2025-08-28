@@ -42,8 +42,9 @@ namespace DeepAbyssHive.SpatialIndex.Data
     /// <summary>
     /// 空间索引性能统计
     /// </summary>
+    // NOTE: legacy snapshot type to avoid name collision with the runtime stats class.
     [System.Serializable]
-    public struct SpatialIndexPerformanceStats
+    public struct SpatialIndexPerfSnapshot
     {
         public int TotalObjects;
         public int TotalNodes;

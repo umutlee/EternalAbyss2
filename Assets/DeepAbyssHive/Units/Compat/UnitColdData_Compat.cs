@@ -5,36 +5,38 @@ namespace DeepAbyssHive.Units.Data
 {
     public partial struct UnitColdData
     {
-        // 舊代碼常用字段：若底層已有對應（如 UnitId/UnitType/EvolutionInfo），請改為直通
-        public int Id { get => _compatId; set => _compatId = value; }               // 若已有 UnitId，改為直通
-        public UnitType Type { get => _compatType; set => _compatType = value; }    // 若已有 UnitType (enum/int)，改為直通轉型
+        // 相容屬性（外部呼叫 UnitColdData.UnitId / Type / OwnerId 等）
+        public int UnitId { get => _compatId; set => _compatId = value; }
+        public int Id { get => _compatId; set => _compatId = value; } // 舊名相容
+        public UnitType Type { get => _compatType; set => _compatType = value; }
         public int OwnerId { get => _compatOwnerId; set => _compatOwnerId = value; }
 
         public UnitAttributes BaseAttributes
         {
-            get => _compatBaseAttributes ?? _compatAttributes;   // 盡量回傳現用 Attributes
-            set
-            {
-                _compatBaseAttributes = value;
-                _compatAttributes = value;
-            }
+            get => _compatBaseAttributes ?? _compatAttributes;
+            set { _compatBaseAttributes = value; _compatAttributes = value; }
         }
-
         public UnitAttributes Attributes { get => _compatAttributes; set => _compatAttributes = value; }
 
-        // 舊名 Evolution → 新結構多為 EvolutionInfo
+        // 舊名 Evolution：保留 object 以相容舊程式碼的動態內容
         public object Evolution { get => _compatEvolution; set => _compatEvolution = value; }
 
-        public List<object> AdaptiveTraits { get => _compatAdaptiveTraits ??= new List<object>(); set => _compatAdaptiveTraits = value; }
+        // 與現用程式一致：使用陣列而非 List<object>
+        public AdaptiveTrait[] AdaptiveTraits
+        {
+            get => _compatAdaptiveTraits ?? System.Array.Empty<AdaptiveTrait>();
+            set => _compatAdaptiveTraits = value;
+        }
         public string PrefabPath { get => _compatPrefabPath; set => _compatPrefabPath = value; }
 
+        // 私有相容欄位
         private int _compatId;
         private UnitType _compatType;
         private int _compatOwnerId;
         private UnitAttributes _compatAttributes;
         private UnitAttributes? _compatBaseAttributes;
         private object _compatEvolution;
-        private List<object> _compatAdaptiveTraits;
+        private AdaptiveTrait[] _compatAdaptiveTraits;
         private string _compatPrefabPath;
     }
 }

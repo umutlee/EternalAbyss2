@@ -504,6 +504,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
         }
 
         /// <summary>
+        /// <summary>
         /// 更新服务
         /// </summary>
         public void UpdateService(float deltaTime)
@@ -527,7 +528,19 @@ namespace DeepAbyssHive.SpatialIndex.Services
         /// </summary>
         public void Initialize()
         {
+            // 傳入 Bounds，而不是 float
             Initialize(new Bounds(Vector3.zero, new Vector3(1000f, 1000f, 1000f)));
+        }
+
+        /// <summary>
+        /// <summary>
+        /// 相容：允許以 Bounds 查詢，轉為 (center, radius)
+        /// </summary>
+        public NativeArray<int> QueryAll(Bounds bounds)
+        {
+            var center = bounds.center;
+            var radius = Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z);
+            return QueryRange(center, radius);
         }
 
         /// <summary>

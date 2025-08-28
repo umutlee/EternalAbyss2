@@ -1,46 +1,41 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
 using UnityEngine;
-using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Enums;
+using DeepAbyssHive.SpatialIndex.Data;
 
-// 透過擴充方法補上 *Ids 版本查詢與 GetNodeById，不用改介面
 namespace DeepAbyssHive.SpatialIndex.Services
 {
+    /// <summary>
+    /// 針對 ISpatialIndexService 的實用擴充（回傳 NativeArray<int>，符合呼叫端需求）
+    /// </summary>
     public static class ISpatialIndexServiceExtensions
     {
-        public static IEnumerable<int> QueryRangeIds(
-            this ISpatialIndexService svc,
-            Vector3 center, Vector3 size,
-            SpatialObjectType type = SpatialObjectType.All)
+        /// <summary>舊呼叫：中心+半徑 → 直接轉呼叫介面 QueryRange(center, radius, type)</summary>
+        public static NativeArray<int> QueryRangeIds(this ISpatialIndexService svc, Vector3 center, float radius, SpatialObjectType type = SpatialObjectType.All)
+            => svc.QueryRange(center, radius, type);
+
+        /// <summary>舊呼叫：所有指定類型 → 若為具體實作 SpatialIndexService，透過其 LegacyAPI 取得所有節點並取 Id；否則回傳空陣列。</summary>
+        public static NativeArray<int> QueryAllIds(this ISpatialIndexService svc, SpatialObjectType type = SpatialObjectType.All)
         {
-            var nodes = svc?.QueryRange(center, size, type);
-            return nodes != null ? nodes.Select(n => n.Id) : Enumerable.Empty<int>();
+            if (svc is SpatialIndexService impl)
+            {
+                var list = impl.QueryAll(type).Select(n => n.Id);
+                return DeepAbyssHive.Common.Collections.NativeArrayCompat.ToNativeArray(list);
+            }
+            return new NativeArray<int>(0, Allocator.Temp);
         }
 
-        public static IEnumerable<int> QueryAllIds(
-            this ISpatialIndexService svc,
-            SpatialObjectType type = SpatialObjectType.All)
-        {
-            var nodes = svc?.QueryAll(type);
-            return nodes != null ? nodes.Select(n => n.Id) : Enumerable.Empty<int>();
-        }
+        /// <summary>舊呼叫：最近 K 個 → 直接轉呼叫介面 QueryKNearest(position, k, type, maxDistance)</summary>
+        public static NativeArray<int> QueryNearestIds(this ISpatialIndexService svc, Vector3 position, int maxResults = 1, SpatialObjectType type = SpatialObjectType.All, float maxDistance = float.MaxValue)
+            => svc.QueryKNearest(position, maxResults, type, maxDistance);
 
-        public static IEnumerable<int> QueryNearestIds(
-            this ISpatialIndexService svc,
-            Vector3 position, float maxDistance, int maxResults,
-            SpatialObjectType type = SpatialObjectType.All)
-        {
-            var nodes = svc?.QueryNearest(position, maxDistance, maxResults, type);
-            return nodes != null ? nodes.Select(n => n.Id) : Enumerable.Empty<int>();
-        }
-
+        /// <summary>從實作取節點（僅在具體類別可用）；否則回傳 null。</summary>
         public static SpatialNode? GetNodeById(this ISpatialIndexService svc, int id)
         {
-            var all = svc?.QueryAll(SpatialObjectType.All);
-            if (all == null) return null;
-            foreach (var n in all)
-                if (n.Id == id) return n;
+            if (svc is SpatialIndexService impl)
+                return impl.GetNodeById(id);
             return null;
         }
     }

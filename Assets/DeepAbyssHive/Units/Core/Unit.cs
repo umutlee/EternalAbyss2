@@ -171,7 +171,7 @@ namespace DeepAbyssHive.Units.Core
             _evolutionProgress = new Dictionary<string, float>();
             _evolutionOptions = new List<UnitType>();
 
-            if (_unitData != null && _unitData.EvolutionOptions != null)
+            if (!Equals(_unitData, default) && _unitData.EvolutionOptions != null)
             {
                 // 从UnitData[]中提取UnitType
                 foreach (var evolutionOption in _unitData.EvolutionOptions)
@@ -194,7 +194,7 @@ namespace DeepAbyssHive.Units.Core
         /// </summary>
         private void InitializeUnit()
         {
-            if (_unitData != null)
+            if (!Equals(_unitData, default))
             {
                 _unitId = GetInstanceID();
                 _unitName = _unitData.UnitName;

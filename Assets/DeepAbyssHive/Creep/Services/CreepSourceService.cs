@@ -30,11 +30,15 @@ namespace DeepAbyssHive.Creep.Services
 
         #region 构造函数
 
+        // public CreepSourceService()
         public CreepSourceService()
         {
             _creepSources = new Dictionary<int, CreepSource>();
             _playerSources = new Dictionary<int, List<int>>();
         }
+
+        // 舊代碼可能用不同建構子簽名，這裡提供兼容
+        public CreepSourceService(object _ignored) : this() {}
 
         #endregion
 
