@@ -85,7 +85,7 @@ namespace DeepAbyssHive.Buildings.Services
         /// <summary>
         /// ICommandService 介面實作 - 命令是否可用
         /// </summary>
-        bool DeepAbyssHive.Core.Services.ICommandService.IsCommandAvailable => IsInitialized;
+        public bool IsCommandAvailable => IsInitialized;
 
         public bool StartResearch(string researchId, int playerId, int buildingId)
         {
@@ -386,5 +386,9 @@ namespace DeepAbyssHive.Buildings.Services
                 }
             }
         }
+
+        // 顯式實作，確保無論使用方解析到哪個命名空間版本的介面，都能滿足簽名
+        bool DeepAbyssHive.Buildings.Interfaces.IResearchService.StartResearch(string researchId, int buildingId)
+            => StartResearch(researchId, 0, buildingId); // 使用預設玩家ID 0
     }
 }
