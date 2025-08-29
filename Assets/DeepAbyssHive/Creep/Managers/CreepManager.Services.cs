@@ -2,6 +2,8 @@ using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Services;
+// 明確使用介面命名空間的 ICreepSourceService，避免與 Services 同名型別衝突
+using CreepSourceServiceInterface = DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -16,7 +18,7 @@ namespace DeepAbyssHive.Creep.Managers
         
         // 服務介面引用（使用介面類型而非具體實現）
         private ICreepQueryService _queryService;
-        private ICreepSourceService _sourceService;
+        private CreepSourceServiceInterface _sourceService;
         private ICreepNetworkService _networkService;
         private ICreepGridService _gridService;
         private ICreepSimulationService _simulationService;
@@ -55,7 +57,7 @@ namespace DeepAbyssHive.Creep.Managers
             {
                 // 使用 ServiceLocator 注入所需的 Creep 相關服務
                 _queryService = ServiceLocator.Get<ICreepQueryService>();
-                _sourceService = ServiceLocator.Get<ICreepSourceService>();
+                _sourceService = ServiceLocator.Get<CreepSourceServiceInterface>();
                 _networkService = ServiceLocator.Get<ICreepNetworkService>();
                 _gridService = ServiceLocator.Get<ICreepGridService>();
                 _simulationService = ServiceLocator.Get<ICreepSimulationService>();
