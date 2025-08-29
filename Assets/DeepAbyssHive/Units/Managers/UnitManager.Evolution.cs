@@ -2,6 +2,8 @@ using System;
 using UnityEngine;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
+using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
+using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
 
 namespace DeepAbyssHive.Units.Managers
 {

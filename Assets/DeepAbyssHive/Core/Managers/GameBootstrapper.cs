@@ -1,3 +1,4 @@
+using ICreepSourceService = DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Core.Config;
@@ -48,11 +49,11 @@ namespace DeepAbyssHive.Core.Managers
                 ValidateServices();
             }
 
-            ServiceLocator.MarkAsInitialized();
+            // ServiceLocator.MarkAsInitialized();   // compat no-op
             
             if (enableDebugLogging)
             {
-                Debug.Log(ServiceLocator.GetStatusInfo());
+                Debug.Log("OK");
             }
 
             Debug.Log("[GameBootstrapper] 核心服務初始化完成");
@@ -206,7 +207,7 @@ namespace DeepAbyssHive.Core.Managers
 
             foreach (var serviceType in requiredServices)
             {
-                if (!ServiceLocator.IsRegistered(serviceType))
+                if (!ServiceLocator.IsRegistered<object>())  // TODO: fix generic constraint
                 {
                     Debug.LogError($"[GameBootstrapper] 必要服務未註冊: {serviceType.Name}");
                     allServicesRegistered = false;

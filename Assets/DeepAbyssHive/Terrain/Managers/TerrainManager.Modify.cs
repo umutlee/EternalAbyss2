@@ -4,6 +4,7 @@ using UnityEngine;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 
 namespace DeepAbyssHive.Terrain.Managers
 {

@@ -1,0 +1,1 @@
+// Compat placeholder removed: canonical CreepData already provides required members.

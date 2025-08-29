@@ -95,7 +95,7 @@ namespace DeepAbyssHive.Creep.Managers
         private void StartCreepServices()
         {
             // 等待ServiceLocator初始化完成
-            if (useServiceLocator && !ServiceLocator.IsInitialized)
+            if (useServiceLocator && !ServiceLocator.IsRegistered<ICreepQueryService>())
             {
                 Debug.LogWarning($"[{_managerName}] ServiceLocator尚未初始化，等待...");
                 StartCoroutine(WaitForServiceLocatorInitialization());

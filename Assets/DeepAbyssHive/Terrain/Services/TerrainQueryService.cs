@@ -7,6 +7,7 @@ using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 using DeepAbyssHive.Terrain.Config;
 
 namespace DeepAbyssHive.Terrain.Services
@@ -61,7 +62,7 @@ namespace DeepAbyssHive.Terrain.Services
             if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
             {
                 // 優先以介面處理，必要時安全 cast
-                if (chunk is DeepAbyssHive.Terrain.Data.TerrainChunk terrainChunk)
+                if (chunk is ITerrainChunk terrainChunk)
                 {
                     return terrainChunk;
                 }
@@ -672,7 +673,7 @@ namespace DeepAbyssHive.Terrain.Services
                         int lodLevel = Mathf.Clamp(Mathf.FloorToInt(distance / (ViewDistance / MaxLODLevels)), 0, MaxLODLevels - 1);
                         
                         // 更新LOD级别（如果地形块支持）
-                        if (chunk is ITerrainChunk terrainChunk)
+                        if (chunk is ITerrainChunk tc)
                         {
                             // terrainChunk.SetLODLevel(lodLevel);
                         }

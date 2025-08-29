@@ -8,6 +8,7 @@ using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 
 namespace DeepAbyssHive.Terrain.Services
 {

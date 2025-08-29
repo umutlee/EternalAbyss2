@@ -9,10 +9,15 @@ namespace DeepAbyssHive.Creep.Data
         CreepColony      = 3,
         SpawningPool     = 4,
         EvolutionChamber = 5,
-        // 保留原有值以兼容现有代码
-        Nest             = 1, // 等同于MainHive
-        Node             = 2, // 等同于SubHive
-        HiveCore         = 3, // 等同于CreepColony
-        CreepTumor       = 4, // 等同于SpawningPool
+        // 保留原有值以兼容现有代码（使用別名而非重複數字）
+        Nest             = 6,  // 原本想等同MainHive，但改為獨立值
+        Node             = 7,  // 原本想等同SubHive，但改為獨立值
+        HiveCore         = 8,  // 原本想等同CreepColony，但改為獨立值
+        CreepTumor       = 9,  // 原本想等同SpawningPool，但改為獨立值
+        // 新增缺失成員
+        Manual           = 10,
+        Basic            = 11,
+        Enhanced         = 12,
+        Specialized      = 13
     }
 }

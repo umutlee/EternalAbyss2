@@ -220,7 +220,7 @@ namespace DeepAbyssHive.Buildings.Config
     }
 
     [System.Serializable]
-    public class ResearchTemplateConfig
+    public partial class ResearchTemplateConfig
     {
         public string Id;
         public string displayName;

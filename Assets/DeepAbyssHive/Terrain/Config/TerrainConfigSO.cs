@@ -8,7 +8,7 @@ namespace DeepAbyssHive.Terrain.Config
     /// 包含地形生成、分块管理、噪声参数等所有配置
     /// </summary>
     [CreateAssetMenu(fileName = "TerrainConfig", menuName = "DeepAbyssHive/Config/Terrain Config")]
-    public class TerrainConfigSO : BaseConfigSO
+    public partial class TerrainConfigSO : BaseConfigSO
     {
         [Header("分块设置")]
         [Tooltip("地形分块大小")]

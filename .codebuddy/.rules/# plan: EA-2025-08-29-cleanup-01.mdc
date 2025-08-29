@@ -1,0 +1,142 @@
+description: EA-A2-Compat-Cleanup-01 — remove stale Compat partials, unify ServiceLocator, fix alias & interface dups
+ assets: DeepAbyssHive
+ alwaysApply: true
+
+1) 刪除造成重複定義的 Compat 檔案
+DELETE_FILE: Assets/DeepAbyssHive/Buildings/Data/ResourceCost.Compat.partial.cs
+ DELETE_FILE: Assets/DeepAbyssHive/Buildings/Data/ResearchPrerequisiteResult.Compat.partial.cs
+ DELETE_FILE: Assets/DeepAbyssHive/Buildings/Data/ResearchUnlocks.Compat.partial.cs
+ DELETE_FILE: Assets/DeepAbyssHive/Creep/Data/CreepData.Compat.partial.cs
+2) 統一 ServiceLocator：刪除所有舊檔，建立單一權威實作
+先移除可能存在的多版本（避免重複方法）
+DELETE_FILE_IF_EXISTS: Assets/DeepAbyssHive/Core/Services/ServiceLocator.Legacy.cs
+ DELETE_FILE_IF_EXISTS: Assets/DeepAbyssHive/Core/Services/ServiceLocator.Compat.cs
+ DELETE_FILE_IF_EXISTS: Assets/DeepAbyssHive/Core/Services/ServiceLocator.Partial.cs
+ DELETE_FILE_IF_EXISTS: Assets/DeepAbyssHive/Core/Services/ServiceLocator_v1.cs
+ DELETE_FILE_IF_EXISTS: Assets/DeepAbyssHive/Core/Services/ServiceLocator_v2.cs
+然後用乾淨版本覆蓋 ServiceLocator.cs
+REPLACE_FILE: Assets/DeepAbyssHive/Core/Services/ServiceLocator.cs
+ <<<csharp
+ using System;
+ using System.Collections.Generic;
+namespace DeepAbyssHive.Core.Services
+ {
+ /// <summary>
+ /// Minimal, canonical service locator used by managers & bootstrapper.
+ /// API: Register<T>, Get<T>, IsRegistered<T>, TryGet<T>, Clear()
+ /// </summary>
+ public static class ServiceLocator
+ {
+ private static readonly Dictionary<Type, object> _services = new();
+   public static void Register<T>(T service) where T : class
+    {
+        _services[typeof(T)] = service ?? throw new ArgumentNullException(nameof(service));
+    }
+
+    public static T Get<T>() where T : class
+    {
+        if (_services.TryGetValue(typeof(T), out var s))
+            return (T)s;
+        throw new InvalidOperationException($"Service '{typeof(T).Name}' is not registered.");
+    }
+
+    public static bool IsRegistered<T>() where T : class => _services.ContainsKey(typeof(T));
+
+    public static bool TryGet<T>(out T service) where T : class
+    {
+        if (_services.TryGetValue(typeof(T), out var s))
+        {
+            service = (T)s;
+            return true;
+        }
+        service = null;
+        return false;
+    }
+
+    public static void Clear() => _services.Clear();
+}
+
+}
+3) TerrainConfigSO：加上 partial（避免另一份 partial 宣告衝突）
+UPDATE_FILE: Assets/DeepAbyssHive/Terrain/Config/TerrainConfigSO.cs
+pattern: 'class\s+TerrainConfigSO\s*:'
+ multiple: false
+ replacement: 'partial class TerrainConfigSO :'
+
+
+4) UnitCommandService / UnitQueryService：移除誤置的「介面重複宣告」
+保留介面於正式 Interfaces 目錄，Services 檔案只留實作類別
+UPDATE_FILE: Assets/DeepAbyssHive/Units/Services/UnitCommandService.cs
+pattern: 'public\s+interface\s+IUnitCommandService[\s\S]?\n}\s//\send\sIUnitCommandService'
+ multiple: false
+ replacement: ''
+
+
+pattern: 'public\s+interface\s+IUnitCommandService[\s\S]*?\n}'
+ multiple: false
+ replacement: ''
+
+
+UPDATE_FILE: Assets/DeepAbyssHive/Units/Services/UnitQueryService.cs
+pattern: 'public\s+interface\s+IUnitQueryService[\s\S]?\n}\s//\send\sIUnitQueryService'
+ multiple: false
+ replacement: ''
+
+
+pattern: 'public\s+interface\s+IUnitQueryService[\s\S]*?\n}'
+ multiple: false
+ replacement: ''
+
+
+5) 修復 UnitAttributes 的命名衝突（Data vs Enums）
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Units/Managers/UnitManager.Config.cs
+ <<<csharp
+ using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
+ using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Units/Managers/UnitManager.Evolution.cs
+ <<<csharp
+ using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
+ using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Units/Managers/UnitManager.Query.cs
+ <<<csharp
+ using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
+ using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
+6) 清理 TerrainManager.Core 的 alias 重複（CS1537）
+先移除所有既有 alias，再加上標準兩行
+UPDATE_FILE: Assets/DeepAbyssHive/Terrain/Managers/TerrainManager.Core.cs
+pattern: '^\susing\s+TerrainType\s=\sDeepAbyssHive.Terrain.[^\n];\s*$'
+ multiple: true
+ replacement: ''
+
+
+pattern: '^\susing\s+TerrainTypeData\s=\sDeepAbyssHive.Terrain.[^\n];\s*$'
+ multiple: true
+ replacement: ''
+ ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Terrain/Managers/TerrainManager.Core.cs
+ <<<csharp
+ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+ using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+
+
+7) 為常用 Terrain 檔案補齊 alias（若已存在則不重複）
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Terrain/Managers/TerrainManager.Query.cs
+ <<<csharp
+ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+ using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Terrain/Managers/TerrainManager.Modify.cs
+ <<<csharp
+ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+ using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Terrain/Services/TerrainQueryService.cs
+ <<<csharp
+ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+ using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Terrain/Services/TerrainGenerationService.cs
+ <<<csharp
+ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+ using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+ADD_USING_IF_MISSING_TOP: Assets/DeepAbyssHive/Terrain/Services/TerrainModificationService.cs
+ <<<csharp
+ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+ using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+

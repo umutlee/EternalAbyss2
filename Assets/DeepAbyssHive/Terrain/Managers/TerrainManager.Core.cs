@@ -9,6 +9,7 @@ using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
 using DeepAbyssHive.Core.Config;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 
 namespace DeepAbyssHive.Terrain.Managers
 {

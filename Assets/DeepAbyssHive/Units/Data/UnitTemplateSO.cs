@@ -92,7 +92,7 @@ namespace DeepAbyssHive.Units.Data
     /// 資源消耗配置
     /// </summary>
     [System.Serializable]
-    public struct ResourceCost
+    public partial struct ResourceCost
     {
         public string ResourceType;
         public int Amount;

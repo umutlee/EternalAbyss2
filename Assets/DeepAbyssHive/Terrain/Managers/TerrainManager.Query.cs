@@ -5,6 +5,7 @@ using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Interfaces;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
+using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 
 namespace DeepAbyssHive.Terrain.Managers
 {

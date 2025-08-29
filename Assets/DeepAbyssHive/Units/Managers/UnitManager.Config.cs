@@ -3,6 +3,8 @@ using UnityEngine;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Core.Config;
+using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
+using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
 
 namespace DeepAbyssHive.Units.Managers
 {

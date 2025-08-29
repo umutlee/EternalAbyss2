@@ -1,0 +1,1 @@
+// Compat placeholder removed: use the canonical DeepAbyssHive.Buildings.Data.ResourceCost.
