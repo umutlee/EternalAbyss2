@@ -66,9 +66,9 @@ namespace DeepAbyssHive.Core.Services
         /// </summary>
         private void RegisterUnitServices(ServiceManager serviceManager)
         {
-            // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
-            // serviceManager.RegisterService<IUnitQueryService>(new UnitQueryService());
-            // serviceManager.RegisterService<IUnitCommandService>(new UnitCommandService());
+            // 注册单位相关服务
+            serviceManager.RegisterService<IUnitQueryService>(new UnitQueryService());
+            serviceManager.RegisterService<IUnitCommandService>(new UnitCommandService());
             
             Debug.Log("[ServiceRegistrar] 单位服务注册完成（待实现）");
         }
@@ -78,10 +78,10 @@ namespace DeepAbyssHive.Core.Services
         /// </summary>
         private void RegisterBuildingServices(ServiceManager serviceManager)
         {
-            // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
-            // serviceManager.RegisterService<IBuildingQueryService>(new BuildingQueryService());
-            // serviceManager.RegisterService<IBuildingConstructionService>(new BuildingConstructionService());
-            // serviceManager.RegisterService<IResearchService>(new ResearchService());
+            // 注册建筑相关服务
+            serviceManager.RegisterService<IBuildingQueryService>(new BuildingQueryService());
+            serviceManager.RegisterService<IBuildingConstructionService>(new BuildingConstructionService());
+            serviceManager.RegisterService<IResearchService>(new ResearchService());
             
             Debug.Log("[ServiceRegistrar] 建筑服务注册完成（待实现）");
         }
