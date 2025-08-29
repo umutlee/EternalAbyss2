@@ -1,43 +1,58 @@
-using System;
 using UnityEngine;
 
 namespace DeepAbyssHive.Core.Config
 {
     /// <summary>
-    /// ConfigManager 擴展方法
+    /// ConfigManager 相容性擴充方法
     /// </summary>
     public static class ConfigManagerExtensions
     {
         /// <summary>
-        /// 獲取配置值，如果不存在則返回預設值
+        /// 獲取配置物件，找不到時創建空的 ScriptableObject 避免 NRE
         /// </summary>
-        public static T GetConfigValue<T>(this ConfigManager manager, string key, T defaultValue = default(T))
+        /// <typeparam name="T">配置物件類型</typeparam>
+        /// <param name="manager">ConfigManager 實例</param>
+        /// <returns>配置物件實例</returns>
+        /// <remarks>
+        /// 最小回退機制：尋找名為 typeof(T).Name 的資源；找不到則新建一個空 ScriptableObject 以避免 NRE。
+        /// 後續可改為導到正式的設定倉儲。
+        /// </remarks>
+        public static T GetConfig<T>(this ConfigManager manager) where T : ScriptableObject
         {
-            if (manager == null) return defaultValue;
+            // 期望資源命名即型別名，例如 UnitConfigSO => "UnitConfigSO"
+            var asset = Resources.Load<T>(typeof(T).Name);
+            if (asset != null) return asset;
             
-            // TODO: 實作配置值獲取邏輯
-            return defaultValue;
+            // 找不到資源時創建空實例避免 NRE
+            return ScriptableObject.CreateInstance<T>();
         }
 
         /// <summary>
-        /// 設置配置值
+        /// 獲取配置物件或返回預設值
         /// </summary>
-        public static void SetConfigValue<T>(this ConfigManager manager, string key, T value)
+        /// <typeparam name="T">配置物件類型</typeparam>
+        /// <param name="manager">ConfigManager 實例</param>
+        /// <param name="defaultValue">預設值</param>
+        /// <returns>配置物件或預設值</returns>
+        public static T GetConfigOrDefault<T>(this ConfigManager manager, T defaultValue = null)
+            where T : ScriptableObject
         {
-            if (manager == null) return;
-            
-            // TODO: 實作配置值設置邏輯
+            var cfg = manager.GetConfig<T>();
+            return cfg != null ? cfg : defaultValue;
         }
 
         /// <summary>
-        /// 檢查配置鍵是否存在
+        /// 嘗試獲取配置物件
         /// </summary>
-        public static bool HasConfig(this ConfigManager manager, string key)
+        /// <typeparam name="T">配置物件類型</typeparam>
+        /// <param name="manager">ConfigManager 實例</param>
+        /// <param name="config">輸出的配置物件</param>
+        /// <returns>是否成功獲取</returns>
+        public static bool TryGetConfig<T>(this ConfigManager manager, out T config)
+            where T : ScriptableObject
         {
-            if (manager == null) return false;
-            
-            // TODO: 實作配置鍵檢查邏輯
-            return false;
+            config = manager.GetConfig<T>();
+            return config != null;
         }
     }
 }

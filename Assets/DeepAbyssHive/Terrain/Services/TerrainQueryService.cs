@@ -6,6 +6,7 @@ using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
+using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using DeepAbyssHive.Terrain.Config;
 
 namespace DeepAbyssHive.Terrain.Services

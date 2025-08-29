@@ -4,6 +4,8 @@ using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
+using ResearchPrerequisiteResult = DeepAbyssHive.Buildings.Data.ResearchPrerequisiteResult;
+using ResearchUnlocks = DeepAbyssHive.Buildings.Data.ResearchUnlocks;
 
 namespace DeepAbyssHive.Buildings.Services
 {

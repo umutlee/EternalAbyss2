@@ -9,7 +9,7 @@ namespace DeepAbyssHive.Creep.Services
     /// 菌毯模拟服务实现
     /// 提供菌毯生长、衰减、修改等功能
     /// </summary>
-    public class CreepSimulationService : ICreepSimulationService, IService
+    public partial class CreepSimulationService : ICreepSimulationService, IService
     {
         #region 属性
 

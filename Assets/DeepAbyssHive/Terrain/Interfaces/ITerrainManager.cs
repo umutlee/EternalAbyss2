@@ -2,6 +2,7 @@ using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
+using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 
 namespace DeepAbyssHive.Terrain.Interfaces
 {

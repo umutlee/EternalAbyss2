@@ -11,7 +11,7 @@ namespace DeepAbyssHive.Creep.Services
     /// 菌毯网络服务实现
     /// 负责菌毯网络的连接性分析和管理
     /// </summary>
-    public class CreepNetworkService : ICreepNetworkService, IService
+    public partial class CreepNetworkService : ICreepNetworkService, IService
     {
         #region 私有字段
 

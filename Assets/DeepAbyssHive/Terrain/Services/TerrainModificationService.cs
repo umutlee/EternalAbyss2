@@ -6,6 +6,7 @@ using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 // 針對 TerrainModificationType 名稱衝突，使用別名區分 Data 與 Enums 的定義
 using TerrainModificationTypeData = DeepAbyssHive.Terrain.Data.TerrainModificationType;
+using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
 

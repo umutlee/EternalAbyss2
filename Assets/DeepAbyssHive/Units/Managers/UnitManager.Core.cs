@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using DeepAbyssHive.Core.Interfaces;
+using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
