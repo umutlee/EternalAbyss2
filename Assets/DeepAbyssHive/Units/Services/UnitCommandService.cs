@@ -383,7 +383,9 @@ namespace DeepAbyssHive.Units.Services
             
             var updatedColdData = coldData;
             updatedColdData.Type = targetType;
-            updatedColdData.Evolution.Level++;
+            var evolutionInfo = (EvolutionInfo)updatedColdData.Evolution;
+            evolutionInfo.Level++;
+            updatedColdData.Evolution = evolutionInfo;
             
             // 回設到字典
             _unitHotData[unitId] = updatedHotData;

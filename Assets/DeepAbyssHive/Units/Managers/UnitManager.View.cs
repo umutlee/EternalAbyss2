@@ -167,7 +167,7 @@ namespace DeepAbyssHive.Units.Managers
             // 在实际实现中，应该根据进化等级和适应性特征更新单位的外观
             // 这里简化处理，不更新外观
             
-            Debug.Log($"[{_managerName}] 更新单位外观: ID={unitId}, 进化等级={coldData.Evolution.Level}, 适应性特征数量={coldData.AdaptiveTraits.Length}");
+            Debug.Log($"[{_managerName}] 更新单位外观: ID={unitId}, 进化等级={((EvolutionInfo)coldData.Evolution).Level}, 适应性特征数量={coldData.AdaptiveTraits.Length}");
         }
     }
 }

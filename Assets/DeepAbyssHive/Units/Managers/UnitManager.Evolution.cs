@@ -44,10 +44,10 @@ namespace DeepAbyssHive.Units.Managers
             }
             
             // 检查进化等级
-            int nextLevel = coldData.Evolution.Level + 1;
+            int nextLevel = ((EvolutionInfo)coldData.Evolution).Level + 1;
             if (nextLevel > path.MaxLevel)
             {
-                Debug.LogWarning($"[{_managerName}] 单位已达到最大进化等级: {coldData.Evolution.Level}");
+                Debug.LogWarning($"[{_managerName}] 单位已达到最大进化等级: {((EvolutionInfo)coldData.Evolution).Level}");
                 return false;
             }
             
@@ -57,8 +57,10 @@ namespace DeepAbyssHive.Units.Managers
             _unitHotData[unitId] = hotData;
             
             // 更新进化信息
-            coldData.Evolution.PathId = evolutionPath;
-            coldData.Evolution.Level = nextLevel;
+            var evolutionInfo = (EvolutionInfo)coldData.Evolution;
+            evolutionInfo.PathId = evolutionPath;
+            evolutionInfo.Level = nextLevel;
+            coldData.Evolution = evolutionInfo;
             
             // 解锁新能力
             if (path.UnlockedAbilitiesByLevel.TryGetValue(nextLevel, out string[] abilities))

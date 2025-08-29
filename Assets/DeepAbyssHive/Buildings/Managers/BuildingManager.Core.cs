@@ -31,6 +31,11 @@ namespace DeepAbyssHive.Buildings.Managers
         private readonly Dictionary<int, HashSet<string>> _playerResearch = new Dictionary<int, HashSet<string>>();
         private readonly Queue<int> _buildingUpdateQueue = new Queue<int>();
         
+        // 服务字段定义
+        private IBuildingQueryService _queryService;
+        private IBuildingConstructionService _constructionService;
+        private IResearchService _researchService;
+        
         // 配置参数（从配置文件加载，带默认值）
         private float _buildingUpdateTimer = 0f;
         private float _buildingUpdateInterval = 0.1f;

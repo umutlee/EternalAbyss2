@@ -222,7 +222,7 @@ namespace DeepAbyssHive.Buildings.Config
     [System.Serializable]
     public class ResearchTemplateConfig
     {
-        public string researchId;
+        public string Id;
         public string displayName;
         [TextArea(2, 4)]
         public string description;

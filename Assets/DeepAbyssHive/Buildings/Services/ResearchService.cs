@@ -375,12 +375,12 @@ namespace DeepAbyssHive.Buildings.Services
 
             foreach (var template in _researchTemplates.Values)
             {
-                if (!IsResearchCompleted(template.ResearchId, playerId))
+                if (!IsResearchCompleted(template.Id, playerId))
                 {
-                    var prerequisiteResult = CheckResearchPrerequisites(template.ResearchId, playerId);
+                    var prerequisiteResult = CheckResearchPrerequisites(template.Id, playerId);
                     if (prerequisiteResult.IsValid)
                     {
-                        availableResearch.Add(template.ResearchId);
+                        availableResearch.Add(template.Id);
                     }
                 }
             }

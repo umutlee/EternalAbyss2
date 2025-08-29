@@ -13,7 +13,7 @@ namespace DeepAbyssHive.Buildings.Data
         /// <summary>
         /// 研究ID
         /// </summary>
-        public string ResearchId;
+        public string Id;
         
         /// <summary>
         /// 研究名称
