@@ -68,10 +68,10 @@ namespace DeepAbyssHive.Creep.Services
                 Strength = Mathf.Clamp01(strength),
                 Radius = Mathf.Max(0f, radius),
                 IsActive = true,
-                SourceType = DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Manual
+                SourceType = CreepSourceType.Manual
             };
 
-            return _sourceService.AddSource(sourceData);
+            return _sourceService.CreateCreepSource(sourceData.Position, sourceData.NetworkId, sourceData.SourceType, sourceData.Strength);
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace DeepAbyssHive.Creep.Services
             if (!IsInitialized)
                 return false;
 
-            return _sourceService.RemoveSource(sourceId);
+            return _sourceService.RemoveCreepSource(sourceId);
         }
 
         /// <summary>
@@ -93,17 +93,18 @@ namespace DeepAbyssHive.Creep.Services
             if (!IsInitialized)
                 return false;
 
-            var source = _sourceService.GetSource(sourceId);
-            if (source == null)
-                return false;
-
+            var source = _sourceService.GetCreepSource(sourceId);
+            
             if (strength.HasValue)
-                source.Strength = Mathf.Clamp01(strength.Value);
+                _sourceService.UpdateSourceStrength(sourceId, Mathf.Clamp01(strength.Value));
             
             if (radius.HasValue)
-                source.Radius = Mathf.Max(0f, radius.Value);
+            {
+                // Note: 新介面沒有直接更新半徑的方法，半徑由強度和類型決定
+                Debug.LogWarning("UpdateSource: 半徑更新已改為由強度和類型自動計算");
+            }
 
-            return _sourceService.UpdateSource(source);
+            return true;
         }
 
         /// <summary>

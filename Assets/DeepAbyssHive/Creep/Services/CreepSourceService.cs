@@ -402,13 +402,13 @@ namespace DeepAbyssHive.Creep.Services
             
             switch (sourceType)
             {
-                case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic:
+                case CreepSourceType.Basic:
                     baseRadius = 10f;
                     break;
-                case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Enhanced:
+                case CreepSourceType.Enhanced:
                     baseRadius = 15f;
                     break;
-                case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Specialized:
+                case CreepSourceType.Specialized:
                     baseRadius = 20f;
                     break;
             }

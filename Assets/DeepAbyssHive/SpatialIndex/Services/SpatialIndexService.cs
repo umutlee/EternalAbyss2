@@ -62,7 +62,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
             }
             else
             {
-                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds, _maxDepth, _maxObjectsPerNode);
+                _spatialIndex = new QuadTreeSpatialIndex(_worldBounds.size.x, _maxDepth, _maxObjectsPerNode);
             }
 
             // 初始化数据结构

@@ -1,0 +1,114 @@
+---
+description: 
+globs:
+alwaysApply: true
+---
+description: EA-2025-08-29-03t — TerrainModification 本體補完＋枚舉擴充＋呼叫點型別修正（需先跑 03r）
+
+alwaysApply: true
+
+includes:
+
+* Assets/DeepAbyssHive/\*\*
+
+  ---
+
+  # **PLAN**
+
+* 用**完整且可編譯**的版本覆寫 `Terrain/Data/TerrainModification.cs`（原檔被省略成「…」導致成員缺失）。
+
+* `TerrainModification`：提供 `Position/Radius/Value/Type/Timestamp` 與 `TerrainType`（enum）＋ `TerrainTypeValue`（int 背板）並可 set。
+
+* 擴充 `TerrainModificationType`：補 `Flatten/Dig/Fill/Ramp/Tunnel` 等舊呼叫點需要的成員，同時保留原有 `TypeChange/HeightChange/Combined`。
+
+* 修 `TerrainModificationService` 幾個**int ←→ enum** 的不相容賦值，以及 `Timestamp` 的型別一致性（一律 `DateTime`）。
+
+* 清掉仍可能殘留、造成衝突的檔案（重複的 creep 擴充、實驗性的 spatial bounds 擴充、誤加的 `TerrainChunk.partial.cs`）。
+
+  # **CHANGES**
+
+  ## **1\) 覆寫：TerrainModification（完整本體）**
+
+WRITE\_CHANGE: Assets/DeepAbyssHive/Terrain/Data/TerrainModification.cs  
+ \<\<\<csharp  
+ using System;  
+ using UnityEngine;
+
+namespace DeepAbyssHive.Terrain.Data  
+ {  
+ using DeepAbyssHive.Terrain.Enums;
+
+`/// <summary>`  
+`/// Canonical data struct for terrain edits. This replaces the redacted/ellipsis version.`  
+`/// </summary>`  
+`public struct TerrainModification`  
+`{`  
+    `// Core`  
+    `public Vector3 Position;`  
+    `public float   Radius;   // area of effect`  
+    `public float   Value;    // strength/intensity`  
+    `public TerrainModificationType Type;`
+
+    `// Timing`  
+    `public DateTime Timestamp;`
+
+    `// Terrain type bridge (enum <-> int)`  
+    `public int TerrainTypeValue; // raw int for legacy sites that expect int`  
+    `public TerrainType TerrainType`  
+    `{`  
+        `get => (TerrainType)TerrainTypeValue;`  
+        `set => TerrainTypeValue = (int)value;`  
+    `}`  
+`}`
+
+`/// <summary>`  
+`/// Expanded ops to match legacy call sites.`  
+`/// </summary>`  
+`public enum TerrainModificationType`  
+`{`  
+    `// Original minimal set (keep for compatibility)`  
+    `TypeChange   = 0,`  
+    `HeightChange = 1,`  
+    `Combined     = 2,`
+
+    `// Extended set used by services`  
+    `Flatten = 10,`  
+    `Dig     = 11,`  
+    `Fill    = 12,`  
+    `Ramp    = 13,`  
+    `Tunnel  = 14`  
+`}`
+
+}
+
+## **2\) 修正：TerrainModificationService — enum/int 與 Timestamp 一致**
+
+WRITE\_CHANGE: Assets/DeepAbyssHive/Terrain/Services/TerrainModificationService.cs  
+ FIND: \<\<\<csharp  
+ using UnityEngine;  
+ REPLACE: \<\<\<csharp  
+ using System;  
+ using UnityEngine;
+
+FIND: \<\<\<csharp  
+ TerrainTypeValue \= terrainType,  
+ REPLACE: \<\<\<csharp  
+ TerrainType \= terrainType,
+
+FIND: \<\<\<csharp  
+ modification.Timestamp \= Time.time;  
+ REPLACE: \<\<\<csharp  
+ modification.Timestamp \= DateTime.Now;
+
+FIND: \<\<\<csharp  
+ terrainData\[x, y\] \= modification.TerrainTypeValue;  
+ REPLACE: \<\<\<csharp  
+ terrainData\[x, y\] \= modification.TerrainType;
+
+## **3\) 清理重複/問題檔（避免型別衝突）**
+
+# **若檔案不存在則略過**
+
+DELETE\_FILE: Assets/DeepAbyssHive/Creep/Services/CreepSourceServiceExtensions.cs  
+DELETE\_FILE: Assets/DeepAbyssHive/SpatialIndex/Extensions/SpatialIndexBoundsExtensions.cs  
+ DELETE\_FILE: Assets/DeepAbyssHive/Terrain/Data/TerrainChunk.partial.cs

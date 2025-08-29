@@ -1,133 +1,93 @@
+using System;
 using UnityEngine;
-using DeepAbyssHive.Terrain.Enums;
 
 namespace DeepAbyssHive.Terrain.Data
 {
+    using DeepAbyssHive.Terrain.Enums;
+
     /// <summary>
-    /// 地形修改数据结构
-    /// 用于描述对地形的修改操作
+    /// Canonical data struct for terrain edits. This replaces the redacted/ellipsis version.
     /// </summary>
-    [System.Serializable]
-    public partial struct TerrainModification
+    public struct TerrainModification
     {
-        /// <summary>
-        /// 是否改变地形类型
-        /// </summary>
-        public bool changeTerrainType;
+        // Core
+        public Vector3 Position;
+        public float   Radius;   // area of effect
+        public float   Value;    // strength/intensity
+        public TerrainModificationType Type;
+
+        // Timing
+        public DateTime Timestamp;
+
+    // Terrain type bridge (enum <-> int)
+    public int TerrainTypeValue; // raw int for legacy sites that expect int
+    public TerrainType TerrainType
+    {
+        get => (TerrainType)TerrainTypeValue;
+        set => TerrainTypeValue = (int)value;
+    }
+
+    // Compatibility properties for legacy code
+    public AnimationCurve Falloff;
+    public bool changeTerrainType;
+    public int newTerrainType;
+
+        // Compatibility properties (from partial file)
         
         /// <summary>
-        /// 新的地形类型
+        /// 目標高度（用於平整操作）
         /// </summary>
-        public TerrainType newTerrainType;
+        public float TargetHeight;
         
         /// <summary>
-        /// 是否改变高度
+        /// 紋理索引（用於繪製操作）
         /// </summary>
-        public bool changeHeight;
+        public int TextureIndex;
         
         /// <summary>
-        /// 高度变化量
+        /// 是否使用衰減
         /// </summary>
-        public float heightDelta;
+        public bool UseFalloff;
         
         /// <summary>
-        /// 修改半径
+        /// 衰減曲線
         /// </summary>
-        public float radius;
-        
+        public AnimationCurve FalloffCurve;
+
         /// <summary>
-        /// 修改强度（0-1）
+        /// 建構子，提供預設值
         /// </summary>
-        public float intensity;
-        
-        /// <summary>
-        /// 修改类型
-        /// </summary>
-        public TerrainModificationType modificationType;
-        
-        /// <summary>
-        /// 创建地形类型修改
-        /// </summary>
-        /// <param name="newType">新地形类型</param>
-        /// <param name="radius">影响半径</param>
-        /// <param name="intensity">修改强度</param>
-        /// <returns>地形修改数据</returns>
-        public static TerrainModification CreateTypeChange(TerrainType newType, float radius = 1f, float intensity = 1f)
+        public TerrainModification(Vector3 position, float radius, float value, TerrainModificationType type)
         {
-            return new TerrainModification
-            {
-                changeTerrainType = true,
-                newTerrainType = newType,
-                changeHeight = false,
-                heightDelta = 0f,
-                radius = radius,
-                intensity = intensity,
-                modificationType = TerrainModificationType.TypeChange
-            };
-        }
-        
-        /// <summary>
-        /// 创建高度修改
-        /// </summary>
-        /// <param name="heightDelta">高度变化量</param>
-        /// <param name="radius">影响半径</param>
-        /// <param name="intensity">修改强度</param>
-        /// <returns>地形修改数据</returns>
-        public static TerrainModification CreateHeightChange(float heightDelta, float radius = 1f, float intensity = 1f)
-        {
-            return new TerrainModification
-            {
-                changeTerrainType = false,
-                newTerrainType = TerrainType.Normal,
-                changeHeight = true,
-                heightDelta = heightDelta,
-                radius = radius,
-                intensity = intensity,
-                modificationType = TerrainModificationType.HeightChange
-            };
-        }
-        
-        /// <summary>
-        /// 创建复合修改
-        /// </summary>
-        /// <param name="newType">新地形类型</param>
-        /// <param name="heightDelta">高度变化量</param>
-        /// <param name="radius">影响半径</param>
-        /// <param name="intensity">修改强度</param>
-        /// <returns>地形修改数据</returns>
-        public static TerrainModification CreateCombinedChange(TerrainType newType, float heightDelta, float radius = 1f, float intensity = 1f)
-        {
-            return new TerrainModification
-            {
-                changeTerrainType = true,
-                newTerrainType = newType,
-                changeHeight = true,
-                heightDelta = heightDelta,
-                radius = radius,
-                intensity = intensity,
-                modificationType = TerrainModificationType.Combined
-            };
+            Position = position;
+            Radius = radius;
+            Value = value;
+            Type = type;
+            Timestamp = DateTime.Now;
+            TerrainTypeValue = 0;
+            TargetHeight = 0.0f;
+            TextureIndex = 0;
+            UseFalloff = true;
+            FalloffCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
         }
     }
-    
+
     /// <summary>
-    /// 地形修改类型
+    /// Expanded ops to match legacy call sites.
     /// </summary>
     public enum TerrainModificationType
     {
-        /// <summary>
-        /// 仅改变地形类型
-        /// </summary>
-        TypeChange,
-        
-        /// <summary>
-        /// 仅改变高度
-        /// </summary>
-        HeightChange,
-        
-        /// <summary>
-        /// 复合修改
-        /// </summary>
-        Combined
+        // Original minimal set (keep for compatibility)
+        None         = -1,
+        TypeChange   = 0,
+        HeightChange = 1,
+        Combined     = 2,
+
+        // Extended set used by services
+        Flatten = 10,
+        Dig     = 11,
+        Fill    = 12,
+        Ramp    = 13,
+        Tunnel  = 14
     }
 }

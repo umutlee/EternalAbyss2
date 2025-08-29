@@ -198,7 +198,7 @@ namespace DeepAbyssHive.Units.Core
             {
                 _unitId = GetInstanceID();
                 _unitName = _unitData.UnitName;
-                _unitType = _unitData.UnitType;
+                _unitType = (UnitType)_unitData.UnitType;
                 _currentHealth = _unitData.MaxHealth;
                 _currentEnergy = _unitData.MaxEnergy;
                 _moveSpeed = _unitData.MoveSpeed;

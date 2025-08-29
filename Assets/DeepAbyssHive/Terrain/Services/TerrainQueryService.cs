@@ -413,9 +413,9 @@ namespace DeepAbyssHive.Terrain.Services
         public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunk(int chunkX, int chunkZ)
         {
             Vector2Int chunkCoord = new Vector2Int(chunkX, chunkZ);
-            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk) && chunk is ITerrainChunk terrainChunk)
+            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
             {
-                return terrainChunk;
+                return (TerrainChunk)chunk;
             }
             return default;
         }

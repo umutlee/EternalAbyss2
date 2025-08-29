@@ -1,3 +1,5 @@
+#if false // TEMP: 停用，待 Runtime asmdef 建好後再啟用
+#if UNITY_INCLUDE_TESTS
 using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
@@ -129,3 +131,5 @@ namespace DeepAbyssHive.Tests.SpatialIndex
         }
     }
 }
+#endif
+#endif

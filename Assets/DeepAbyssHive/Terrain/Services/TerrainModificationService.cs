@@ -83,8 +83,8 @@ namespace DeepAbyssHive.Terrain.Services
             {
                 Position = worldPosition,
                 Radius = radius,
-                TerrainTypeValue = terrainType,
-                Timestamp = Time.time
+                TerrainType = terrainType,
+                Timestamp = DateTime.Now
             };
             
             _pendingModifications.Enqueue(modification);
@@ -97,7 +97,7 @@ namespace DeepAbyssHive.Terrain.Services
         public void ModifyTerrainAt(Vector3 worldPosition, TerrainModification modification)
         {
             modification.Position = worldPosition;
-            modification.Timestamp = Time.time;
+            modification.Timestamp = DateTime.Now;
             
             _pendingModifications.Enqueue(modification);
             Debug.Log($"[TerrainModificationService] 添加地形修改: 位置={worldPosition}, 类型={modification.TerrainTypeValue}");
@@ -435,7 +435,7 @@ namespace DeepAbyssHive.Terrain.Services
                     // 如果在修改半径内，则应用修改
                     if (distanceSquared <= radiusSquared)
                     {
-                        terrainData[x, y] = modification.TerrainTypeValue;
+                        terrainData[x, y] = modification.TerrainType;
                     }
                 }
             }

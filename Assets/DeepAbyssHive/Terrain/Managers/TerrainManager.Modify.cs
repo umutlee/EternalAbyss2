@@ -36,8 +36,8 @@ namespace DeepAbyssHive.Terrain.Managers
             {
                 Position = worldPosition,
                 Radius = radius,
-                TerrainTypeValue = terrainType,
-                Timestamp = Time.time
+                TerrainType = (TerrainType)terrainType,
+                Timestamp = System.DateTime.Now
             };
             
             _pendingModifications.Enqueue(modification);
@@ -129,7 +129,7 @@ namespace DeepAbyssHive.Terrain.Managers
                     // 如果在修改半径内，则应用修改
                     if (distanceSquared <= radiusSquared)
                     {
-                        terrainData[x, y] = modification.TerrainTypeValue;
+                        terrainData[x, y] = (int)modification.TerrainType;
                     }
                 }
             }
