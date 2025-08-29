@@ -68,7 +68,7 @@ namespace DeepAbyssHive.Units.Data
         /// <summary>
         /// 构造函数
         /// </summary>
-        public UnitColdData(UnitType unitType, string unitName = "")
+        public UnitColdData(UnitType unitType, string unitName = "") : this()
         {
             UnitType = unitType;
             UnitName = string.IsNullOrEmpty(unitName) ? unitType.ToString() : unitName;

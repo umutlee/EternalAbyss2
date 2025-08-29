@@ -56,7 +56,7 @@ namespace DeepAbyssHive.Units.Data
         /// <summary>
         /// 构造函数
         /// </summary>
-        public UnitHotData(int unitId, UnitType unitType, Vector3 position, int playerId = 0)
+        public UnitHotData(int unitId, UnitType unitType, Vector3 position, int playerId = 0) : this()
         {
             UnitId = unitId;
             UnitType = unitType;

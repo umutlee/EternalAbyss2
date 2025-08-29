@@ -4,6 +4,8 @@ using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
+// 針對 TerrainModificationType 名稱衝突，使用別名區分 Data 與 Enums 的定義
+using TerrainModificationTypeData = DeepAbyssHive.Terrain.Data.TerrainModificationType;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
 
@@ -204,7 +206,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = position,
                 Radius = radius,
                 Value = heightDelta,
-                Type = TerrainModificationType.HeightChange,
+                Type = TerrainModificationTypeData.HeightChange,
                 Falloff = falloff,
                 Timestamp = System.DateTime.Now
             };
@@ -218,7 +220,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = position,
                 Radius = radius,
                 TerrainType = terrainType,
-                Type = TerrainModificationType.TypeChange,
+                Type = TerrainModificationTypeData.TypeChange,
                 Timestamp = System.DateTime.Now
             };
             return ApplyModification(modification);
@@ -231,7 +233,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = center,
                 Radius = Mathf.Max(size.x, size.y) / 2f,
                 Value = targetHeight,
-                Type = TerrainModificationType.Flatten,
+                Type = TerrainModificationTypeData.Flatten,
                 Timestamp = System.DateTime.Now
             };
             return ApplyModification(modification);
@@ -244,7 +246,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = position,
                 Radius = radius,
                 Value = -depth,
-                Type = TerrainModificationType.Dig,
+                Type = TerrainModificationTypeData.Dig,
                 Timestamp = System.DateTime.Now
             };
             return ApplyModification(modification);
@@ -257,7 +259,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = position,
                 Radius = radius,
                 Value = height,
-                Type = TerrainModificationType.Fill,
+                Type = TerrainModificationTypeData.Fill,
                 Timestamp = System.DateTime.Now
             };
             return ApplyModification(modification);
@@ -270,7 +272,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = (start + end) / 2f,
                 Radius = width,
                 Value = Vector3.Distance(start, end),
-                Type = TerrainModificationType.Ramp,
+                Type = TerrainModificationTypeData.Ramp,
                 Timestamp = System.DateTime.Now
             };
             return ApplyModification(modification);
@@ -283,7 +285,7 @@ namespace DeepAbyssHive.Terrain.Services
                 Position = (start + end) / 2f,
                 Radius = radius,
                 Value = Vector3.Distance(start, end),
-                Type = TerrainModificationType.Tunnel,
+                Type = TerrainModificationTypeData.Tunnel,
                 Timestamp = System.DateTime.Now
             };
             return ApplyModification(modification);

@@ -57,7 +57,7 @@ namespace DeepAbyssHive.Terrain.Data
         /// <summary>
         /// 建構子，提供預設值
         /// </summary>
-        public TerrainModification(Vector3 position, float radius, float value, TerrainModificationType type)
+        public TerrainModification(Vector3 position, float radius, float value, TerrainModificationType type) : this()
         {
             Position = position;
             Radius = radius;
