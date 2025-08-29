@@ -1,27 +1,18 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
+using DeepAbyssHive.Units.Data;
+using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Units.Enums;
+using DeepAbyssHive.Buildings.Enums;
 
 namespace DeepAbyssHive.Core.Config
 {
     /// <summary>
     /// 配置管理器
-    /// 负责加载、缓存和管理所有ScriptableObject配置
+    /// 負責加載和管理所有ScriptableObject配置數據
     /// </summary>
     public class ConfigManager : MonoBehaviour
     {
-        [Header("配置路径")]
-        [SerializeField] private string _configResourcePath = "Configs";
-        
-        [Header("调试选项")]
-        [SerializeField] private bool _enableDebugLog = false;
-        [SerializeField] private bool _enableHotReload = true;
-        
-        // 配置缓存
-        private Dictionary<Type, BaseConfigSO> _configCache = new Dictionary<Type, BaseConfigSO>();
-        private Dictionary<string, BaseConfigSO> _configByName = new Dictionary<string, BaseConfigSO>();
-        
-        // 单例
         private static ConfigManager _instance;
         public static ConfigManager Instance
         {
@@ -41,13 +32,30 @@ namespace DeepAbyssHive.Core.Config
             }
         }
 
+        [Header("配置路徑")]
+        [SerializeField] private string unitTemplatesPath = "Configs/Units";
+        [SerializeField] private string buildingTemplatesPath = "Configs/Buildings";
+        [SerializeField] private string researchTemplatesPath = "Configs/Research";
+
+        [Header("已加載的配置")]
+        [SerializeField] private List<UnitTemplateSO> unitTemplates = new List<UnitTemplateSO>();
+        [SerializeField] private List<BuildingTemplateSO> buildingTemplates = new List<BuildingTemplateSO>();
+        [SerializeField] private List<ResearchTemplateSO> researchTemplates = new List<ResearchTemplateSO>();
+
+        // 快速查找字典
+        private Dictionary<UnitType, UnitTemplateSO> _unitTemplateDict;
+        private Dictionary<BuildingType, BuildingTemplateSO> _buildingTemplateDict;
+        private Dictionary<string, ResearchTemplateSO> _researchTemplateDict;
+
+        public bool IsInitialized { get; private set; }
+
         private void Awake()
         {
             if (_instance == null)
             {
                 _instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeConfigs();
+                Initialize();
             }
             else if (_instance != this)
             {
@@ -56,210 +64,212 @@ namespace DeepAbyssHive.Core.Config
         }
 
         /// <summary>
-        /// 初始化所有配置
+        /// 初始化配置管理器
         /// </summary>
-        private void InitializeConfigs()
+        public void Initialize()
         {
-            if (_enableDebugLog)
-            {
-                Debug.Log("[ConfigManager] 开始初始化配置系统");
-            }
+            if (IsInitialized) return;
 
-            // 加载所有配置文件
-            LoadAllConfigs();
-            
-            if (_enableDebugLog)
-            {
-                Debug.Log($"[ConfigManager] 配置系统初始化完成，共加载 {_configCache.Count} 个配置");
-            }
+            Debug.Log("[ConfigManager] 開始初始化配置管理器...");
+
+            LoadUnitTemplates();
+            LoadBuildingTemplates();
+            LoadResearchTemplates();
+
+            BuildLookupDictionaries();
+
+            IsInitialized = true;
+            Debug.Log("[ConfigManager] 配置管理器初始化完成");
         }
 
         /// <summary>
-        /// 加载所有配置文件
+        /// 加載單位模板
         /// </summary>
-        private void LoadAllConfigs()
+        private void LoadUnitTemplates()
         {
-            // 从Resources文件夹加载所有配置
-            BaseConfigSO[] configs = Resources.LoadAll<BaseConfigSO>(_configResourcePath);
+            unitTemplates.Clear();
+            UnitTemplateSO[] templates = Resources.LoadAll<UnitTemplateSO>(unitTemplatesPath);
             
-            foreach (var config in configs)
+            foreach (var template in templates)
             {
-                if (config != null)
+                if (template != null)
                 {
-                    RegisterConfig(config);
+                    unitTemplates.Add(template);
+                    Debug.Log($"[ConfigManager] 加載單位模板: {template.UnitName} ({template.UnitType})");
+                }
+            }
+
+            Debug.Log($"[ConfigManager] 共加載 {unitTemplates.Count} 個單位模板");
+        }
+
+        /// <summary>
+        /// 加載建築模板
+        /// </summary>
+        private void LoadBuildingTemplates()
+        {
+            buildingTemplates.Clear();
+            BuildingTemplateSO[] templates = Resources.LoadAll<BuildingTemplateSO>(buildingTemplatesPath);
+            
+            foreach (var template in templates)
+            {
+                if (template != null)
+                {
+                    buildingTemplates.Add(template);
+                    Debug.Log($"[ConfigManager] 加載建築模板: {template.BuildingName} ({template.BuildingType})");
+                }
+            }
+
+            Debug.Log($"[ConfigManager] 共加載 {buildingTemplates.Count} 個建築模板");
+        }
+
+        /// <summary>
+        /// 加載研究模板
+        /// </summary>
+        private void LoadResearchTemplates()
+        {
+            researchTemplates.Clear();
+            ResearchTemplateSO[] templates = Resources.LoadAll<ResearchTemplateSO>(researchTemplatesPath);
+            
+            foreach (var template in templates)
+            {
+                if (template != null)
+                {
+                    researchTemplates.Add(template);
+                    Debug.Log($"[ConfigManager] 加載研究模板: {template.ResearchName} ({template.Id})");
+                }
+            }
+
+            Debug.Log($"[ConfigManager] 共加載 {researchTemplates.Count} 個研究模板");
+        }
+
+        /// <summary>
+        /// 構建查找字典
+        /// </summary>
+        private void BuildLookupDictionaries()
+        {
+            // 構建單位模板字典
+            _unitTemplateDict = new Dictionary<UnitType, UnitTemplateSO>();
+            foreach (var template in unitTemplates)
+            {
+                if (!_unitTemplateDict.ContainsKey(template.UnitType))
+                {
+                    _unitTemplateDict[template.UnitType] = template;
+                }
+                else
+                {
+                    Debug.LogWarning($"[ConfigManager] 重複的單位類型: {template.UnitType}");
+                }
+            }
+
+            // 構建建築模板字典
+            _buildingTemplateDict = new Dictionary<BuildingType, BuildingTemplateSO>();
+            foreach (var template in buildingTemplates)
+            {
+                if (!_buildingTemplateDict.ContainsKey(template.BuildingType))
+                {
+                    _buildingTemplateDict[template.BuildingType] = template;
+                }
+                else
+                {
+                    Debug.LogWarning($"[ConfigManager] 重複的建築類型: {template.BuildingType}");
+                }
+            }
+
+            // 構建研究模板字典
+            _researchTemplateDict = new Dictionary<string, ResearchTemplateSO>();
+            foreach (var template in researchTemplates)
+            {
+                if (!_researchTemplateDict.ContainsKey(template.Id))
+                {
+                    _researchTemplateDict[template.Id] = template;
+                }
+                else
+                {
+                    Debug.LogWarning($"[ConfigManager] 重複的研究ID: {template.Id}");
                 }
             }
         }
 
-        /// <summary>
-        /// 注册配置到缓存
-        /// </summary>
-        /// <param name="config">配置对象</param>
-        private void RegisterConfig(BaseConfigSO config)
-        {
-            Type configType = config.GetType();
-            
-            // 验证配置
-            if (!config.ValidateConfig())
-            {
-                Debug.LogError($"[ConfigManager] 配置验证失败: {configType.Name}");
-                return;
-            }
-            
-            // 添加到缓存
-            _configCache[configType] = config;
-            _configByName[config.ConfigName] = config;
-            
-            if (_enableDebugLog)
-            {
-                Debug.Log($"[ConfigManager] 已注册配置: {configType.Name} ({config.ConfigName})");
-            }
-        }
+        #region 公共API
 
         /// <summary>
-        /// 获取指定类型的配置
+        /// 獲取單位模板
         /// </summary>
-        /// <typeparam name="T">配置类型</typeparam>
-        /// <returns>配置对象，如果不存在则返回null</returns>
-        public T GetConfig<T>() where T : BaseConfigSO
+        /// <param name="unitType">單位類型</param>
+        /// <returns>單位模板，如果不存在返回null</returns>
+        public UnitTemplateSO GetUnitTemplate(UnitType unitType)
         {
-            Type configType = typeof(T);
-            
-            if (_configCache.TryGetValue(configType, out BaseConfigSO config))
+            if (_unitTemplateDict != null && _unitTemplateDict.TryGetValue(unitType, out UnitTemplateSO template))
             {
-                return config as T;
+                return template;
             }
-            
-            // 尝试从Resources加载
-            T loadedConfig = TryLoadConfig<T>();
-            if (loadedConfig != null)
-            {
-                RegisterConfig(loadedConfig);
-                return loadedConfig;
-            }
-            
-            if (_enableDebugLog)
-            {
-                Debug.LogWarning($"[ConfigManager] 未找到配置: {configType.Name}");
-            }
-            
             return null;
         }
 
         /// <summary>
-        /// 获取指定类型的配置，如果不存在则创建默认配置
+        /// 獲取建築模板
         /// </summary>
-        /// <typeparam name="T">配置类型</typeparam>
-        /// <returns>配置对象</returns>
-        public T GetConfigOrDefault<T>() where T : BaseConfigSO
+        /// <param name="buildingType">建築類型</param>
+        /// <returns>建築模板，如果不存在返回null</returns>
+        public BuildingTemplateSO GetBuildingTemplate(BuildingType buildingType)
         {
-            T config = GetConfig<T>();
-            
-            if (config == null)
+            if (_buildingTemplateDict != null && _buildingTemplateDict.TryGetValue(buildingType, out BuildingTemplateSO template))
             {
-                // 创建默认配置
-                config = CreateDefaultConfig<T>();
-                if (config != null)
-                {
-                    RegisterConfig(config);
-                }
+                return template;
             }
-            
-            return config;
+            return null;
         }
 
         /// <summary>
-        /// 根据名称获取配置
+        /// 獲取研究模板
         /// </summary>
-        /// <param name="configName">配置名称</param>
-        /// <returns>配置对象</returns>
-        public BaseConfigSO GetConfigByName(string configName)
+        /// <param name="researchId">研究ID</param>
+        /// <returns>研究模板，如果不存在返回null</returns>
+        public ResearchTemplateSO GetResearchTemplate(string researchId)
         {
-            _configByName.TryGetValue(configName, out BaseConfigSO config);
-            return config;
-        }
-
-        /// <summary>
-        /// 尝试从Resources加载配置
-        /// </summary>
-        /// <typeparam name="T">配置类型</typeparam>
-        /// <returns>配置对象</returns>
-        private T TryLoadConfig<T>() where T : BaseConfigSO
-        {
-            string configPath = $"{_configResourcePath}/{typeof(T).Name}";
-            return Resources.Load<T>(configPath);
-        }
-
-        /// <summary>
-        /// 创建默认配置
-        /// </summary>
-        /// <typeparam name="T">配置类型</typeparam>
-        /// <returns>默认配置对象</returns>
-        private T CreateDefaultConfig<T>() where T : BaseConfigSO
-        {
-            try
+            if (_researchTemplateDict != null && _researchTemplateDict.TryGetValue(researchId, out ResearchTemplateSO template))
             {
-                T config = ScriptableObject.CreateInstance<T>();
-                config.ApplyDefaults();
-                
-                if (_enableDebugLog)
-                {
-                    Debug.Log($"[ConfigManager] 已创建默认配置: {typeof(T).Name}");
-                }
-                
-                return config;
+                return template;
             }
-            catch (Exception e)
-            {
-                Debug.LogError($"[ConfigManager] 创建默认配置失败: {typeof(T).Name}, 错误: {e.Message}");
-                return null;
-            }
+            return null;
         }
 
         /// <summary>
-        /// 重新加载所有配置（热重载）
+        /// 獲取所有單位模板
         /// </summary>
-        public void ReloadAllConfigs()
+        /// <returns>單位模板列表</returns>
+        public List<UnitTemplateSO> GetAllUnitTemplates()
         {
-            if (!_enableHotReload) return;
-            
-            if (_enableDebugLog)
-            {
-                Debug.Log("[ConfigManager] 开始热重载所有配置");
-            }
-            
-            // 清空缓存
-            _configCache.Clear();
-            _configByName.Clear();
-            
-            // 重新加载
-            LoadAllConfigs();
-            
-            // 通知所有配置重载完成
-            foreach (var config in _configCache.Values)
-            {
-                config.OnConfigReloaded();
-            }
+            return new List<UnitTemplateSO>(unitTemplates);
         }
 
         /// <summary>
-        /// 获取所有已加载的配置
+        /// 獲取所有建築模板
         /// </summary>
-        /// <returns>配置列表</returns>
-        public List<BaseConfigSO> GetAllConfigs()
+        /// <returns>建築模板列表</returns>
+        public List<BuildingTemplateSO> GetAllBuildingTemplates()
         {
-            return new List<BaseConfigSO>(_configCache.Values);
+            return new List<BuildingTemplateSO>(buildingTemplates);
         }
 
-#if UNITY_EDITOR
         /// <summary>
-        /// 编辑器专用：强制重新加载配置
+        /// 獲取所有研究模板
         /// </summary>
-        [ContextMenu("重新加载所有配置")]
-        public void EditorReloadConfigs()
+        /// <returns>研究模板列表</returns>
+        public List<ResearchTemplateSO> GetAllResearchTemplates()
         {
-            ReloadAllConfigs();
+            return new List<ResearchTemplateSO>(researchTemplates);
         }
-#endif
+
+        /// <summary>
+        /// 重新加載所有配置
+        /// </summary>
+        public void ReloadConfigs()
+        {
+            IsInitialized = false;
+            Initialize();
+        }
+
+        #endregion
     }
 }
