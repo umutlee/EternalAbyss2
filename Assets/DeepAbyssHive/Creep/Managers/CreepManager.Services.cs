@@ -1,137 +1,228 @@
-using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Services;
-using DeepAbyssHive.SpatialIndex.Interfaces;
-using DeepAbyssHive.SpatialIndex.Services;
-using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.Creep.Managers
 {
     /// <summary>
-    /// 菌毯管理器 - 服务模块
-    /// 负责管理菌毯系统的各个服务组件
+    /// Creep管理器服務部分
+    /// 負責通過ServiceLocator獲取和管理依賴服務
     /// </summary>
     public partial class CreepManager
     {
-        #region 服务引用
-
-        // 服务引用
-        private ICreepGridService _gridService;
-        private ICreepExpansionService _expansionService;
+        [Header("服務依賴")]
+        [SerializeField] private bool useServiceLocator = true;
+        
+        // 服務介面引用（使用介面類型而非具體實現）
+        private ICreepQueryService _queryService;
         private ICreepSourceService _sourceService;
         private ICreepNetworkService _networkService;
-        private ICreepQueryService _queryService;
+        private ICreepGridService _gridService;
         private ICreepSimulationService _simulationService;
-
-        #endregion
-
-        #region 服务初始化
-
-        /// <summary>
-        /// 初始化服务
-        /// </summary>
-        private void InitializeServices()
-        {
-            Debug.Log($"[{_managerName}] 初始化菌毯服务");
-
-            // 创建并初始化网格服务
-            _gridService = new CreepGridService();
-            _gridService.Initialize();
-            _gridService.InitializeGrid(_gridWidth, _gridHeight, _gridCellSize);
-
-            // 创建并初始化查询服务
-            _queryService = new CreepQueryService(_gridService);
-            _queryService.Initialize();
-
-            // 创建并初始化源点服务
-            _sourceService = new CreepSourceService(_gridService);
-            _sourceService.Initialize();
-
-            // 创建并初始化网络服务
-            _networkService = new CreepNetworkService(_gridService);
-            _networkService.Initialize();
-
-            // 创建并初始化扩张服务
-            _expansionService = new CreepExpansionService(_gridService, _sourceService, _networkService);
-            _expansionService.Initialize();
-            _expansionService.ExpansionRate = _expansionRate;
-            _expansionService.ExpansionThreshold = _expansionThreshold;
-            _expansionService.AutoExpansionEnabled = true;
-
-            // 创建并初始化模拟服务
-            _simulationService = new CreepSimulationService(_gridService, _sourceService, _expansionService, _networkService);
-            _simulationService.Initialize();
-
-            Debug.Log($"[{_managerName}] 菌毯服务初始化完成");
-        }
-
-        /// <summary>
-        /// 清理服务
-        /// </summary>
-        private void CleanupServices()
-        {
-            Debug.Log($"[{_managerName}] 清理菌毯服务");
-
-            // 按依赖关系反向清理
-            _simulationService?.Cleanup();
-            _expansionService?.Cleanup();
-            _networkService?.Cleanup();
-            _sourceService?.Cleanup();
-            _queryService?.Cleanup();
-            _gridService?.Cleanup();
-
-            _simulationService = null;
-            _expansionService = null;
-            _networkService = null;
-            _sourceService = null;
-            _queryService = null;
-            _gridService = null;
-
-            Debug.Log($"[{_managerName}] 菌毯服务清理完成");
-        }
-
-        /// <summary>
-        /// 更新服务
-        /// </summary>
-        private void UpdateServices(float deltaTime)
-        {
-            if (!IsInitialized) return;
-            
-            // 按依赖关系顺序更新
-            _gridService?.Update(deltaTime);
-            _sourceService?.Update(deltaTime);
-            _expansionService?.Update(deltaTime);
-            _networkService?.Update(deltaTime);
-            _simulationService?.Update(deltaTime);
-            _queryService?.Update(deltaTime);
-        }
-
-        /// <summary>
-        /// 暂停服务
-        /// </summary>
-        private void PauseServices()
-        {
-            if (!IsInitialized) return;
-            
-            _expansionService?.SetPaused(true);
-            _simulationService?.SetPaused(true);
-            _networkService?.SetPaused(true);
-        }
-
-        /// <summary>
-        /// 恢复服务
-        /// </summary>
-        private void ResumeServices()
-        {
-            if (!IsInitialized) return;
-            
-            _expansionService?.SetPaused(false);
-            _simulationService?.SetPaused(false);
-            _networkService?.SetPaused(false);
-        }
         
+        // 服務初始化狀態
+        private bool _servicesInitialized = false;
 
-        #endregion
+        /// <summary>
+        /// 初始化服務依賴
+        /// </summary>
+        private void InitializeCreepServices()
+        {
+            if (_servicesInitialized) return;
+
+            Debug.Log($"[{_managerName}] 初始化Creep服務依賴...");
+
+            if (useServiceLocator)
+            {
+                InitializeFromServiceLocator();
+            }
+            else
+            {
+                InitializeFromLegacyMethod();
+            }
+
+            _servicesInitialized = true;
+            Debug.Log($"[{_managerName}] Creep服務依賴初始化完成");
+        }
+
+        /// <summary>
+        /// 從ServiceLocator獲取服務
+        /// </summary>
+        private void InitializeFromServiceLocator()
+        {
+            try
+            {
+                // 使用 ServiceLocator 注入所需的 Creep 相關服務
+                _queryService = ServiceLocator.Get<ICreepQueryService>();
+                _sourceService = ServiceLocator.Get<ICreepSourceService>();
+                _networkService = ServiceLocator.Get<ICreepNetworkService>();
+                _gridService = ServiceLocator.Get<ICreepGridService>();
+                _simulationService = ServiceLocator.Get<ICreepSimulationService>();
+
+                Debug.Log($"[{_managerName}] 成功從ServiceLocator獲取所有Creep服務");
+            }
+            catch (ServiceNotFoundException ex)
+            {
+                Debug.LogError($"[{_managerName}] Creep服務獲取失敗: {ex.Message}");
+                
+                // 回退到舊版初始化方法
+                Debug.LogWarning($"[{_managerName}] 回退到舊版Creep服務初始化方法");
+                InitializeFromLegacyMethod();
+            }
+        }
+
+        /// <summary>
+        /// 舊版服務初始化方法（向後兼容）
+        /// </summary>
+        private void InitializeFromLegacyMethod()
+        {
+            Debug.Log($"[{_managerName}] 使用舊版Creep服務初始化方法");
+            
+            // 直接創建服務實例（向後兼容）
+            _gridService = new CreepGridService();
+            _sourceService = new CreepSourceService();
+            _networkService = new CreepNetworkService();
+            _simulationService = new CreepSimulationService();
+            _queryService = new CreepQueryService();
+        }
+
+        /// <summary>
+        /// 在Start中初始化服務（確保ServiceLocator已準備好）
+        /// </summary>
+        private void StartCreepServices()
+        {
+            // 等待ServiceLocator初始化完成
+            if (useServiceLocator && !ServiceLocator.IsInitialized)
+            {
+                Debug.LogWarning($"[{_managerName}] ServiceLocator尚未初始化，等待...");
+                StartCoroutine(WaitForServiceLocatorInitialization());
+            }
+            else
+            {
+                InitializeCreepServices();
+            }
+        }
+
+        /// <summary>
+        /// 等待ServiceLocator初始化完成
+        /// </summary>
+        private System.Collections.IEnumerator WaitForServiceLocatorInitialization()
+        {
+            float timeout = 5f; // 5秒超時
+            float elapsed = 0f;
+
+            while (!ServiceLocator.IsInitialized && elapsed < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                elapsed += 0.1f;
+            }
+
+            if (ServiceLocator.IsInitialized)
+            {
+                InitializeCreepServices();
+            }
+            else
+            {
+                Debug.LogError($"[{_managerName}] ServiceLocator初始化超時，使用舊版方法");
+                useServiceLocator = false;
+                InitializeCreepServices();
+            }
+        }
+
+        /// <summary>
+        /// 獲取Creep查詢服務
+        /// </summary>
+        /// <returns>Creep查詢服務實例</returns>
+        public ICreepQueryService GetQueryService()
+        {
+            if (!_servicesInitialized)
+            {
+                InitializeCreepServices();
+            }
+            return _queryService;
+        }
+
+        /// <summary>
+        /// 獲取Creep源服務
+        /// </summary>
+        /// <returns>Creep源服務實例</returns>
+        public ICreepSourceService GetSourceService()
+        {
+            if (!_servicesInitialized)
+            {
+                InitializeCreepServices();
+            }
+            return _sourceService;
+        }
+
+        /// <summary>
+        /// 獲取Creep網絡服務
+        /// </summary>
+        /// <returns>Creep網絡服務實例</returns>
+        public ICreepNetworkService GetNetworkService()
+        {
+            if (!_servicesInitialized)
+            {
+                InitializeCreepServices();
+            }
+            return _networkService;
+        }
+
+        /// <summary>
+        /// 獲取Creep網格服務
+        /// </summary>
+        /// <returns>Creep網格服務實例</returns>
+        public ICreepGridService GetGridService()
+        {
+            if (!_servicesInitialized)
+            {
+                InitializeCreepServices();
+            }
+            return _gridService;
+        }
+
+        /// <summary>
+        /// 獲取Creep模擬服務
+        /// </summary>
+        /// <returns>Creep模擬服務實例</returns>
+        public ICreepSimulationService GetSimulationService()
+        {
+            if (!_servicesInitialized)
+            {
+                InitializeCreepServices();
+            }
+            return _simulationService;
+        }
+
+        /// <summary>
+        /// 檢查Creep服務是否已正確初始化
+        /// </summary>
+        /// <returns>服務是否可用</returns>
+        public bool AreCreepServicesAvailable()
+        {
+            return _servicesInitialized && 
+                   _queryService != null && 
+                   _sourceService != null && 
+                   _networkService != null &&
+                   _gridService != null &&
+                   _simulationService != null;
+        }
+
+        /// <summary>
+        /// 重新初始化Creep服務（用於調試或熱重載）
+        /// </summary>
+        [ContextMenu("重新初始化Creep服務")]
+        public void ReinitializeCreepServices()
+        {
+            _servicesInitialized = false;
+            _queryService = null;
+            _sourceService = null;
+            _networkService = null;
+            _gridService = null;
+            _simulationService = null;
+            
+            InitializeCreepServices();
+        }
     }
 }
