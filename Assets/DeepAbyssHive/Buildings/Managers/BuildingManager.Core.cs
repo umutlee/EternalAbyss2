@@ -296,16 +296,7 @@ namespace DeepAbyssHive.Buildings.Managers
             return true; // 简化实现
         }
 
-        /// <summary>
-        /// 获取建筑模板
-        /// </summary>
-        /// <param name="buildingType">建筑类型</param>
-        /// <returns>建筑模板</returns>
-        private BuildingTemplate GetBuildingTemplate(BuildingType buildingType)
-        {
-            _buildingTemplates.TryGetValue(buildingType, out BuildingTemplate template);
-            return template;
-        }
+
 
         /// <summary>
         /// 获取建筑半径

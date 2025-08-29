@@ -497,4 +497,13 @@ namespace DeepAbyssHive.Creep.Services
 
         #endregion
     }
+
+    public partial class CreepSimulationService
+    {
+        public CreepSimulationService()
+            : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Interfaces.ICreepSourceService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepExpansionService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepNetworkService>()) { }
+    }
 }

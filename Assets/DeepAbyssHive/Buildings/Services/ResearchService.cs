@@ -82,10 +82,7 @@ namespace DeepAbyssHive.Buildings.Services
             }
         }
 
-        /// <summary>
-        /// ICommandService 介面實作 - 命令是否可用
-        /// </summary>
-        public bool IsCommandAvailable => IsInitialized;
+
 
         public bool StartResearch(string researchId, int playerId, int buildingId)
         {
@@ -115,6 +112,12 @@ namespace DeepAbyssHive.Buildings.Services
             _playerActiveResearch[playerId][researchId] = progress;
             Debug.Log($"[ResearchService] 开始研究 {researchId} (玩家: {playerId}, 建筑: {buildingId})");
             return true;
+        }
+
+        public bool StartResearch(string researchId, int buildingId)
+        {
+            // TODO: 實作真實流程：檢查前置、資源、入列或即時完成、寫入解鎖
+            return StartResearch(researchId, 0, buildingId); // 使用預設玩家ID 0
         }
 
         public bool CancelResearch(string researchId, int playerId)
@@ -387,8 +390,6 @@ namespace DeepAbyssHive.Buildings.Services
             }
         }
 
-        // 顯式實作，確保無論使用方解析到哪個命名空間版本的介面，都能滿足簽名
-        bool DeepAbyssHive.Buildings.Interfaces.IResearchService.StartResearch(string researchId, int buildingId)
-            => StartResearch(researchId, 0, buildingId); // 使用預設玩家ID 0
+
     }
 }

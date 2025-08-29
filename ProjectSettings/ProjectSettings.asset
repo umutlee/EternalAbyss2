@@ -165,7 +165,7 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.rts.soumidelrio
+    Android: com.DefaultCompany.RTSEngine
     Standalone: com.DefaultCompany.RTS-Engine
     Tizen: com.Company.ProductName
     iPhone: com.Company.ProductName

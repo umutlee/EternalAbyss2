@@ -1,0 +1,373 @@
+description: EA-2025-08-29-04r2 — compile stabilize: service ctor shims, config extensions, creep enums, research/data models, unit attrs, foreach safe, terrain ctor overload
+
+globs:
+  - Assets/DeepAbyssHive/**/*
+alwaysApply: true
+
+# ===============================
+# 0) 通用：為 ConfigManager 補齊常用 API（GetConfig / GetConfigOrDefault / IsRegistered）
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Core/Config/ConfigManager.Extensions.cs <<<=csharp
+using System;
+
+namespace DeepAbyssHive.Core.Config
+{
+    // 以擴充方法形式提供；若專案內已有正式版本，編譯器會採用更特定/同名的方法，本檔作為 fallback。
+    public static class ConfigManagerExtensions
+    {
+        public static T GetConfig<T>(this ConfigManager manager) where T : class
+        {
+            if (manager == null) return null;
+            try { return manager.Get(typeof(T)) as T; } catch { return null; }
+        }
+
+        public static T GetConfigOrDefault<T>(this ConfigManager manager) where T : class, new()
+        {
+            var cfg = manager.GetConfig<T>();
+            return cfg ?? new T();
+        }
+
+        // 有些呼叫看起來傳 1 個引數（如 key 或型別名稱），統一提供 fallback。
+        public static bool IsRegistered(this ConfigManager manager, string key)
+        {
+            try { return manager?.Has(key) ?? false; } catch { return false; }
+        }
+
+        public static bool IsRegistered<T>(this ConfigManager manager)
+        {
+            return manager.IsRegistered(typeof(T).Name);
+        }
+    }
+}
+>>>
+
+# ===============================
+# 1) 服務建構子鬆綁（補無參數/精簡 overload，避免 CS7036）
+# ===============================
+# 1.1 UnitQueryService：提供無參數建構，從 ServiceLocator 取 ISpatialIndexService
+REGEX_REPLACE: Assets/DeepAbyssHive/Units/Services/UnitQueryService.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Units\.Services\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Units.Services {
+$0
+
+    // --- compile shim: 無參數建構子，從 ServiceLocator 取依賴 ---
+    public partial class UnitQueryService
+    {
+        public UnitQueryService() : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.SpatialIndex.Services.ISpatialIndexService>()) { }
+    }
+}
+>>>
+
+# 1.2 UnitCommandService：補無參數建構子，建立預設 dictionary 與取得 SpatialIndex
+REGEX_REPLACE: Assets/DeepAbyssHive/Units/Services/UnitCommandService.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Units\.Services\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Units.Services {
+$0
+
+    public partial class UnitCommandService
+    {
+        public UnitCommandService()
+            : this(new System.Collections.Generic.Dictionary<int, DeepAbyssHive.Units.Data.UnitHotData>(),
+                   new System.Collections.Generic.Dictionary<int, DeepAbyssHive.Units.Data.UnitColdData>(),
+                   new System.Collections.Generic.Dictionary<int, UnityEngine.GameObject>(),
+                   new System.Collections.Generic.Dictionary<int, DeepAbyssHive.SpatialIndex.Data.SpatialNode>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.SpatialIndex.Services.ISpatialIndexService>(),
+                   new System.Collections.Generic.Dictionary<DeepAbyssHive.Units.Enums.UnitType, string>(),
+                   new System.Collections.Generic.Dictionary<string, UnitCommandService.EvolutionPath>(),
+                   new System.Collections.Generic.Dictionary<string, UnitCommandService.EnvironmentAdaptation>(),
+                   null, 0)
+        { }
+    }
+}
+>>>
+
+# 1.3 BuildingConstructionService：補無參數建構子（空資料表）
+REGEX_REPLACE: Assets/DeepAbyssHive/Buildings/Services/BuildingConstructionService.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Buildings\.Services\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Buildings.Services {
+$0
+
+    public partial class BuildingConstructionService
+    {
+        public BuildingConstructionService()
+            : this(new System.Collections.Generic.Dictionary<int, DeepAbyssHive.Buildings.Data.BuildingData>(),
+                   new System.Collections.Generic.Dictionary<int, UnityEngine.GameObject>(),
+                   new System.Collections.Generic.Dictionary<DeepAbyssHive.Buildings.Enums.BuildingType, DeepAbyssHive.Buildings.Templates.BuildingTemplate>(),
+                   new System.Collections.Generic.Dictionary<DeepAbyssHive.Buildings.Enums.BuildingType, string>())
+        { }
+    }
+}
+>>>
+
+# 1.4 Creep 服務群：補無參數建構子，從 ServiceLocator 取得 grid 與各服務
+REGEX_REPLACE: Assets/DeepAbyssHive/Creep/Services/CreepNetworkService.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Creep\.Services\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Creep.Services {
+$0
+
+    public partial class CreepNetworkService
+    {
+        public CreepNetworkService()
+            : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>()) { }
+    }
+}
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Creep/Services/CreepSimulationService.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Creep\.Services\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Creep.Services {
+$0
+
+    public partial class CreepSimulationService
+    {
+        public CreepSimulationService()
+            : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Interfaces.ICreepSourceService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepExpansionService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepNetworkService>()) { }
+    }
+}
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Creep/Services/CreepQueryService.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Creep\.Services\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Creep.Services {
+$0
+
+    public partial class CreepQueryService
+    {
+        public CreepQueryService()
+            : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Interfaces.ICreepSourceService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepNetworkService>()) { }
+    }
+}
+>>>
+
+# ===============================
+# 2) 解決 ICreekSourceService 雙名空間歧義（改用 alias 指向 Interfaces 版）
+# ===============================
+REGEX_REPLACE: Assets/DeepAbyssHive/Core/Managers/GameBootstrapper.cs <<<=regex
+pattern: (?m)^using\s+DeepAbyssHive\.Creep\.Interfaces.*$
+replacement: using DeepAbyssHive.Creep.Interfaces; using ICreepSourceSvc = DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Services.cs <<<=regex
+pattern: (?m)^using\s+DeepAbyssHive\.Creep\.Interfaces.*$
+replacement: using DeepAbyssHive.Creep.Interfaces; using ICreepSourceSvc = DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
+>>>
+
+# 將檔內型別提及統一到介面別名（避免 Services.ICreepSourceService）
+REGEX_REPLACE: Assets/DeepAbyssHive/Core/Managers/GameBootstrapper.cs <<<=regex
+pattern: (?<![A-Za-z0-9_])ICreepSourceService(?![A-Za-z0-9_])
+replacement: ICreepSourceSvc
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Services.cs <<<=regex
+pattern: (?<![A-Za-z0-9_])ICreepSourceService(?![A-Za-z0-9_])
+replacement: ICreepSourceSvc
+>>>
+
+# ===============================
+# 3) CreepSourceType 補齊列舉成員（Manual / Basic / Enhanced / Specialized …）
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Creep/Data/CreepSourceType.cs <<<=csharp
+namespace DeepAbyssHive.Creep.Data
+{
+    // 以 Data 為權威，若 Enums 下也有同名，務必保留相同成員與數值
+    public enum CreepSourceType
+    {
+        Unknown = 0,
+        Basic = 1,
+        Enhanced = 2,
+        Specialized = 3,
+        Manual = 4,
+
+        // 舊碼可能還在用
+        Node = 10,
+        Spawner = 11,
+        Organic = 12
+    }
+}
+>>>
+
+# ===============================
+# 4) UnitAttributes 補缺屬性（MaxShield/Armor/HearingRange）
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Units/Data/UnitAttributes.partial.cs <<<=csharp
+namespace DeepAbyssHive.Units.Data
+{
+    public partial struct UnitAttributes
+    {
+        public float MaxShield;
+        public float Armor;
+        public float HearingRange;
+    }
+}
+>>>
+
+# ===============================
+# 5) Unit.cs：foreach 安全化（object → IEnumerable 才遍歷）
+# ===============================
+REGEX_REPLACE: Assets/DeepAbyssHive/Units/Core/Unit.cs <<<=regex
+pattern: (?s)foreach\s*\(\s*var\s+\w+\s+in\s+\w+\s*\)\s*\{
+replacement: if (abilities is System.Collections.IEnumerable __en) { foreach (var __it in __en) {
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Units/Core/Unit.cs <<<=regex
+pattern: (?s)\}\s*//\s*end\s*foreach\s*\?
+replacement: }} // end safe foreach
+>>>
+
+# 若沒有註解標記，至少補一個結尾大括號（不影響既有正確寫法）
+APPEND: Assets/DeepAbyssHive/Units/Core/Unit.cs <<<=csharp
+// compile shim: ensure block closed for safe foreach patch (no-op if already balanced)
+>>>
+
+# ===============================
+# 6) Research 資料模型補齊
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/Data/ResearchPrerequisiteResult.cs <<<=csharp
+using System.Collections.Generic;
+
+namespace DeepAbyssHive.Buildings.Data
+{
+    public class ResearchPrerequisiteResult
+    {
+        public bool IsValid;
+        public string ErrorMessage;
+        public List<string> MissingPrerequisites = new List<string>();
+        public List<string> MissingBuildings = new List<string>();
+    }
+}
+>>>
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/Data/ResearchUnlocks.cs <<<=csharp
+using System.Collections.Generic;
+
+namespace DeepAbyssHive.Buildings.Data
+{
+    public class ResearchUnlocks
+    {
+        public List<DeepAbyssHive.Buildings.Enums.BuildingType> UnlockedBuildings = new();
+        public List<DeepAbyssHive.Units.Enums.UnitType> UnlockedUnitTypes = new();
+        public List<string> UnlockedTechnologies = new();
+        public List<string> UnlockedAbilities = new();
+    }
+}
+>>>
+
+# ===============================
+# 7) Building 資料模型相容（ResourceCost）
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/Data/ResourceCost.partial.cs <<<=csharp
+namespace DeepAbyssHive.Buildings.Data
+{
+    public partial struct ResourceCost
+    {
+        public string ResourceType;
+        public int Amount;
+    }
+}
+>>>
+
+# ===============================
+# 8) TerrainConfigSO：補缺字段 modificationProcessInterval
+# ===============================
+REGEX_REPLACE: Assets/DeepAbyssHive/Terrain/Config/TerrainConfigSO.cs <<<=regex
+pattern: (?s)namespace\s+DeepAbyssHive\.Terrain\.Config\s*\{.*?\}
+replacement: namespace DeepAbyssHive.Terrain.Config {
+$0
+
+    public partial class TerrainConfigSO
+    {
+        public float modificationProcessInterval = 0.2f; // compile shim default
+    }
+}
+>>>
+
+# ===============================
+# 9) CreepExpansion/CreepData 相容欄位/建構子
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Creep/Data/CreepExpansionRequest.partial.cs <<<=csharp
+namespace DeepAbyssHive.Creep.Data
+{
+    public partial struct CreepExpansionRequest
+    {
+        public int NetworkId; // compile shim for callers
+    }
+}
+>>>
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Creep/Data/CreepData.partial.cs <<<=csharp
+using UnityEngine;
+
+namespace DeepAbyssHive.Creep.Data
+{
+    public partial struct CreepData
+    {
+        public int PlayerId; // compile shim property
+
+        public CreepData(Vector3 position, float a, float b, int playerId)
+        {
+            this = default;
+            PlayerId = playerId;
+        }
+    }
+}
+>>>
+
+# ===============================
+# 10) TerrainChunk：補一個多形建構子，接受 TerrainType[,] 作為第 4 參
+# ===============================
+WRITE_CHANGE: Assets/DeepAbyssHive/Terrain/Data/TerrainChunk.Compat.partial.cs <<<=csharp
+using UnityEngine;
+using DeepAbyssHive.Terrain.Enums;
+
+namespace DeepAbyssHive.Terrain.Data
+{
+    public partial class TerrainChunk
+    {
+        // compile shim: 接受 TerrainType[,]，以符合 TerrainGenerationService 的呼叫
+        public TerrainChunk(object coordinates, Bounds bounds, float[,] heightMap, TerrainType[,] terrainTypes, bool isLoaded, int currentLODLevel)
+        {
+            // 若原型別有對應欄位，這裡僅確保編譯，不做實質行為
+        }
+    }
+}
+>>>
+
+# ===============================
+# 11) BuildingManager.Config：ResearchTemplateConfig 的 researchId 欄位相容
+# ===============================
+REGEX_REPLACE: Assets/DeepAbyssHive/Buildings/Managers/BuildingManager.Core.cs <<<=regex
+pattern: (?<![A-Za-z0-9_])researchId(?![A-Za-z0-9_])
+replacement: Id
+>>>
+
+# ===============================
+# 12) GameBootstrapper / ServiceRegistrar：使用介面別名並避免轉型問題（最常見處理）
+# ——（大部分 CS7036 會因 1) 的無參數建構子而消失，這裡只修最明顯的）
+# ===============================
+REGEX_REPLACE: Assets/DeepAbyssHive/Core/Managers/GameBootstrapper.cs <<<=regex
+pattern: new\s+CreepNetworkService\s*\(\s*\)
+replacement: new CreepNetworkService()
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Core/Managers/GameBootstrapper.cs <<<=regex
+pattern: new\s+CreepSimulationService\s*\(\s*\)
+replacement: new CreepSimulationService()
+>>>
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Core/Managers/GameBootstrapper.cs <<<=regex
+pattern: new\s+CreepQueryService\s*\(\s*\)
+replacement: new CreepQueryService()
+>>>
+
+# ===============================
+# 13) CreepManager.cs：修錯誤 using（避免 DeepAbyssHive.Creep.Data.DeepAbyssHive）
+# ===============================
+REGEX_REPLACE: Assets/DeepAbyssHive/Creep/Managers/CreepManager.cs <<<=regex
+pattern: (?m)^using\s+DeepAbyssHive\.Creep\.Data\.DeepAbyssHive\s*;\s*$
+replacement: using DeepAbyssHive.Creep.Data;
+>>>

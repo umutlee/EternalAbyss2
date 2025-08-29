@@ -788,4 +788,10 @@ namespace DeepAbyssHive.Creep.Services
 
         #endregion
     }
+
+    public partial class CreepNetworkService
+    {
+        public CreepNetworkService()
+            : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>()) { }
+    }
 }
