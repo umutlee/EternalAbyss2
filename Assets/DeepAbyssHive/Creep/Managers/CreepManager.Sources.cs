@@ -398,7 +398,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// <param name="source">源点</param>
         private void InitialSourceExpansion(CreepSource source)
         {
-            var centerPos = source.GridPosition;
+            var centerPos = WorldToGridPosition(source.Position);
             var radius = Mathf.CeilToInt(source.Radius);
             
             // 在半径内创建菌毯瓦片

@@ -257,15 +257,15 @@ namespace DeepAbyssHive.Creep.Managers
             tile.LastUpdateTime = Time.time;
             
             // 根据状态更新瓦片
-            switch (tile.Status)
+            switch ((int)tile.Status)
             {
-                case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
+                case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
                     // 健康状态下不需要特殊处理
                     break;
-                case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
+                case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
                     UpdateWeakenedTile(tile, deltaTime);
                     break;
-                case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
+                case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
                     UpdateCollapsingTile(tile, deltaTime);
                     break;
             }
@@ -289,7 +289,7 @@ namespace DeepAbyssHive.Creep.Managers
             tile.Health = Mathf.Max(0f, tile.Health - starvationRate * deltaTime);
             if (tile.Health <= _minDecayDensity * tile.MaxHealth)
             {
-                tile.Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing;
+                tile.Status = (CreepTileStatus)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing;
             }
         }
 

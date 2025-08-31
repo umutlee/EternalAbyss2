@@ -1,16 +1,34 @@
 using System.Collections.Generic;
+using DeepAbyssHive.Buildings.Enums;
 
 namespace DeepAbyssHive.Buildings.Data
 {
-    public enum ResourceKind { Minerals, Gas, Supply }
-
+    /// <summary>
+    /// 讓舊程式碼可以用「ResourceType + Amount」配對來迭代 ResourceCost。
+    /// 不改動現有 ResourceCost 的定義（Minerals/Gas），只是提供 ToPairs() 便捷列舉。
+    /// </summary>
     public static class ResourceCostExtensions
     {
-        public static IEnumerable<(ResourceKind ResourceType, int Amount)> EnumerateCosts(this ResourceCost c)
+        public readonly struct ResourcePair
         {
-            if (c.Minerals > 0) yield return (ResourceKind.Minerals, c.Minerals);
-            if (c.Gas      > 0) yield return (ResourceKind.Gas,      c.Gas);
-            if (c.Supply   > 0) yield return (ResourceKind.Supply,   c.Supply);
+            public ResourcePair(ResourceType resourceType, int amount)
+            {
+                ResourceType = resourceType;
+                Amount = amount;
+            }
+            public ResourceType ResourceType { get; }
+            public int Amount { get; }
+        }
+
+        /// <summary>
+        /// 依現有欄位映射出 (ResourceType, Amount) 配對。
+        /// </summary>
+        public static IEnumerable<ResourcePair> ToPairs(this ResourceCost cost)
+        {
+            if (cost.Minerals > 0)
+                yield return new ResourcePair(ResourceType.Minerals, cost.Minerals);
+            if (cost.Gas > 0)
+                yield return new ResourcePair(ResourceType.Gas, cost.Gas);
         }
     }
 }

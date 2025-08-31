@@ -4,6 +4,7 @@ using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Core.Utils;
 using ResearchPrerequisiteResult = DeepAbyssHive.Buildings.Data.ResearchPrerequisiteResult;
 using ResearchUnlocks = DeepAbyssHive.Buildings.Data.ResearchUnlocks;
 
@@ -70,7 +71,7 @@ namespace DeepAbyssHive.Buildings.Services
             // 恢复研究进度更新
         }
 
-        public bool IsCommandAvailable(string commandName)
+        public bool IsCommandAvailable(string commandName, int playerId)
         {
             // 检查研究相关命令是否可用
             switch (commandName)
@@ -83,8 +84,6 @@ namespace DeepAbyssHive.Buildings.Services
                     return false;
             }
         }
-
-
 
         public bool StartResearch(string researchId, int playerId, int buildingId)
         {
@@ -119,7 +118,7 @@ namespace DeepAbyssHive.Buildings.Services
         public bool StartResearch(string researchId, int buildingId)
         {
             // TODO: 實作真實流程：檢查前置、資源、入列或即時完成、寫入解鎖
-            return StartResearch(researchId, 0, buildingId); // 使用預設玩家ID 0
+            return false;
         }
 
         public bool CancelResearch(string researchId, int playerId)
@@ -257,7 +256,7 @@ namespace DeepAbyssHive.Buildings.Services
                     if (!IsResearchCompleted(prerequisite, playerId))
                     {
                         result.IsValid = false;
-                        result.MissingPrerequisites.Add(prerequisite);
+                        result.MissingPrerequisites = ArrayUtils.Append(result.MissingPrerequisites.ToArray(), prerequisite).ToList();
                     }
                 }
             }

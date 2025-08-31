@@ -87,7 +87,7 @@ namespace DeepAbyssHive.Units.Managers
             if (useServiceLocator && !ServiceLocator.IsRegistered<IUnitQueryService>())
             {
                 Debug.LogWarning($"[{_managerName}] ServiceLocator尚未初始化，等待...");
-                StartCoroutine(WaitForUnitServiceLocatorInitialization());
+                DeepAbyssHive.Core.Utils.CoroutineStub.Start(WaitForUnitServiceLocatorInitialization());
             }
             else
             {

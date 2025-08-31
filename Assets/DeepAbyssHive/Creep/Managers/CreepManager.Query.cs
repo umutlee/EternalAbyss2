@@ -321,15 +321,15 @@ namespace DeepAbyssHive.Creep.Managers
                 stats.TotalHealth += tile.Health;
                 stats.TotalResourcesGenerated += tile.TotalResourcesGenerated;
                 
-                switch (tile.Status)
+                switch ((int)tile.Status)
                 {
-                    case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
+                    case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
                         stats.HealthyTiles++;
                         break;
-                    case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
+                    case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
                         stats.GrowingTiles++;
                         break;
-                    case DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
+                    case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
                         stats.DyingTiles++;
                         break;
                 }
