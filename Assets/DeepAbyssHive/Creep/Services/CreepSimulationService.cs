@@ -69,10 +69,10 @@ namespace DeepAbyssHive.Creep.Services
                 Strength = Mathf.Clamp01(strength),
                 Radius = Mathf.Max(0f, radius),
                 IsActive = true,
-                SourceType = CreepSourceType.Manual
+                Type = (CreepSourceType)DeepAbyssHive.Creep.Data.CreepSourceType.Manual
             };
 
-            return _sourceService.CreateCreepSource(sourceData.Position, sourceData.NetworkId, sourceData.SourceType, sourceData.Strength);
+            return _sourceService.CreateCreepSource(sourceData.Position, sourceData.NetworkId, sourceData.Type, sourceData.Strength);
         }
 
         /// <summary>

@@ -191,7 +191,7 @@ namespace DeepAbyssHive.Creep.Services
             if (_creepSources.TryGetValue(sourceId, out CreepSource source))
             {
                 source.Strength = Mathf.Clamp01(strength);
-                source.InfluenceRadius = CalculateInfluenceRadius(source.SourceType, source.Strength);
+                source.InfluenceRadius = CalculateInfluenceRadius(source.Type, source.Strength);
                 source.LastUpdateTime = Time.time;
                 _creepSources[sourceId] = source;
             }
@@ -201,7 +201,7 @@ namespace DeepAbyssHive.Creep.Services
         {
             if (_creepSources.TryGetValue(sourceId, out CreepSource source))
             {
-                source.SourceType = sourceType;
+                source.Type = sourceType;
                 source.InfluenceRadius = CalculateInfluenceRadius(sourceType, source.Strength);
                 source.LastUpdateTime = Time.time;
                 _creepSources[sourceId] = source;
@@ -250,7 +250,7 @@ namespace DeepAbyssHive.Creep.Services
             Vector3 mergedPosition = (source1.Position * source1.Strength + source2.Position * source2.Strength) / totalStrength;
 
             // 创建新的合并源点
-            CreepSourceType mergedType = (CreepSourceType)Mathf.Max((int)source1.SourceType, (int)source2.SourceType);
+            CreepSourceType mergedType = (CreepSourceType)Mathf.Max((int)source1.Type, (int)source2.Type);
             int mergedSourceId = CreateCreepSource(mergedPosition, source1.NetworkId, mergedType, totalStrength);
 
             // 移除原来的源点
@@ -270,7 +270,7 @@ namespace DeepAbyssHive.Creep.Services
             float remainingStrength = originalSource.Strength * (1f - strengthRatio);
 
             // 创建新源点
-            int newSourceId = CreateCreepSource(newPosition, originalSource.NetworkId, originalSource.SourceType, newStrength);
+            int newSourceId = CreateCreepSource(newPosition, originalSource.NetworkId, originalSource.Type, newStrength);
 
             // 更新原源点强度
             UpdateSourceStrength(sourceId, remainingStrength);
@@ -348,15 +348,15 @@ namespace DeepAbyssHive.Creep.Services
                     }
 
                     // 按类型统计
-                    switch (source.SourceType)
+                    switch ((int)source.Type)
                     {
-                        case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic:
+                        case (int)DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic:
                             stats.SourcesByType_Basic++;
                             break;
-                        case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Enhanced:
+                        case (int)DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Enhanced:
                             stats.SourcesByType_Enhanced++;
                             break;
-                        case DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Specialized:
+                        case (int)DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Specialized:
                             stats.SourcesByType_Specialized++;
                             break;
                     }
@@ -400,15 +400,15 @@ namespace DeepAbyssHive.Creep.Services
         {
             float baseRadius = 10f;
             
-            switch (sourceType)
+            switch ((int)sourceType)
             {
-                case CreepSourceType.Basic:
+                case (int)DeepAbyssHive.Creep.Data.CreepSourceTypeCompat.Basic:
                     baseRadius = 10f;
                     break;
-                case CreepSourceType.Enhanced:
+                case (int)DeepAbyssHive.Creep.Data.CreepSourceTypeCompat.Enhanced:
                     baseRadius = 15f;
                     break;
-                case CreepSourceType.Specialized:
+                case (int)DeepAbyssHive.Creep.Data.CreepSourceTypeCompat.Specialized:
                     baseRadius = 20f;
                     break;
             }
