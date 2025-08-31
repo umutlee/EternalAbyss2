@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
@@ -67,7 +69,20 @@ namespace DeepAbyssHive.Units.Managers
             // 解锁新能力
             if (path.UnlockedAbilitiesByLevel.TryGetValue(nextLevel, out string[] abilities))
             {
-                coldData.Evolution.UnlockedAbilities = abilities;
+                // 明確轉成我們的解鎖資料型別，避免 object 導致 CS1061
+                var unlocks = coldData.Evolution as DeepAbyssHive.Buildings.Data.ResearchUnlocks;
+                if (unlocks != null)
+                {
+                    var abilitiesList = unlocks.UnlockedAbilities?.ToList() ?? new List<string>();
+                    foreach (var a in abilities)
+                    {
+                        if (!abilitiesList.Contains(a))
+                        {
+                            abilitiesList.Add(a);
+                        }
+                    }
+                    unlocks.UnlockedAbilities = abilitiesList.ToArray();
+                }
             }
             
             // 应用属性修改

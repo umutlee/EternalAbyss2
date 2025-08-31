@@ -3,6 +3,7 @@ using Unity.Collections;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Creep.Data;
+using DeepAbyssHive.Creep.Utils; // ToData() / ToEnum()
 using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
 
 namespace DeepAbyssHive.Creep.Services
@@ -347,16 +348,16 @@ namespace DeepAbyssHive.Creep.Services
                         stats.InactiveSources++;
                     }
 
-                    // 按类型统计
-                    switch ((int)source.Type)
+                    // 按类型统计 - 統一用 Data.CreepSourceType
+                    switch (source.Type)
                     {
-                        case (int)DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Basic:
+                        case CreepSourceType.Basic:
                             stats.SourcesByType_Basic++;
                             break;
-                        case (int)DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Enhanced:
+                        case CreepSourceType.Enhanced:
                             stats.SourcesByType_Enhanced++;
                             break;
-                        case (int)DeepAbyssHive.Creep.Compat.CreepSourceTypeCompat.Specialized:
+                        case CreepSourceType.Specialized:
                             stats.SourcesByType_Specialized++;
                             break;
                     }
@@ -400,15 +401,16 @@ namespace DeepAbyssHive.Creep.Services
         {
             float baseRadius = 10f;
             
-            switch ((int)sourceType)
+            // 統一用 Data.CreepSourceType，避免 int <-> enum 轉來轉去
+            switch (sourceType)
             {
-                case (int)DeepAbyssHive.Creep.Data.CreepSourceTypeCompat.Basic:
+                case CreepSourceType.Basic:
                     baseRadius = 10f;
                     break;
-                case (int)DeepAbyssHive.Creep.Data.CreepSourceTypeCompat.Enhanced:
+                case CreepSourceType.Enhanced:
                     baseRadius = 15f;
                     break;
-                case (int)DeepAbyssHive.Creep.Data.CreepSourceTypeCompat.Specialized:
+                case CreepSourceType.Specialized:
                     baseRadius = 20f;
                     break;
             }

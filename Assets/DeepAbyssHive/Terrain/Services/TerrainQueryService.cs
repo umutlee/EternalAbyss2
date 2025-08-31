@@ -411,15 +411,13 @@ namespace DeepAbyssHive.Terrain.Services
             return passablePositions;
         }
 
-        // 新增的介面方法實現
-        public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunk(int chunkX, int chunkZ)
+        // 注意：目前專案內 _terrainChunks 存的是 ITerrainChunk。
+        // 因欠缺完整的 Data.TerrainChunk 實作，這裡先回傳 ITerrainChunk，
+        // 並提供安全降級（取不到就回 null），避免發生 ITerrainChunk -> Data.TerrainChunk 的強制轉型錯誤。
+        public DeepAbyssHive.Terrain.Interfaces.ITerrainChunk? GetChunk(int chunkX, int chunkZ)
         {
             Vector2Int chunkCoord = new Vector2Int(chunkX, chunkZ);
-            if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
-            {
-                return (TerrainChunk)chunk;
-            }
-            return default;
+            return _terrainChunks.TryGetValue(chunkCoord, out var chunk) ? chunk : null;
         }
 
         public float GetHeight(Vector3 position)
@@ -449,36 +447,22 @@ namespace DeepAbyssHive.Terrain.Services
             }
         }
 
-        public NativeArray<DeepAbyssHive.Terrain.Data.TerrainChunk> GetChunksInRange(Vector3 center, float radius)
+        // NativeArray<T> 不支援 interface 型別；為求先能編譯，先改為 IEnumerable<ITerrainChunk>。
+        // 若後續需要 burst/原生陣列，請在 Terrain 層補上具體的 Data.TerrainChunk 生產與複製。
+        public System.Collections.Generic.IEnumerable<DeepAbyssHive.Terrain.Interfaces.ITerrainChunk> GetChunksInRange(Vector3 center, float radius)
         {
-            List<DeepAbyssHive.Terrain.Data.TerrainChunk> chunks = new List<DeepAbyssHive.Terrain.Data.TerrainChunk>();
-            
+            var chunks = new System.Collections.Generic.List<DeepAbyssHive.Terrain.Interfaces.ITerrainChunk>();
             Vector2Int centerChunkCoord = WorldToChunkCoord(center);
             int chunkRadius = Mathf.CeilToInt(radius / (_chunkSize * _tileSize));
-            
             for (int cx = -chunkRadius; cx <= chunkRadius; cx++)
             {
                 for (int cy = -chunkRadius; cy <= chunkRadius; cy++)
                 {
                     Vector2Int chunkCoord = new Vector2Int(centerChunkCoord.x + cx, centerChunkCoord.y + cy);
-                    
-                    if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
-                    {
-                        if (chunk is DeepAbyssHive.Terrain.Data.TerrainChunk terrainChunk)
-                        {
-                            chunks.Add(terrainChunk);
-                        }
-                    }
+                    if (_terrainChunks.TryGetValue(chunkCoord, out var chunk)) chunks.Add(chunk);
                 }
             }
-            
-            var nativeArray = new NativeArray<DeepAbyssHive.Terrain.Data.TerrainChunk>(chunks.Count, Allocator.Temp);
-            for (int i = 0; i < chunks.Count; i++)
-            {
-                nativeArray[i] = chunks[i];
-            }
-            
-            return nativeArray;
+            return chunks;
         }
 
         public bool IsAreaFlat(Vector3 center, Vector2 size, float maxHeightDifference = 1f)

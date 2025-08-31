@@ -240,13 +240,8 @@ namespace DeepAbyssHive.Buildings.Services
                 };
             }
 
-            var result = new ResearchPrerequisiteResult
-            {
-                IsValid = true,
-                ErrorMessage = "",
-                MissingPrerequisites = new List<string>(),
-                MissingBuildings = new List<BuildingType>()
-            };
+            var missingPrereqs = new List<string>();
+            var missingBuildings = new List<BuildingType>();
 
             // 检查前置研究
             if (template.Prerequisites != null)
@@ -255,8 +250,7 @@ namespace DeepAbyssHive.Buildings.Services
                 {
                     if (!IsResearchCompleted(prerequisite, playerId))
                     {
-                        result.IsValid = false;
-                        result.MissingPrerequisites = ArrayUtils.Append(result.MissingPrerequisites.ToArray(), prerequisite).ToList();
+                        missingPrereqs.Add(prerequisite);
                     }
                 }
             }
@@ -271,10 +265,13 @@ namespace DeepAbyssHive.Buildings.Services
                 }
             }
 
-            if (!result.IsValid)
+            var result = new ResearchPrerequisiteResult
             {
-                result.ErrorMessage = "不满足研究前置条件";
-            }
+                IsValid = missingPrereqs.Count == 0 && missingBuildings.Count == 0,
+                ErrorMessage = missingPrereqs.Count > 0 || missingBuildings.Count > 0 ? "不满足研究前置条件" : "",
+                MissingPrerequisites = missingPrereqs.ToArray(),
+                MissingBuildings = missingBuildings.Select(b => b.ToString()).ToArray()
+            };
 
             return result;
         }
