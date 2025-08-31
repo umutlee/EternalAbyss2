@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
+using UnityEngine;
+using DAInterfaces = DeepAbyssHive.Terrain.Interfaces;
+using DAData = DeepAbyssHive.Terrain.Data;
 using UnityEngine;
 using Unity.Collections;
 using DeepAbyssHive.Core.Services;
@@ -411,13 +415,18 @@ namespace DeepAbyssHive.Terrain.Services
             return passablePositions;
         }
 
-        // 注意：目前專案內 _terrainChunks 存的是 ITerrainChunk。
-        // 因欠缺完整的 Data.TerrainChunk 實作，這裡先回傳 ITerrainChunk，
-        // 並提供安全降級（取不到就回 null），避免發生 ITerrainChunk -> Data.TerrainChunk 的強制轉型錯誤。
-        public DeepAbyssHive.Terrain.Interfaces.ITerrainChunk? GetChunk(int chunkX, int chunkZ)
+        // 介面要求回傳 Data.TerrainChunk
+        public DAData.TerrainChunk GetChunk(int chunkX, int chunkZ)
         {
-            Vector2Int chunkCoord = new Vector2Int(chunkX, chunkZ);
-            return _terrainChunks.TryGetValue(chunkCoord, out var chunk) ? chunk : null;
+            var key = new Vector2Int(chunkX, chunkZ);
+            if (_terrainChunks.TryGetValue(key, out var c))
+            {
+                // 若字典裡其實就是 Data.TerrainChunk，直接回傳
+                if (c is DAData.TerrainChunk dc) return dc;
+                // TODO: 若需要從 ITerrainChunk 建構 Data.TerrainChunk，之後在這裡補 Adapter
+                return default;
+            }
+            return default;
         }
 
         public float GetHeight(Vector3 position)
@@ -447,22 +456,19 @@ namespace DeepAbyssHive.Terrain.Services
             }
         }
 
-        // NativeArray<T> 不支援 interface 型別；為求先能編譯，先改為 IEnumerable<ITerrainChunk>。
-        // 若後續需要 burst/原生陣列，請在 Terrain 層補上具體的 Data.TerrainChunk 生產與複製。
-        public System.Collections.Generic.IEnumerable<DeepAbyssHive.Terrain.Interfaces.ITerrainChunk> GetChunksInRange(Vector3 center, float radius)
+        // 介面要求回傳 NativeArray<Data.TerrainChunk>
+        public NativeArray<DAData.TerrainChunk> GetChunksInRange(Vector3 center, float radius)
         {
-            var chunks = new System.Collections.Generic.List<DeepAbyssHive.Terrain.Interfaces.ITerrainChunk>();
-            Vector2Int centerChunkCoord = WorldToChunkCoord(center);
-            int chunkRadius = Mathf.CeilToInt(radius / (_chunkSize * _tileSize));
-            for (int cx = -chunkRadius; cx <= chunkRadius; cx++)
+            // 先簡單收集一份，之後若要真的做距離篩選，等 ITerrainChunk 暴露座標/範圍欄位再補
+            var tmp = new List<DAData.TerrainChunk>();
+            foreach (var c in _terrainChunks.Values)
             {
-                for (int cy = -chunkRadius; cy <= chunkRadius; cy++)
-                {
-                    Vector2Int chunkCoord = new Vector2Int(centerChunkCoord.x + cx, centerChunkCoord.y + cy);
-                    if (_terrainChunks.TryGetValue(chunkCoord, out var chunk)) chunks.Add(chunk);
-                }
+                if (c is DAData.TerrainChunk dc) tmp.Add(dc);
+                else tmp.Add(default); // TODO: 之後用 Adapter 轉換
             }
-            return chunks;
+            var arr = new NativeArray<DAData.TerrainChunk>(tmp.Count, Allocator.Temp);
+            for (int i = 0; i < tmp.Count; i++) arr[i] = tmp[i];
+            return arr;
         }
 
         public bool IsAreaFlat(Vector3 center, Vector2 size, float maxHeightDifference = 1f)
