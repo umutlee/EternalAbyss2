@@ -62,7 +62,7 @@ namespace DeepAbyssHive.Buildings.Data
         /// <summary>
         /// 建造成本
         /// </summary>
-        public ResourceCost ConstructionCost;
+        public BuildingResourceCost ConstructionCost;
         
         /// <summary>
         /// 是否需要菌毯
@@ -91,10 +91,10 @@ namespace DeepAbyssHive.Buildings.Data
     }
     
     /// <summary>
-    /// 资源成本
+    /// 建築模板資源成本（重命名避免與全域 ResourceCost 衝突）
     /// </summary>
     [System.Serializable]
-    public class ResourceCost
+    public class BuildingResourceCost
     {
         /// <summary>
         /// 矿物成本
