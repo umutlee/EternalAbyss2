@@ -69,11 +69,11 @@ namespace DeepAbyssHive.Units.Managers
             // 解锁新能力
             if (path.UnlockedAbilitiesByLevel.TryGetValue(nextLevel, out string[] abilities))
             {
-                // 明確轉成我們的解鎖資料型別，避免 object 導致 CS1061
-                var unlocks = coldData.Evolution as DeepAbyssHive.Buildings.Data.ResearchUnlocks;
-                if (unlocks != null)
+                // 使用反射來設置 UnlockedAbilities 屬性，避免類型轉換問題
+                var evolutionObj = coldData.Evolution;
+                if (evolutionObj != null)
                 {
-                    var abilitiesList = unlocks.UnlockedAbilities?.ToList() ?? new List<string>();
+                    var abilitiesList = new List<string>();
                     foreach (var a in abilities)
                     {
                         if (!abilitiesList.Contains(a))
@@ -81,14 +81,24 @@ namespace DeepAbyssHive.Units.Managers
                             abilitiesList.Add(a);
                         }
                     }
-                    unlocks.UnlockedAbilities = abilitiesList.ToArray();
+                    
+                    // 使用反射設置屬性
+                    var evolutionType = evolutionObj.GetType();
+                    var unlockedAbilitiesProp = evolutionType.GetProperty("UnlockedAbilities");
+                    if (unlockedAbilitiesProp != null && unlockedAbilitiesProp.CanWrite)
+                    {
+                        unlockedAbilitiesProp.SetValue(evolutionObj, abilitiesList.ToArray());
+                    }
                 }
             }
             
             // 应用属性修改
             if (path.AttributeModifiersByLevel.TryGetValue(nextLevel, out AttributeModifier[] modifiers))
             {
-                ApplyAttributeModifiers(ref coldData.BaseAttributes, modifiers);
+                // CS0206：屬性/索引子不能用作 ref/out。改用區域變數，呼叫後再回填。
+                var __attributes = coldData.BaseAttributes;
+                ApplyAttributeModifiers(ref __attributes, modifiers);
+                coldData.BaseAttributes = __attributes;
             }
             
             // 更新单位冷数据

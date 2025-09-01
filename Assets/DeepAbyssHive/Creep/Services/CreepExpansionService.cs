@@ -201,7 +201,7 @@ namespace DeepAbyssHive.Creep.Services
                 if (_gridService.HasCreepAt(neighbor))
                 {
                     CreepData neighborData = _gridService.GetGridCell(neighbor);
-                    if (neighborData.NetworkId == playerId && neighborData.Strength >= _expansionThreshold)
+                    if (/*TODO:NetworkId*/ 0 == playerId && neighborData.Strength >= _expansionThreshold)
                     {
                         return true;
                     }
@@ -241,7 +241,7 @@ namespace DeepAbyssHive.Creep.Services
                 Vector2Int gridPos = activePositions[i];
                 CreepData data = _gridService.GetGridCell(gridPos);
                 
-                if (data.NetworkId == playerId)
+                if (/*TODO:NetworkId*/ 0 == playerId)
                 {
                     // 检查是否是前沿（有空的邻居）
                     var neighbors = _gridService.GetNeighborPositions(gridPos, false);
@@ -299,7 +299,7 @@ namespace DeepAbyssHive.Creep.Services
             
             foreach (var request in _expansionRequests.Values)
             {
-                if (request.NetworkId == playerId && request.IsActive)
+                if (/*TODO:NetworkId*/ 0 == playerId && request.IsActive)
                 {
                     activeRequests.Add(request);
                 }
@@ -336,7 +336,7 @@ namespace DeepAbyssHive.Creep.Services
             
             foreach (var request in _expansionRequests.Values)
             {
-                if (request.NetworkId == playerId)
+                if (/*TODO:NetworkId*/ 0 == playerId)
                 {
                     if (request.IsActive)
                     {
@@ -455,7 +455,7 @@ namespace DeepAbyssHive.Creep.Services
         private int GetPlayerIdFromSource(Vector3 sourcePosition)
         {
             var source = _sourceService.GetNearestCreepSource(sourcePosition);
-            return source.NetworkId;
+            return /*TODO:NetworkId*/ 0;
         }
 
         private float GetExpansionPriority(Vector3 from, Vector3 to, CreepExpansionType expansionType)

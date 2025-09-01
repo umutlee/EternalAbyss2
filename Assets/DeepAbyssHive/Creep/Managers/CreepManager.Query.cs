@@ -50,6 +50,64 @@ namespace DeepAbyssHive.Creep.Managers
         }
         
         /// <summary>
+        /// 获取指定位置的菌毯强度
+        /// </summary>
+        public float GetCreepStrength(Vector2Int position)
+        {
+            if (_creepTiles.TryGetValue(position, out var tile) && tile.IsActive)
+            {
+                // 使用反射或默認值，因為 CreepTile 可能沒有 Strength 屬性
+                var strengthProp = tile.GetType().GetProperty("Strength");
+                if (strengthProp != null)
+                {
+                    return (float)strengthProp.GetValue(tile);
+                }
+                return 1.0f; // 默認強度值
+            }
+            return 0f;
+        }
+        
+        /// <summary>
+        /// 获取指定区域的菌毯覆盖率
+        /// </summary>
+        public float GetCreepCoverage(Vector2Int center, int radius)
+        {
+            int totalCells = (radius * 2 + 1) * (radius * 2 + 1);
+            int creepCells = 0;
+            
+            for (int x = center.x - radius; x <= center.x + radius; x++)
+            {
+                for (int y = center.y - radius; y <= center.y + radius; y++)
+                {
+                    if (HasCreepAt(new Vector2Int(x, y)))
+                    {
+                        creepCells++;
+                    }
+                }
+            }
+            
+            return totalCells > 0 ? (float)creepCells / totalCells : 0f;
+        }
+        
+        /// <summary>
+        /// 获取指定位置的菌毯网络ID
+        /// </summary>
+        public int GetCreepNetworkId(Vector2Int position)
+        {
+            if (_creepTiles.TryGetValue(position, out var tile) && tile.IsActive)
+            {
+                // 使用反射獲取 NetworkId 屬性
+                var networkIdProp = tile.GetType().GetProperty("NetworkId");
+                if (networkIdProp != null)
+                {
+                    return (int)networkIdProp.GetValue(tile);
+                }
+                return 0; // 默認網絡ID
+            }
+            return -1;
+        }
+        
+        /// <summary>
         /// 获取菌毯覆盖的总面积
         /// </summary>
         public float GetTotalCreepArea()
@@ -321,17 +379,18 @@ namespace DeepAbyssHive.Creep.Managers
                 stats.TotalHealth += tile.Health;
                 stats.TotalResourcesGenerated += tile.TotalResourcesGenerated;
                 
-                switch ((int)tile.Status)
+                var tileStatusInt = (int)tile.Status;
+                if (tileStatusInt == (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy)
                 {
-                    case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
-                        stats.HealthyTiles++;
-                        break;
-                    case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
-                        stats.GrowingTiles++;
-                        break;
-                    case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
-                        stats.DyingTiles++;
-                        break;
+                    stats.HealthyTiles++;
+                }
+                else if (tileStatusInt == (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened)
+                {
+                    stats.GrowingTiles++;
+                }
+                else if (tileStatusInt == (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing)
+                {
+                    stats.DyingTiles++;
                 }
                 
                 switch (tile.TileType)

@@ -24,12 +24,12 @@ namespace DeepAbyssHive.Units.Data
         // 相容欄位（供舊程式碼引用）
         public float MaxEnergy;
         public object EvolutionOptions;
-        // 以下欄位已移至 UnitData_Compat.cs 作為屬性實現
-        // public string AttackSound;
-        // public string DeathSound;
-        // public string UnitName;
-        // public float MoveSpeed;
-        // public float AttackCooldown;
-        // public float DetectionRange;
+        
+        // 注意：以下屬性已移至其他資料結構：
+        // - AttackSound, DeathSound: 請使用 UnitTemplate
+        // - UnitName: 請使用 UnitColdData.UnitName 或 UnitTemplate.UnitName
+        // - MoveSpeed: 請使用 UnitHotData.MoveSpeed 或 UnitAttributes.MoveSpeed
+        // - AttackCooldown: 請使用 UnitHotData.AttackCooldown
+        // - DetectionRange: 請使用 UnitTemplate.DetectionRange
     }
 }

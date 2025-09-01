@@ -309,7 +309,7 @@ namespace DeepAbyssHive.Creep.Services
             if (!IsInitialized)
                 return false;
 
-            return _networkService.MergeNetworks(networkId1, networkId2);
+            return _networkService.MergeNetworks(networkId1, networkId2) >= 0;
         }
 
         /// <summary>
@@ -503,7 +503,7 @@ namespace DeepAbyssHive.Creep.Services
     {
         public CreepSimulationService()
             : this(DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>(),
-                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Interfaces.ICreepSourceService>(),
+                   DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepSourceService>(),
                    DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepExpansionService>(),
                    DeepAbyssHive.Core.Services.ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepNetworkService>()) { }
     }

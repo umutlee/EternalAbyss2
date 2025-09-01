@@ -70,7 +70,7 @@ namespace DeepAbyssHive.Creep.Managers
             IsPaused = false;
         }
 
-        public void Update(float deltaTime)
+        public void TickUpdate(float deltaTime)
         {
             if (!IsInitialized || IsPaused) return;
             
@@ -78,12 +78,12 @@ namespace DeepAbyssHive.Creep.Managers
             UpdateCreepTiles(deltaTime);
         }
 
-        public void FixedUpdate(float fixedDeltaTime)
+        public void TickFixedUpdate(float fixedDeltaTime)
         {
             // 固定更新逻辑
         }
 
-        public void LateUpdate(float deltaTime)
+        public void TickLateUpdate(float deltaTime)
         {
             // 延迟更新逻辑
         }
@@ -109,29 +109,20 @@ namespace DeepAbyssHive.Creep.Managers
 
         private void Update()
         {
-            // Unity Update - 直接执行更新逻辑
-            if (IsInitialized && !IsPaused)
-            {
-                UpdateCreepTiles(Time.deltaTime);
-            }
+            // Unity Update 生命周期入口
+            TickUpdate(Time.deltaTime);
         }
 
         private void FixedUpdate()
         {
-            // Unity FixedUpdate - 直接执行固定更新逻辑
-            if (IsInitialized && !IsPaused)
-            {
-                // 固定更新逻辑在这里执行
-            }
+            // Unity FixedUpdate 生命周期入口
+            TickFixedUpdate(Time.fixedDeltaTime);
         }
 
         private void LateUpdate()
         {
-            // Unity LateUpdate - 直接执行延迟更新逻辑
-            if (IsInitialized && !IsPaused)
-            {
-                // 延迟更新逻辑在这里执行
-            }
+            // Unity LateUpdate 生命周期入口
+            TickLateUpdate(Time.deltaTime);
         }
 
         #endregion
@@ -257,15 +248,15 @@ namespace DeepAbyssHive.Creep.Managers
             tile.LastUpdateTime = Time.time;
             
             // 根据状态更新瓦片
-            switch ((int)tile.Status)
+            switch (tile.Status)
             {
-                case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy:
+                case (CreepTileStatus)0:
                     // 健康状态下不需要特殊处理
                     break;
-                case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Weakened:
+                case (CreepTileStatus)1:
                     UpdateWeakenedTile(tile, deltaTime);
                     break;
-                case (int)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing:
+                case (CreepTileStatus)2:
                     UpdateCollapsingTile(tile, deltaTime);
                     break;
             }

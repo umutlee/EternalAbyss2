@@ -85,6 +85,15 @@ namespace DeepAbyssHive.Buildings.Services
             }
         }
 
+        /// <summary>
+        /// 實現 IResearchService 介面的 StartResearch 方法
+        /// </summary>
+        public bool StartResearch(string researchId, int playerId)
+        {
+            // 使用預設建築ID -1 調用完整版本
+            return StartResearch(researchId, playerId, -1);
+        }
+
         public bool StartResearch(string researchId, int playerId, int buildingId)
         {
             if (!IsResearchAvailable(researchId, playerId))
@@ -115,11 +124,7 @@ namespace DeepAbyssHive.Buildings.Services
             return true;
         }
 
-        public bool StartResearch(string researchId, int buildingId)
-        {
-            // TODO: 實作真實流程：檢查前置、資源、入列或即時完成、寫入解鎖
-            return false;
-        }
+
 
         public bool CancelResearch(string researchId, int playerId)
         {
@@ -235,8 +240,8 @@ namespace DeepAbyssHive.Buildings.Services
                 {
                     IsValid = false,
                     ErrorMessage = "研究模板不存在",
-                    MissingPrerequisites = new List<string>(),
-                    MissingBuildings = new List<BuildingType>()
+                    MissingPrerequisites = new string[0],
+                    MissingBuildings = new string[0]
                 };
             }
 
@@ -269,8 +274,8 @@ namespace DeepAbyssHive.Buildings.Services
             {
                 IsValid = missingPrereqs.Count == 0 && missingBuildings.Count == 0,
                 ErrorMessage = missingPrereqs.Count > 0 || missingBuildings.Count > 0 ? "不满足研究前置条件" : "",
-                MissingPrerequisites = missingPrereqs.ToArray(),
-                MissingBuildings = missingBuildings.Select(b => b.ToString()).ToArray()
+                MissingPrerequisites = missingPrereqs?.ToArray() ?? new string[0],
+                MissingBuildings     = missingBuildings?.Select(b => b.ToString()).ToArray() ?? new string[0]
             };
 
             return result;
@@ -300,7 +305,7 @@ namespace DeepAbyssHive.Buildings.Services
                 return new ResearchUnlocks
                 {
                     UnlockedBuildings = new string[0],
-                    UnlockedUnitTypes = new DeepAbyssHive.Units.Enums.UnitType[0],
+                    UnlockedUnitTypes = new string[0],
                     UnlockedTechnologies = new string[0],
                     UnlockedAbilities = new string[0]
                 };
@@ -309,7 +314,7 @@ namespace DeepAbyssHive.Buildings.Services
             return new ResearchUnlocks
             {
                 UnlockedBuildings = template.UnlockedBuildings ?? new string[0],
-                UnlockedUnitTypes = template.UnlockedUnitTypes ?? new DeepAbyssHive.Units.Enums.UnitType[0],
+                UnlockedUnitTypes = template.UnlockedUnitTypes?.Select(u => u.ToString()).ToArray() ?? new string[0],
                 UnlockedTechnologies = template.UnlockedTechnologies ?? new string[0],
                 UnlockedAbilities = new string[0] // 这个字段在ResearchTemplate中不存在，设为空数组
             };

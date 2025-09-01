@@ -46,6 +46,11 @@ namespace DeepAbyssHive.Buildings.Data
         public string[] Prerequisites;
         
         /// <summary>
+        /// 需要的建筑类型
+        /// </summary>
+        public string[] RequiredBuildings;
+        
+        /// <summary>
         /// 研究效果
         /// </summary>
         public Dictionary<string, float> Effects = new Dictionary<string, float>();

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace DeepAbyssHive.Buildings.Templates
@@ -39,12 +40,12 @@ namespace DeepAbyssHive.Buildings.Templates
         /// <summary>
         /// 研究前置條件
         /// </summary>
-        public List<string> Prerequisites => _prerequisites;
+        public string[] Prerequisites => _prerequisites.ToArray();
         
         /// <summary>
         /// 研究解鎖內容
         /// </summary>
-        public List<string> Unlocks => _unlocks;
+        public string[] Unlocks => _unlocks.ToArray();
         
         /// <summary>
         /// 所需研究點數

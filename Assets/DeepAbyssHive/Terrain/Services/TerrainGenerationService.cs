@@ -7,6 +7,7 @@ using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
+using DeepAbyssHive.Terrain;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 
@@ -70,7 +71,7 @@ namespace DeepAbyssHive.Terrain.Services
         #endregion
 
         #region 地形生成方法
-        public ITerrainChunk GenerateChunk(Vector2Int chunkCoord)
+        public TerrainChunk GenerateChunk(Vector2Int chunkCoord)
         {
             TerrainType[,] terrainData = GenerateChunkTerrain(chunkCoord);
             return CreateTerrainChunk(chunkCoord, terrainData);
@@ -179,7 +180,7 @@ namespace DeepAbyssHive.Terrain.Services
                 return TerrainType.Rock;
         }
 
-        public ITerrainChunk CreateTerrainChunk(Vector2Int chunkCoord, TerrainType[,] terrainData)
+        public TerrainChunk CreateTerrainChunk(Vector2Int chunkCoord, TerrainType[,] terrainData)
         {
             Vector3 worldPosition = ChunkToWorldPosition(chunkCoord);
             
@@ -187,8 +188,9 @@ namespace DeepAbyssHive.Terrain.Services
             GameObject chunkObject = new GameObject($"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}");
             chunkObject.transform.position = worldPosition;
             
-            // 创建地形块实例
-            var chunk = new TerrainChunk(chunkCoord, _chunkSize, _tileSize, terrainData, chunkObject);
+            // 创建地形块实例 - 轉換 TerrainType[,] 為 int[,]
+            var intTerrainData = terrainData.ToIntGrid();
+            var chunk = new TerrainChunk(chunkCoord, _chunkSize, _tileSize, intTerrainData, chunkObject);
             
             return chunk;
         }

@@ -225,7 +225,7 @@ namespace DeepAbyssHive.Creep.Managers
             };
             
             // 根据地形调整成本
-            var terrainMultiplier = GetTerrainCostMultiplier(position);
+            var terrainMultiplier = 1.0f; // TODO: 實作GetTerrainCostMultiplier方法
             foreach (var key in baseCost.Keys.ToList())
             {
                 baseCost[key] *= terrainMultiplier;

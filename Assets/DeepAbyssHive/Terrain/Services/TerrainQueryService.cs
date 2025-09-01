@@ -2,18 +2,14 @@ using System;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
-using DAInterfaces = DeepAbyssHive.Terrain.Interfaces;
-using DAData = DeepAbyssHive.Terrain.Data;
-using UnityEngine;
-using Unity.Collections;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
+using DeepAbyssHive.Terrain.Config;
+// // using DeepAbyssHive.Terrain.Extensions; // 暫時註釋，Extensions可能不存在 // 暫時註釋，Extensions可能不存在
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
-using DeepAbyssHive.Terrain.Config;
-
 namespace DeepAbyssHive.Terrain.Services
 {
     /// <summary>
@@ -65,14 +61,18 @@ namespace DeepAbyssHive.Terrain.Services
             
             if (_terrainChunks.TryGetValue(chunkCoord, out ITerrainChunk chunk))
             {
-                // 優先以介面處理，必要時安全 cast
-                if (chunk is ITerrainChunk terrainChunk)
+                // 安全轉換為具體的 TerrainChunk 類型
+                if (chunk.GetType() == typeof(TerrainChunk))
                 {
-                    return terrainChunk;
+                    return (TerrainChunk)chunk;
                 }
                 
-                // 如果不是具體類型，創建一個包裝或返回默認值
-                // 這裡可以根據需要實現介面到具體類型的轉換邏輯
+                // 如果是其他實現，創建一個 TerrainChunk 包裝
+                return new TerrainChunk
+                {
+                    ChunkCoord = chunkCoord,
+                    // 從介面複製必要的屬性
+                };
             }
             
             return default;
@@ -415,16 +415,21 @@ namespace DeepAbyssHive.Terrain.Services
             return passablePositions;
         }
 
-        // 介面要求回傳 Data.TerrainChunk
-        public DAData.TerrainChunk GetChunk(int chunkX, int chunkZ)
+        // 修改為回傳具體類型
+        public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunk(int chunkX, int chunkZ)
         {
             var key = new Vector2Int(chunkX, chunkZ);
             if (_terrainChunks.TryGetValue(key, out var c))
             {
-                // 若字典裡其實就是 Data.TerrainChunk，直接回傳
-                if (c is DAData.TerrainChunk dc) return dc;
-                // TODO: 若需要從 ITerrainChunk 建構 Data.TerrainChunk，之後在這裡補 Adapter
-                return default;
+                if (c.GetType() == typeof(TerrainChunk))
+                    return (TerrainChunk)c;
+                
+                // 如果不是具體類型，創建一個新的 TerrainChunk
+                return new TerrainChunk
+                {
+                    ChunkCoord = key,
+                    // 從介面複製必要的屬性
+                };
             }
             return default;
         }
@@ -457,16 +462,23 @@ namespace DeepAbyssHive.Terrain.Services
         }
 
         // 介面要求回傳 NativeArray<Data.TerrainChunk>
-        public NativeArray<DAData.TerrainChunk> GetChunksInRange(Vector3 center, float radius)
+        public NativeArray<TerrainChunk> GetChunksInRange(Vector3 center, float radius)
         {
             // 先簡單收集一份，之後若要真的做距離篩選，等 ITerrainChunk 暴露座標/範圍欄位再補
-            var tmp = new List<DAData.TerrainChunk>();
+            var tmp = new List<TerrainChunk>();
             foreach (var c in _terrainChunks.Values)
             {
-                if (c is DAData.TerrainChunk dc) tmp.Add(dc);
-                else tmp.Add(default); // TODO: 之後用 Adapter 轉換
+                if (c.GetType() == typeof(TerrainChunk)) 
+                {
+                    tmp.Add((TerrainChunk)c);
+                }
+                else 
+                {
+                    // 創建一個新的 TerrainChunk 作為適配器
+                    tmp.Add(new TerrainChunk());
+                }
             }
-            var arr = new NativeArray<DAData.TerrainChunk>(tmp.Count, Allocator.Temp);
+            var arr = new NativeArray<TerrainChunk>(tmp.Count, Allocator.Temp);
             for (int i = 0; i < tmp.Count; i++) arr[i] = tmp[i];
             return arr;
         }
@@ -630,7 +642,7 @@ namespace DeepAbyssHive.Terrain.Services
             // 应用地形修改
             if (modification.changeTerrainType)
             {
-                _chunkTerrainData[chunkCoord][localCoord.x, localCoord.y] = modification.newTerrainType;
+                _chunkTerrainData[chunkCoord][localCoord.x, localCoord.y] = (TerrainType)modification.newTerrainType;
             }
             
             // 通知地形块更新

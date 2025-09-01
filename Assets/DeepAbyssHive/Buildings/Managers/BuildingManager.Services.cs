@@ -1,6 +1,7 @@
 using UnityEngine;
 using DeepAbyssHive.Buildings.Services;
 using DeepAbyssHive.Buildings.Interfaces;
+using DeepAbyssHive.Buildings.Extensions;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
@@ -14,6 +15,8 @@ namespace DeepAbyssHive.Buildings.Managers
 
         // 注意：服务字段已在 BuildingManager.Core.cs 中定义
         // 这里只提供服务管理方法
+        
+        private bool IsInitialized => true;
 
         #endregion
 

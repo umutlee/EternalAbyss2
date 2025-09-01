@@ -10,6 +10,7 @@ using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
+using DeepAbyssHive.Terrain;
 
 namespace DeepAbyssHive.Terrain.Services
 {
@@ -87,7 +88,7 @@ namespace DeepAbyssHive.Terrain.Services
             {
                 Position = worldPosition,
                 Radius = radius,
-                TerrainType = terrainType,
+                TerrainType = terrainType.ToData(),
                 Timestamp = DateTime.Now
             };
             
@@ -221,7 +222,7 @@ namespace DeepAbyssHive.Terrain.Services
             {
                 Position = position,
                 Radius = radius,
-                TerrainType = terrainType,
+                TerrainType = terrainType.ToData(),
                 Type = TerrainModificationTypeData.TypeChange,
                 Timestamp = System.DateTime.Now
             };
@@ -439,7 +440,7 @@ namespace DeepAbyssHive.Terrain.Services
                     // 如果在修改半径内，则应用修改
                     if (distanceSquared <= radiusSquared)
                     {
-                        terrainData[x, y] = modification.TerrainType;
+                        terrainData[x, y] = modification.TerrainType.ToEnum();
                     }
                 }
             }

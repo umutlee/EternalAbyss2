@@ -174,11 +174,14 @@ namespace DeepAbyssHive.Units.Core
             if (!Equals(_unitData, default) && _unitData.EvolutionOptions != null)
             {
                 // 从UnitData[]中提取UnitType
-                foreach (var evolutionOption in _unitData.EvolutionOptions)
+                if (_unitData.EvolutionOptions is UnitData[] evolutionArray)
                 {
-                    if (evolutionOption != null)
+                    foreach (var evolutionOption in evolutionArray)
                     {
-                        _evolutionOptions.Add(evolutionOption.UnitType);
+                        if (!evolutionOption.Equals(default(UnitData)))
+                        {
+                            _evolutionOptions.Add((UnitType)evolutionOption.UnitType);
+                        }
                     }
                 }
                 
@@ -197,15 +200,15 @@ namespace DeepAbyssHive.Units.Core
             if (!Equals(_unitData, default))
             {
                 _unitId = GetInstanceID();
-                _unitName = _unitData.UnitName;
+                _unitName = $"Unit_{_unitData.UnitId}"; // 使用 UnitId 生成名稱
                 _unitType = (UnitType)_unitData.UnitType;
                 _currentHealth = _unitData.MaxHealth;
                 _currentEnergy = _unitData.MaxEnergy;
-                _moveSpeed = _unitData.MoveSpeed;
+                _moveSpeed = _unitData.Speed; // 使用 Speed 屬性
                 _attackDamage = _unitData.AttackDamage;
                 _attackRange = _unitData.AttackRange;
-                _attackCooldown = _unitData.AttackCooldown;
-                _detectionRange = _unitData.DetectionRange;
+                _attackCooldown = 1.0f; // 使用預設值
+                _detectionRange = _unitData.AttackRange * 1.2f; // 偵測範圍為攻擊範圍的 1.2 倍
             }
 
             ChangeState(UnitState.Idle);

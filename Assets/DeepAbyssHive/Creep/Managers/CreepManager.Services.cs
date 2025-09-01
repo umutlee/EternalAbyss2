@@ -83,10 +83,10 @@ namespace DeepAbyssHive.Creep.Managers
             
             // 直接創建服務實例（向後兼容）
             _gridService = new CreepGridService();
-            _sourceService = new DeepAbyssHive.Creep.Services.CreepSourceService();
+            _sourceService = new DeepAbyssHive.Creep.Services.CreepSourceService() as DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
             _networkService = new CreepNetworkService();
             _simulationService = new CreepSimulationService();
-            _queryService = new CreepQueryService();
+            _queryService = new CreepQueryService(_gridService, _sourceService as DeepAbyssHive.Creep.Services.ICreepSourceService, _networkService);
         }
 
         /// <summary>

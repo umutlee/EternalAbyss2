@@ -7,6 +7,8 @@ using DeepAbyssHive.Buildings.Interfaces;
 using DeepAbyssHive.Buildings.Services;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
+using DeepAbyssHive.Buildings.Extensions;
+using System.Linq;
 using DeepAbyssHive.Buildings.Config;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 
@@ -132,8 +134,8 @@ namespace DeepAbyssHive.Buildings.Managers
                         Name = researchConfig.displayName,
                         Description = researchConfig.description,
                         ResearchTime = researchConfig.researchTime,
-                        RequiredBuilding = researchConfig.requiredBuilding,
-                        Prerequisites = new List<string>(researchConfig.prerequisites ?? new string[0])
+                        RequiredBuildings = researchConfig.requiredBuilding != null ? new string[] { researchConfig.requiredBuilding.ToString() } : new string[0],
+                        Prerequisites = researchConfig.prerequisites ?? new string[0]
                     };
                     _researchTemplates[researchConfig.researchId] = template;
                 }
@@ -308,9 +310,8 @@ namespace DeepAbyssHive.Buildings.Managers
             var template = GetBuildingTemplate(buildingType);
             if (template != null)
             {
-                // 将Vector2Int转换为Vector2后再与float相乘
-                Vector2 size = new Vector2(template.Size.x, template.Size.y);
-                return Mathf.Max(size.x, size.y) * 0.5f;
+                // 直接使用 Vector2Int 的分量進行計算
+                return Mathf.Max(template.Size.x, template.Size.y) * 0.5f;
             }
             return 1.0f; // 默认半径
         }

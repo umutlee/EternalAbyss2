@@ -128,7 +128,7 @@ namespace DeepAbyssHive.Core.Managers
             var creepSimulationService = new CreepSimulationService();
             
             // 創建查詢服務（可能依賴其他服務）
-            var creepQueryService = new CreepQueryService(ServiceLocator.Get<DeepAbyssHive.Creep.Services.ICreepGridService>());
+            var creepQueryService = new CreepQueryService(creepGridService, creepSourceService, creepNetworkService);
 
             // 註冊服務到ServiceLocator
             ServiceLocator.Register<ICreepGridService>(creepGridService, "CreepGridService");
