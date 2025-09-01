@@ -70,7 +70,7 @@ namespace DeepAbyssHive.Creep.Managers
             IsPaused = false;
         }
 
-        public void TickUpdate(float deltaTime)
+        public void Update(float deltaTime)
         {
             if (!IsInitialized || IsPaused) return;
             
@@ -78,14 +78,38 @@ namespace DeepAbyssHive.Creep.Managers
             UpdateCreepTiles(deltaTime);
         }
 
-        public void TickFixedUpdate(float fixedDeltaTime)
+        public void FixedUpdate(float fixedDeltaTime)
         {
             // 固定更新逻辑
         }
 
-        public void TickLateUpdate(float deltaTime)
+        public void LateUpdate(float deltaTime)
         {
             // 延迟更新逻辑
+        }
+
+        /// <summary>
+        /// Unity Update 生命周期方法的內部實現
+        /// </summary>
+        private void TickUpdate(float deltaTime)
+        {
+            Update(deltaTime);
+        }
+
+        /// <summary>
+        /// Unity FixedUpdate 生命周期方法的內部實現
+        /// </summary>
+        private void TickFixedUpdate(float fixedDeltaTime)
+        {
+            FixedUpdate(fixedDeltaTime);
+        }
+
+        /// <summary>
+        /// Unity LateUpdate 生命周期方法的內部實現
+        /// </summary>
+        private void TickLateUpdate(float deltaTime)
+        {
+            LateUpdate(deltaTime);
         }
 
         public string GetManagerName()
@@ -107,19 +131,19 @@ namespace DeepAbyssHive.Creep.Managers
             // Unity Start
         }
 
-        private void Update()
+        void Update()
         {
             // Unity Update 生命周期入口
             TickUpdate(Time.deltaTime);
         }
 
-        private void FixedUpdate()
+        void FixedUpdate()
         {
             // Unity FixedUpdate 生命周期入口
             TickFixedUpdate(Time.fixedDeltaTime);
         }
 
-        private void LateUpdate()
+        void LateUpdate()
         {
             // Unity LateUpdate 生命周期入口
             TickLateUpdate(Time.deltaTime);
