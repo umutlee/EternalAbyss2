@@ -70,47 +70,37 @@ namespace DeepAbyssHive.Creep.Managers
             IsPaused = false;
         }
 
-        public void Update(float deltaTime)
+        // 內部實作方法
+        public void TickUpdate(float deltaTime)
         {
             if (!IsInitialized || IsPaused) return;
-            
-            // 更新菌毯逻辑
-            UpdateCreepTiles(deltaTime);
+            // TODO: 實作菌毯更新邏輯
         }
 
-        public void FixedUpdate(float fixedDeltaTime)
+        public void TickFixedUpdate(float fixedDeltaTime)
         {
-            // 固定更新逻辑
+            if (!IsInitialized || IsPaused) return;
+            // TODO: 實作菌毯固定更新邏輯
         }
 
-        public void LateUpdate(float deltaTime)
+        public void TickLateUpdate(float deltaTime)
         {
-            // 延迟更新逻辑
+            if (!IsInitialized || IsPaused) return;
+            // TODO: 實作菌毯延遲更新邏輯
         }
 
-        /// <summary>
-        /// Unity Update 生命周期方法的內部實現
-        /// </summary>
-        private void TickUpdate(float deltaTime)
-        {
-            Update(deltaTime);
-        }
+        // --- Explicit interface forwarding (keeps Unity happy & satisfies interfaces) ---
+        void DeepAbyssHive.Core.Interfaces.IUpdatable.Update(float dt) => TickUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IFixedUpdatable.FixedUpdate(float dt) => TickFixedUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.ILateUpdatable.LateUpdate(float dt) => TickLateUpdate(dt);
 
-        /// <summary>
-        /// Unity FixedUpdate 生命周期方法的內部實現
-        /// </summary>
-        private void TickFixedUpdate(float fixedDeltaTime)
-        {
-            FixedUpdate(fixedDeltaTime);
-        }
+        void DeepAbyssHive.Core.Interfaces.IManager.Update(float dt) => TickUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IManager.FixedUpdate(float dt) => TickFixedUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IManager.LateUpdate(float dt) => TickLateUpdate(dt);
 
-        /// <summary>
-        /// Unity LateUpdate 生命周期方法的內部實現
-        /// </summary>
-        private void TickLateUpdate(float deltaTime)
-        {
-            LateUpdate(deltaTime);
-        }
+
+
+
 
         public string GetManagerName()
         {
@@ -131,23 +121,7 @@ namespace DeepAbyssHive.Creep.Managers
             // Unity Start
         }
 
-        void Update()
-        {
-            // Unity Update 生命周期入口
-            TickUpdate(Time.deltaTime);
-        }
 
-        void FixedUpdate()
-        {
-            // Unity FixedUpdate 生命周期入口
-            TickFixedUpdate(Time.fixedDeltaTime);
-        }
-
-        void LateUpdate()
-        {
-            // Unity LateUpdate 生命周期入口
-            TickLateUpdate(Time.deltaTime);
-        }
 
         #endregion
 

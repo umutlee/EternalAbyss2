@@ -1,0 +1,108 @@
+MDC — Unity 事件簽名清理（Creep/Unit/SpatialIndex）
+目的：專案內不再存在任何 Update/LateUpdate/FixedUpdate 的帶參數版本；
+ 實作：每個 Manager 用 partial 分成兩個檔：
+*.UnityCallbacks.cs：只放無參數的 Unity 生命週期入口，內部把 Time.deltaTime 等轉給 Tick…
+
+
+原檔（或 Core.cs）：把你既有邏輯的方法改名為 TickUpdate(float dt) 等
+
+
+
+1) CreepManager
+1.1 新增檔案：Assets/DeepAbyssHive/Creep/Managers/CreepManager.UnityCallbacks.cs
+using UnityEngine;
+
+namespace DeepAbyssHive.Creep.Managers
+{
+    public partial class CreepManager : MonoBehaviour
+    {
+        // 只留無參數入口，轉呼叫 Tick…(dt)
+        private void Update()      => TickUpdate(Time.deltaTime);
+        private void LateUpdate()  => TickLateUpdate(Time.deltaTime);
+        private void FixedUpdate() => TickFixedUpdate(Time.fixedDeltaTime);
+    }
+}
+
+1.2 修改檔案：Assets/DeepAbyssHive/Creep/Managers/CreepManager.cs
+將 class CreepManager : MonoBehaviour 改成 public partial class CreepManager : MonoBehaviour
+
+
+將任何 Update(…) / LateUpdate(…) / FixedUpdate(…)（有參數的那種）改名如下（方法本體原封不動）：
+
+
+// 例：原本如果是
+// private void Update(float dt) { … }
+// private void LateUpdate(float dt) { … }
+// private void FixedUpdate(float dt) { … }
+
+// 全部改名為：
+private void TickUpdate(float dt) { /* 原邏輯 */ }
+private void TickLateUpdate(float dt) { /* 原邏輯 */ }
+private void TickFixedUpdate(float dt) { /* 原邏輯 */ }
+
+注意：必須把方法名改掉，不能只刪參數，否則會和 UnityCallbacks 裡的無參數版本重複。
+
+2) UnitManager
+2.1 新增檔案：Assets/DeepAbyssHive/Units/Managers/UnitManager.UnityCallbacks.cs
+using UnityEngine;
+
+namespace DeepAbyssHive.Units.Managers
+{
+    public partial class UnitManager : MonoBehaviour
+    {
+        private void Update()      => TickUpdate(Time.deltaTime);
+        private void LateUpdate()  => TickLateUpdate(Time.deltaTime);
+        private void FixedUpdate() => TickFixedUpdate(Time.fixedDeltaTime);
+    }
+}
+
+2.2 修改檔案：Assets/DeepAbyssHive/Units/Managers/UnitManager.Core.cs
+將 class UnitManager : MonoBehaviour 改成 public partial class UnitManager : MonoBehaviour
+
+
+同樣把所有帶參數的三兄弟改名成：
+
+
+private void TickUpdate(float dt) { /* 原本 Update(dt) 內容 */ }
+private void TickLateUpdate(float dt) { /* 原本 LateUpdate(dt) 內容 */ }
+private void TickFixedUpdate(float dt) { /* 原本 FixedUpdate(dt) 內容 */ }
+
+
+3) SpatialIndexManager
+掃描器找得到型別，但抓不到檔案路徑（顯示 unknown），通常是：
+類別不在 .cs MonoScript（例如在外部 package 或不同 asmdef），或
+
+
+檔名和類別名不對、或編譯在不同平台路徑。
+
+
+先加一個 UnityCallbacks 檔 確保無參數入口存在，再把帶參數的方法改名為 Tick…：
+3.1 新增檔案：Assets/DeepAbyssHive/SpatialIndex/Managers/SpatialIndexManager.UnityCallbacks.cs
+using UnityEngine;
+
+namespace DeepAbyssHive.SpatialIndex.Managers
+{
+    public partial class SpatialIndexManager : MonoBehaviour
+    {
+        private void Update()      => TickUpdate(Time.deltaTime);
+        private void LateUpdate()  => TickLateUpdate(Time.deltaTime);
+        private void FixedUpdate() => TickFixedUpdate(Time.fixedDeltaTime);
+    }
+}
+
+3.2 找到並修改原檔（把帶參數的改名）
+用 IDE 全域搜尋：
+搜尋字串：class SpatialIndexManager : MonoBehaviour
+
+
+把類別宣告改成 public partial class SpatialIndexManager : MonoBehaviour
+
+
+把任何 Update(…) / LateUpdate(…) / FixedUpdate(…)（帶參數）改名為：
+
+
+private void TickUpdate(float dt) { /* 原本內容 */ }
+private void TickLateUpdate(float dt) { /* 原本內容 */ }
+private void TickFixedUpdate(float dt) { /* 原本內容 */ }
+
+如果仍找不到：再全域搜尋 SpatialIndexManager 和 Update( 同行是否出現在 .cs 以外（例如產生碼或 package）。一旦找到，把帶參數版改名即可。

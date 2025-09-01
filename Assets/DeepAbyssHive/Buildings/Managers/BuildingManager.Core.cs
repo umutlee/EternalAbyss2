@@ -256,7 +256,7 @@ namespace DeepAbyssHive.Buildings.Managers
         /// 更新管理器
         /// </summary>
         /// <param name="deltaTime">时间增量</param>
-        public void Update(float deltaTime)
+        public void TickUpdate(float deltaTime)
         {
             _buildingUpdateTimer += deltaTime;
             

@@ -24,6 +24,16 @@ namespace DeepAbyssHive.Creep.Managers
         {
             return _creepTiles.ContainsKey(position) && _creepTiles[position].IsActive;
         }
+
+        /// <summary>
+        /// 检查世界坐标位置是否有菌毯（薄轉接版本）
+        /// </summary>
+        public bool IsOnCreep(Vector3 position)
+        {
+            if (_queryService == null || _gridService == null) return false;
+            var gridPos = _gridService.WorldToGridPosition(position);
+            return _queryService.IsPositionCovered(position);
+        }
         
         /// <summary>
         /// 获取指定位置的菌毯瓦片

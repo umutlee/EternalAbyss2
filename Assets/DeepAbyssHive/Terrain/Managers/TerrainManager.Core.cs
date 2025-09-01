@@ -145,7 +145,7 @@ namespace DeepAbyssHive.Terrain.Managers
         /// 更新管理器
         /// </summary>
         /// <param name="deltaTime">时间增量</param>
-        public void Update(float deltaTime)
+        public void TickUpdate(float deltaTime)
         {
             UpdateManager();
 
@@ -160,7 +160,7 @@ namespace DeepAbyssHive.Terrain.Managers
         /// 固定更新管理器
         /// </summary>
         /// <param name="fixedDeltaTime">固定时间增量</param>
-        public void FixedUpdate(float fixedDeltaTime)
+        public void TickFixedUpdate(float fixedDeltaTime)
         {
             // 固定更新逻辑
         }
@@ -168,7 +168,7 @@ namespace DeepAbyssHive.Terrain.Managers
         /// <summary>
         /// 后更新管理器
         /// </summary>
-        public void LateUpdate()
+        public void TickLateUpdate(float deltaTime)
         {
             // 后更新逻辑
         }

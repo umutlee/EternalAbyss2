@@ -69,56 +69,36 @@ namespace DeepAbyssHive.Units.Managers
             Debug.Log($"[{_managerName}] 单位管理器初始化完成");
         }
 
-        /// <summary>
-        /// 更新管理器
-        /// </summary>
-        /// <param name="deltaTime">时间增量</param>
-        public void Update(float deltaTime)
+        // IManager 介面實作
+        // 內部實作方法
+        public void TickUpdate(float deltaTime)
         {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 更新所有单位
-            List<int> unitIds = new List<int>(_unitHotData.Keys);
-            foreach (int unitId in unitIds)
-            {
-                UpdateUnit(unitId, deltaTime);
-            }
+            if (!IsInitialized || IsPaused) return;
+            // TODO: 實作單位更新邏輯
         }
 
-        /// <summary>
-        /// 固定更新管理器
-        /// </summary>
-        /// <param name="fixedDeltaTime">固定时间增量</param>
-        public void FixedUpdate(float fixedDeltaTime)
+        public void TickFixedUpdate(float fixedDeltaTime)
         {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 在这里可以添加物理相关的更新逻辑
+            if (!IsInitialized || IsPaused) return;
+            // TODO: 實作單位固定更新邏輯
         }
 
-        /// <summary>
-        /// 后更新管理器
-        /// </summary>
-        public void LateUpdate()
+        public void TickLateUpdate(float deltaTime)
         {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 在这里可以添加后更新逻辑
+            if (!IsInitialized || IsPaused) return;
+            // TODO: 實作單位延遲更新邏輯
         }
 
-        /// <summary>
-        /// 后更新管理器（带参数）
-        /// </summary>
-        public void LateUpdate(float deltaTime)
-        {
-            if (!_isInitialized || _isPaused)
-                return;
-                
-            // 在这里可以添加后更新逻辑
-        }
+        // --- Explicit interface forwarding ---
+        void DeepAbyssHive.Core.Interfaces.IUpdatable.Update(float dt) => TickUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IFixedUpdatable.FixedUpdate(float dt) => TickFixedUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.ILateUpdatable.LateUpdate(float dt) => TickLateUpdate(dt);
+
+        void DeepAbyssHive.Core.Interfaces.IManager.Update(float dt) => TickUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IManager.FixedUpdate(float dt) => TickFixedUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IManager.LateUpdate(float dt) => TickLateUpdate(dt);
+
+
 
         /// <summary>
         /// 清理管理器

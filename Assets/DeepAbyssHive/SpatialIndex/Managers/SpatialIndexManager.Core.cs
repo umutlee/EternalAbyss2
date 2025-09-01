@@ -63,24 +63,35 @@ namespace DeepAbyssHive.SpatialIndex.Managers
         // === IManager / IUpdatable / IFixedUpdatable / ILateUpdatable 实现 ===
         private bool _isPaused = false;
 
-        public void Update(float dt)
+        // IManager 介面實作
+        // 內部實作方法
+        public void TickUpdate(float dt)
         {
             if (!IsInitialized || _isPaused) return;
             ProcessPendingOperations();
             // 目前 SpatialIndex 不需要逐帧更新；必要時可在此轉發到 _activeIndex
         }
 
-        public void FixedUpdate(float fixedDt)
+        public void TickFixedUpdate(float fixedDt)
         {
             if (!IsInitialized || _isPaused) return;
             // 目前 SpatialIndex 無固定步進需求
         }
 
-        public void LateUpdate(float dt)
+        public void TickLateUpdate(float dt)
         {
             if (!IsInitialized || _isPaused) return;
             // 目前 SpatialIndex 無 LateUpdate 需求
         }
+
+        // --- Explicit interface forwarding ---
+        void DeepAbyssHive.Core.Interfaces.IUpdatable.Update(float dt) => TickUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IFixedUpdatable.FixedUpdate(float dt) => TickFixedUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.ILateUpdatable.LateUpdate(float dt) => TickLateUpdate(dt);
+
+        void DeepAbyssHive.Core.Interfaces.IManager.Update(float dt) => TickUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IManager.FixedUpdate(float dt) => TickFixedUpdate(dt);
+        void DeepAbyssHive.Core.Interfaces.IManager.LateUpdate(float dt) => TickLateUpdate(dt);
 
         public void Pause()  { _isPaused = true;  }
         public void Resume() { _isPaused = false; }
