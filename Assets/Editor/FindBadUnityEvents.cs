@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+// Assets/Editor/FindBadUnityEvents.cs
 using System;
 using System.Linq;
 using System.Reflection;
@@ -10,47 +10,40 @@ public static class FindBadUnityEvents
     [MenuItem("Tools/QA/Find invalid Unity event signatures")]
     public static void Run()
     {
-        var unityNames = new[] { "Update", "LateUpdate", "FixedUpdate" };
-
-        // 建索引：Type -> MonoScript path
-        var allScripts = AssetDatabase.FindAssets("t:MonoScript")
-            .Select(AssetDatabase.GUIDToAssetPath)
-            .Select(p => (path: p, script: AssetDatabase.LoadAssetAtPath<MonoScript>(p)))
-            .Where(t => t.script != null && t.script.GetClass() != null)
-            .GroupBy(t => t.script.GetClass())
-            .ToDictionary(g => g.Key, g => g.First().path);
-
         int offenders = 0;
+        int checkedTypes = 0;
 
-        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        // TypeCache 在 2020+ 可用；若你的版本太舊，可改用 AppDomain 掃描
+#if UNITY_2020_1_OR_NEWER
+        var types = TypeCache.GetTypesDerivedFrom<MonoBehaviour>();
+#else
+        var types = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(a => {
+                try { return a.GetTypes(); }
+                catch (ReflectionTypeLoadException ex) { return ex.Types.Where(t => t != null); }
+            })
+            .Where(t => typeof(MonoBehaviour).IsAssignableFrom(t));
+#endif
+
+        foreach (var t in types)
         {
-            Type[] types = Array.Empty<Type>();
-            try { types = asm.GetTypes(); } catch { continue; }
-
-            foreach (var t in types)
+            checkedTypes++;
+            var methods = t.GetMethods(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.DeclaredOnly);
+            foreach (var m in methods)
             {
-                if (!typeof(MonoBehaviour).IsAssignableFrom(t)) continue;
-
-                foreach (var m in t.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                // 只檢查 Unity 的三個回呼名稱（顯式介面實作不會被抓到，正是我們要的）
+                if (m.Name == "Update" || m.Name == "FixedUpdate" || m.Name == "LateUpdate")
                 {
-                    if (!unityNames.Contains(m.Name)) continue;
-
-                    var ps = m.GetParameters();
-                    if (ps.Length == 0) continue; // 只抓帶參數的
-
-                    offenders++;
-                    allScripts.TryGetValue(t, out var path);
-
-                    string signature = m.ToString();       // e.g. "Void Update(Single)"
-                    string asmName   = t.Assembly.GetName().Name;
-                    string where     = string.IsNullOrEmpty(path) ? $"(assembly: {asmName}, file: unknown)" : path;
-
-                    Debug.LogError($"[{t.FullName}] {m.Name} has parameters => {signature}. Fix signature. File: {where}");
+                    if (m.GetParameters().Length > 0)
+                    {
+                        offenders++;
+                        Debug.LogError($"[{t.FullName}] {m.Name} has parameters. Fix signature.");
+                    }
                 }
             }
         }
 
-        Debug.Log($"FindBadUnityEvents: Offenders = {offenders}");
+        // 一定要輸出總結（用 Warning 比較不容易被過濾掉）
+        Debug.LogWarning($"QA: FindBadUnityEvents finished. Offenders={offenders}, TypesChecked={checkedTypes}, Time={DateTime.Now:HH:mm:ss}");
     }
 }
-#endif
