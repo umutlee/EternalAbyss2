@@ -131,7 +131,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 33455931}
-  - component: {fileID: 33455930}
+  - component: {fileID: 33455932}
   m_Layer: 0
   m_Name: Boot
   m_TagString: Untagged
@@ -139,18 +139,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &33455930
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 33455929}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f4e5d6c7b8a9012abcdef1234567892, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!4 &33455931
 Transform:
   m_ObjectHideFlags: 0
@@ -166,6 +154,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &33455932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 33455929}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f4e5d6c7b8a9012abcdef1234567892, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &343924484
 GameObject:
   m_ObjectHideFlags: 0
@@ -282,7 +282,7 @@ GameObject:
   m_Component:
   - component: {fileID: 349247360}
   - component: {fileID: 349247359}
-  - component: {fileID: 349247358}
+  - component: {fileID: 349247361}
   m_Layer: 0
   m_Name: QA Runner
   m_TagString: Untagged
@@ -290,18 +290,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &349247358
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 349247357}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: af1e2b3c4d5e6f7890abcdef12345678, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &349247359
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -329,6 +317,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &349247361
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 349247357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af1e2b3c4d5e6f7890abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1260670764
 GameObject:
   m_ObjectHideFlags: 0
