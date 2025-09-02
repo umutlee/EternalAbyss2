@@ -6,7 +6,7 @@ namespace DeepAbyssHive.Terrain.Compat
 {
     /// <summary>
     /// ITerrainChunk 相容層實作
-    /// 提供與 RTSEngine.Terrain 系統的相容性
+    /// 提供與第三方地形系統的相容性
     /// </summary>
     public class TerrainChunk_Compat : ITerrainChunk
     {

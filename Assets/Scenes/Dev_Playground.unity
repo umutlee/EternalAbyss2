@@ -166,6 +166,67 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f4e5d6c7b8a9012abcdef1234567892, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &45172768
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 45172770}
+  - component: {fileID: 45172769}
+  m_Layer: 0
+  m_Name: BuildingSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &45172769
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 45172768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd2fbf72384a145168aadb7513650210, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sceneCamera: {fileID: 2098406014}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 8
+  placePrefab: {fileID: 8722629631199751568, guid: b74c410383e3e4964ac12801ca313ad5,
+    type: 3}
+  previewMaterial: {fileID: 0}
+  footprintSize: 1
+  previewHeight: 0.5
+  placedScale: {x: 1, y: 1, z: 1}
+  requireCreep: 0
+  toggleKey: 98
+  rotateCWKey: 101
+  rotateCCWKey: 113
+  cancelKeyPrimary: 27
+  cancelKeyAlt: 99
+  rotateStep: 90
+--- !u!4 &45172770
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 45172768}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &343924484
 GameObject:
   m_ObjectHideFlags: 0
@@ -178,7 +239,7 @@ GameObject:
   - component: {fileID: 343924487}
   - component: {fileID: 343924486}
   - component: {fileID: 343924485}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Ground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -227,7 +288,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: c719e38f25a9480abd2480ab621a2949, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -283,6 +344,7 @@ GameObject:
   - component: {fileID: 349247360}
   - component: {fileID: 349247359}
   - component: {fileID: 349247361}
+  - component: {fileID: 349247362}
   m_Layer: 0
   m_Name: QA Runner
   m_TagString: Untagged
@@ -327,6 +389,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af1e2b3c4d5e6f7890abcdef12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &349247362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 349247357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffc6f5a1264f842e388e71c532b8bf17, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &1260670764
@@ -569,3 +643,4 @@ SceneRoots:
   - {fileID: 343924488}
   - {fileID: 349247360}
   - {fileID: 1260670766}
+  - {fileID: 45172770}
