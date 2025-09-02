@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
-using DeepAbyssHive.Creep.Config;
+// using DeepAbyssHive.Creep.Config; // 已移至 Assets/Core/Config
 using DeepAbyssHive.Creep.Data;
 using CreepExpansionType = DeepAbyssHive.Creep.Data.CreepExpansionType;
 

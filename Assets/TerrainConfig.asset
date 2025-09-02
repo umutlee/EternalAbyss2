@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4082f88258f574f8394bfa9b3067dcfc, type: 3}
   m_Name: TerrainConfig
   m_EditorClassIdentifier: 
-  _configName: Terrain Config
+  _configName: 
   _version: 1.0
   _description: 
   _enableDebugLog: 0
   _enableValidation: 1
   modificationProcessInterval: 0.25
-  chunkSize: 32
+  chunkSize: 64
   tileSize: 1
   loadRadius: 3
   unloadRadius: 5

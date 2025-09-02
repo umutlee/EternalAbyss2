@@ -5,7 +5,7 @@ using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.Buildings.Managers;
-using DeepAbyssHive.Creep.Config;
+// using DeepAbyssHive.Creep.Config; // 已移至 Assets/Core/Config
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Creep.Enums;
 using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;

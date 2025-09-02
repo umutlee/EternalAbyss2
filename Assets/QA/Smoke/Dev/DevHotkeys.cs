@@ -1,22 +1,28 @@
+// Assets/QA/Smoke/Dev/DevHotkeys.cs
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using QA.Smoke; // 我們先前的 RuntimeSmoke
 
-[DefaultExecutionOrder(10001)]
-public class DevHotkeys : MonoBehaviour
+namespace QA.Smoke.Dev
 {
-    void Update()
+    /// <summary>
+    /// 開發用熱鍵：
+    /// - F5：觸發 RuntimeSmoke（延一幀執行，避免與 Boot 時序衝突）
+    /// </summary>
+    public sealed class DevHotkeys : MonoBehaviour
     {
-        if (Input.GetKeyDown(KeyCode.R))
+        private void Update()
         {
-            var s = SceneManager.GetActiveScene().name;
-            Debug.Log($"[DEV] Reload scene: {s}");
-            SceneManager.LoadScene(s);
-        }
-        if (Input.GetKeyDown(KeyCode.F9))
-        {
-            Debug.Log("[DEV] Run Smoke");
-            RuntimeSmoke.Run();
+            if (Input.GetKeyDown(KeyCode.F5))
+            {
+                var smoke = FindObjectOfType<QA.Smoke.RuntimeSmoke>();
+                if (smoke != null)
+                {
+                    smoke.RunNow(true);
+                }
+                else
+                {
+                    Debug.LogWarning("[DEV] RuntimeSmoke not found in scene. Add 'RuntimeSmoke' (e.g., under Managers) to enable F5 smoke test.");
+                }
+            }
         }
     }
 }

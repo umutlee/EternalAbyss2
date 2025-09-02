@@ -6,7 +6,7 @@ namespace DeepAbyssHive.Units.Data
     /// <summary>
     /// 单位模板数据 - 用于定义单位的基础属性和配置
     /// </summary>
-    [CreateAssetMenu(fileName = "New Unit Template", menuName = "Deep Abyss Hive/Units/Unit Template")]
+    [CreateAssetMenu(fileName = "New Unit Template", menuName = "DeepAbyssHive/Units/Unit Template")]
     public class UnitTemplate : ScriptableObject
     {
         [Header("基础信息")]
