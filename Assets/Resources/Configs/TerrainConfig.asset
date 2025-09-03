@@ -17,9 +17,9 @@ MonoBehaviour:
   tileSize: 1
   loadRadius: 3
   unloadRadius: 5
-  noiseScale: 0.1
-  heightScale: 10
-  seed: 12345
+  noiseScale: 0.02
+  heightScale: 1.5
+  seed: 23456
   octaves: 4
   persistence: 0.5
   lacunarity: 2
@@ -36,3 +36,5 @@ MonoBehaviour:
   showTerrainGrid: 0
   maxLODLevels: 4
   viewDistance: 512
+  streamUpdateInterval: 0.25
+  streamHysteresisChunks: 1

@@ -18,6 +18,9 @@ namespace DeepAbyssHive.Dev
         [SerializeField] private float previewHeight = 0.5f;         // 預覽抬高一點避免穿地
         [SerializeField] private Vector3 placedScale = Vector3.one;  // 放下去後的縮放
         [SerializeField] private bool requireCreep = false;          // 勾選時，只允許在菌毯上放置（IsOnCreep）
+        
+        // 放置尺寸倍率（可於 Inspector 調整，預設 1 = 不變）
+        [SerializeField] private float spawnScale = 1f;
 
         [SerializeField] private KeyCode toggleKey = KeyCode.B;
         [SerializeField] private KeyCode rotateCWKey = KeyCode.E;
@@ -32,6 +35,7 @@ namespace DeepAbyssHive.Dev
         private Quaternion rotation = Quaternion.identity;
         private bool isPlacing;
         private Vector3 lastValidPos;
+        private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
 
         void Awake()
         {
@@ -68,6 +72,7 @@ namespace DeepAbyssHive.Dev
             var ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hit, 5000f, groundMask))
             {
+                lastHit = hit; // 保存 hit 資訊供 PlaceNow() 使用
                 var p = hit.point;
                 int cell = Mathf.Max(1, footprintSize);
                 p.x = Mathf.Floor(p.x / cell) * cell + cell * 0.5f;
@@ -103,7 +108,15 @@ namespace DeepAbyssHive.Dev
 
             previewInstance = Instantiate(placePrefab);
             previewInstance.name = "[Preview] " + placePrefab.name;
-            previewInstance.transform.localScale = placedScale;
+            // 以 prefab 原始縮放為基礎，再乘上倍率 placedScale（預設 1,1,1 = 保留原比例）
+            {
+                var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
+                previewInstance.transform.localScale = new Vector3(
+                    baseScale.x * placedScale.x,
+                    baseScale.y * placedScale.y,
+                    baseScale.z * placedScale.z
+                );
+            }
 
             // 關碰撞 + 套透明材質
             foreach (var col in previewInstance.GetComponentsInChildren<Collider>(true))
@@ -128,8 +141,47 @@ namespace DeepAbyssHive.Dev
             var pos = lastValidPos;
             pos.y -= previewHeight; // 放回地面
 
-            var go = Instantiate(placePrefab, pos, rotation);
-            go.transform.localScale = placedScale;
+            // 實例化放置物
+            var placed = Instantiate(placePrefab, pos, rotation);
+            // 放置實體同樣採用「原比例 × 倍率」
+            {
+                var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
+                placed.transform.localScale = new Vector3(
+                    baseScale.x * placedScale.x,
+                    baseScale.y * placedScale.y,
+                    baseScale.z * placedScale.z
+                );
+            }
+            // 放大/縮小新放置的物件，便於辨識（1 = 不變）
+            placed.transform.localScale *= spawnScale;
+
+            // —— 最小修補：用放置物的實際高度把它「頂到」地表上，避免埋進去 —— 
+            // 取 Collider 或 Renderer bounds（以 Collider 為優先）
+            Bounds GetBounds(GameObject go)
+            {
+                var cols = go.GetComponentsInChildren<Collider>();
+                if (cols != null && cols.Length > 0)
+                {
+                    var b = cols[0].bounds;
+                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                    return b;
+                }
+                var rends = go.GetComponentsInChildren<Renderer>();
+                if (rends != null && rends.Length > 0)
+                {
+                    var b = rends[0].bounds;
+                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                    return b;
+                }
+                return new Bounds(go.transform.position, Vector3.one * 0.5f);
+            }
+
+            var b = GetBounds(placed);
+            // extents 是世界座標的一半尺寸；我們沿著命中的法線（一般為 Vector3.up）把物件抬出地表
+            var halfHeight = b.extents.y;
+            const float padding = 0.02f; // 稍微離地避免 z-fight
+            Vector3 up = lastHit.normal.normalized;
+            placed.transform.position = lastHit.point + up * (halfHeight + padding);
         }
 
         private void CancelPlacing()

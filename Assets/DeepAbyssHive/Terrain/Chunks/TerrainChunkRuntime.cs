@@ -61,6 +61,10 @@ namespace DeepAbyssHive.Terrain.Chunks
             // 陰影設定：一般預設即可，顯式開啟以防專案設定差異
             _mr.receiveShadows = true;
             _mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            
+            // 指定到 "Terrain" 層（若該層存在）
+            int terrainLayer = LayerMask.NameToLayer("Terrain");
+            if (terrainLayer != -1) gameObject.layer = terrainLayer;
         }
 
         // --- ITerrainChunk ---
