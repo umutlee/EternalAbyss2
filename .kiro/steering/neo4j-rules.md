@@ -4,15 +4,11 @@ globs:
 alwaysApply: true
 ---
 
-> 版本：2025-08-17 · 專案：Eternal Abyss · Workdir：`Eternal Abyss 2/`\
-> 標籤：`alwaysApply`、`kiro`、`neo4j`
+> 專案：Eternal Abyss · Workdir：`Eternal Abyss 2/`\
+> 標籤：`alwaysApply`、`codebuddy`、`neo4j`
 
 ## 目的
-> 版本：2025-08-17 · 專案：Eternal Abyss · Workdir：`Eternal Abyss 2/`\
-> 標籤：`alwaysApply`、`kiro`、`neo4j`
-
-## 目的
-統一 Kiro × Neo4j 的記錄與查詢規範，提供**可重用**的 Cypher 模板與命名規約。**嚴禁**將當日/當批次的具體參數（如 `EA-2025-...`）寫死於此規則檔。
+統一 CodeBuddy × Neo4j 的記錄與查詢規範，提供**可重用**的 Cypher 模板與命名規約。**嚴禁**將當日/當批次的具體參數（如 `EA-2025-...`）寫死於此規則檔。
 
 ## Session Guard（規則檔層級）
 
@@ -26,7 +22,7 @@ alwaysApply: true
 - `specKey`：`${PROJECT}-${YYYY-MM-DD}-MR` 例：`EA-2025-08-17-MR`
 - `taskKey`：`${PROJECT}-Refactor-B${N}-<Label>` 例：`EA-Refactor-B2-Events`
 - `changeId`：`${PROJECT}-${YYYY-MM-DD}-B${N}` 例：`EA-2025-08-17-B3`
-- `author`：使用公司 email 例：`chatgpt1@kooapps.com` 或 agent 名稱 例 `Claude Sonnet 4.0`  
+- `author`：使用 agent 如 Claude 4.0，Codebuddy 或 Kiro，或是公司 email 例：`chatgpt1@kooapps.com`
 
 ---
 
@@ -139,3 +135,7 @@ LIMIT coalesce($limit, 20);
 2. 實作**最小 diff**；展開實際 `files` 清單（避免 `**`）。
 3. 用模板三寫入 `Change` 與關聯；未提供 `committedAt` 則由伺服器填 `datetime()`。
 4. 需要時用模板四調整 `Task` 狀態；審核時用模板五。
+5. files 一律用實際路徑清單（不要 ** 萬用字元）。
+6. type 用 Change / Task / Spec 其一（大小寫一致）。
+7. committedAt 可留白（伺服器會自動 datetime()），或用 ISO-8601
+8. 若要補充說明，用 observations 的純字串項，別塞物件

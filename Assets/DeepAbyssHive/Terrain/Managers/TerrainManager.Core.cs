@@ -7,6 +7,7 @@ using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
+using DeepAbyssHive.Terrain.Chunks;
 
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
@@ -124,6 +125,7 @@ namespace DeepAbyssHive.Terrain.Managers
         public void TickUpdate(float deltaTime)
         {
             UpdateManager();
+            TickStreaming(deltaTime);
 
             // 逐幀驅動 chunk（避免 null）
             foreach (var kv in _terrainChunks)
@@ -209,6 +211,34 @@ namespace DeepAbyssHive.Terrain.Managers
 
         #region 缺失方法實現
 
+        /// <summary>
+        /// 創建地形塊實例
+        /// </summary>
+        /// <param name="chunkCoord">塊座標</param>
+        /// <param name="terrainData">地形數據</param>
+        /// <returns>地形塊實例</returns>
+        private ITerrainChunk CreateTerrainChunk(Vector2Int chunkCoord, TerrainType[,] terrainData)
+        {
+            var worldPos = ChunkToWorldPosition(chunkCoord);
+            var go = new GameObject($"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}");
+            go.transform.SetParent(this.transform, worldPositionStays: true);
+            go.transform.position = worldPos;
+
+            // 實際掛上 Runtime 版 Chunk（產 Mesh+Collider）
+            var runtime = go.AddComponent<DeepAbyssHive.Terrain.Chunks.TerrainChunkRuntime>();
+            runtime.Initialize(
+                chunkCoord,
+                ChunkSize,
+                ConfigTileSize,
+                ConfigSeed,
+                ConfigNoiseScale,
+                ConfigHeightScale
+            );
+
+            // 讓 chunk 吃進初始地形資料（目前以噪聲生成）
+            runtime.UpdateTerrainData(terrainData);
+            return runtime;
+        }
 
         /// <summary>
         /// 世界座標轉本地座標（在所屬分塊內的座標）
@@ -224,8 +254,6 @@ namespace DeepAbyssHive.Terrain.Managers
             
             return new Vector2Int(localX, localZ);
         }
-
-
 
         #endregion
     }

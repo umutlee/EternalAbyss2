@@ -194,7 +194,13 @@ namespace DeepAbyssHive.Terrain.Managers
             TerrainType[,] terrainData = GenerateChunkTerrain(chunkCoord);
             _chunkTerrainData[chunkCoord] = terrainData;
 
-            // TODO: 創建實際的地形塊物件
+            // 創建實際的地形塊物件
+            var chunk = CreateTerrainChunk(chunkCoord, terrainData);
+            if (chunk != null)
+            {
+                _terrainChunks[chunkCoord] = chunk;
+            }
+
             Debug.Log($"[{_managerName}] 載入分塊 {chunkCoord}");
         }
 
