@@ -1,5 +1,4 @@
 using UnityEngine;
-using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.Terrain.Config
 {
@@ -8,7 +7,7 @@ namespace DeepAbyssHive.Terrain.Config
     /// 包含地形生成、分块管理、噪声参数等所有配置
     /// </summary>
     [CreateAssetMenu(fileName = "TerrainConfig", menuName = "DeepAbyssHive/Config/Terrain Config")]
-    public partial class TerrainConfigSO : BaseConfigSO
+    public partial class TerrainConfigSO : ScriptableObject
     {
         [Header("分块设置")]
         [Tooltip("地形分块大小")]
@@ -18,7 +17,7 @@ namespace DeepAbyssHive.Terrain.Config
         public float tileSize = 1.0f;
         
         [Tooltip("加载半径（分块数量）")]
-        public int loadRadius = 3;
+        public float loadRadius = 3.0f;
         
         [Tooltip("卸载半径（分块数量）")]
         public int unloadRadius = 5;
@@ -78,15 +77,14 @@ namespace DeepAbyssHive.Terrain.Config
         [Tooltip("显示地形网格")]
         public bool showTerrainGrid = false;
 
-        protected override void OnValidate()
+        protected virtual void OnValidate()
         {
-            base.OnValidate();
             
             // 确保值在合理范围内
             chunkSize = Mathf.Max(1, chunkSize);
             tileSize = Mathf.Max(0.1f, tileSize);
-            loadRadius = Mathf.Max(1, loadRadius);
-            unloadRadius = Mathf.Max(loadRadius + 1, unloadRadius);
+            loadRadius = Mathf.Max(1.0f, loadRadius);
+            unloadRadius = Mathf.Max(Mathf.RoundToInt(loadRadius) + 1, unloadRadius);
             noiseScale = Mathf.Max(0.001f, noiseScale);
             heightScale = Mathf.Max(0.1f, heightScale);
             octaves = Mathf.Clamp(octaves, 1, 8);

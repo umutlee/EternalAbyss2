@@ -62,7 +62,7 @@ namespace DeepAbyssHive.Terrain.Managers
             _modificationProcessTimer = 0f;
             
             int processCount = 0;
-            while (_pendingModifications.Count > 0 && processCount < _maxModificationsPerFrame)
+            while (_pendingModifications.Count > 0 && processCount < ConfigMaxModificationsPerFrame)
             {
                 TerrainModification modification = _pendingModifications.Dequeue();
                 ApplyTerrainModification(modification);
@@ -87,7 +87,7 @@ namespace DeepAbyssHive.Terrain.Managers
             Vector2Int localCoord = WorldToLocalCoord(modification.Position);
             
             // 计算修改影响的区块范围
-            int chunkRadius = Mathf.CeilToInt(modification.Radius / (_chunkSize * _tileSize));
+            int chunkRadius = Mathf.CeilToInt(modification.Radius / (ConfigChunkSize * ConfigTileSize));
             
             for (int cx = -chunkRadius; cx <= chunkRadius; cx++)
             {
@@ -117,12 +117,12 @@ namespace DeepAbyssHive.Terrain.Managers
             // 计算修改在区块内的影响范围
             float radiusSquared = modification.Radius * modification.Radius;
             
-            for (int x = 0; x < _chunkSize; x++)
+            for (int x = 0; x < ConfigChunkSize; x++)
             {
-                for (int y = 0; y < _chunkSize; y++)
+                for (int y = 0; y < ConfigChunkSize; y++)
                 {
                     // 计算当前瓦片的世界坐标
-                    Vector3 tileWorldPos = chunkWorldPos + new Vector3(x * _tileSize, 0, y * _tileSize);
+                    Vector3 tileWorldPos = chunkWorldPos + new Vector3(x * ConfigTileSize, 0, y * ConfigTileSize);
                     
                     // 计算与修改中心的距离
                     float distanceSquared = Vector3.SqrMagnitude(new Vector3(tileWorldPos.x, 0, tileWorldPos.z) - 
@@ -161,7 +161,7 @@ namespace DeepAbyssHive.Terrain.Managers
             
             // 重新生成受影响的区块
             Vector2Int centerChunkCoord = WorldToChunkCoord(lastModification.Position);
-            int chunkRadius = Mathf.CeilToInt(lastModification.Radius / (_chunkSize * _tileSize));
+            int chunkRadius = Mathf.CeilToInt(lastModification.Radius / (ConfigChunkSize * ConfigTileSize));
             
             for (int cx = -chunkRadius; cx <= chunkRadius; cx++)
             {

@@ -25,9 +25,10 @@ namespace DeepAbyssHive.Terrain.Managers
             
             // 计算需要加载的区块
             HashSet<Vector2Int> chunksToLoad = new HashSet<Vector2Int>();
-            for (int x = -_loadRadius; x <= _loadRadius; x++)
+            int loadRadius = Mathf.RoundToInt(ConfigLoadRadius);
+            for (int x = -loadRadius; x <= loadRadius; x++)
             {
-                for (int y = -_loadRadius; y <= _loadRadius; y++)
+                for (int y = -loadRadius; y <= loadRadius; y++)
                 {
                     Vector2Int chunkCoord = new Vector2Int(centerChunk.x + x, centerChunk.y + y);
                     chunksToLoad.Add(chunkCoord);
@@ -68,18 +69,18 @@ namespace DeepAbyssHive.Terrain.Managers
         /// <returns>地形类型数组</returns>
         private TerrainType[,] GenerateChunkTerrain(Vector2Int chunkCoord)
         {
-            TerrainType[,] terrainData = new TerrainType[_chunkSize, _chunkSize];
+            TerrainType[,] terrainData = new TerrainType[ConfigChunkSize, ConfigChunkSize];
             
             // 使用柏林噪声生成地形高度
-            float offsetX = chunkCoord.x * _chunkSize;
-            float offsetY = chunkCoord.y * _chunkSize;
+            float offsetX = chunkCoord.x * ConfigChunkSize;
+            float offsetY = chunkCoord.y * ConfigChunkSize;
             
-            for (int x = 0; x < _chunkSize; x++)
+            for (int x = 0; x < ConfigChunkSize; x++)
             {
-                for (int y = 0; y < _chunkSize; y++)
+                for (int y = 0; y < ConfigChunkSize; y++)
                 {
-                    float noiseX = (offsetX + x) * _noiseScale;
-                    float noiseY = (offsetY + y) * _noiseScale;
+                    float noiseX = (offsetX + x) * ConfigNoiseScale;
+                    float noiseY = (offsetY + y) * ConfigNoiseScale;
                     
                     float perlinValue = Mathf.PerlinNoise(noiseX, noiseY);
                     
@@ -128,14 +129,14 @@ namespace DeepAbyssHive.Terrain.Managers
             // 示例：在特定条件下生成河流
             if (chunkCoord.x % 5 == 0)
             {
-                int riverY = UnityEngine.Random.Range(0, _chunkSize);
+                int riverY = UnityEngine.Random.Range(0, ConfigChunkSize);
                 int riverWidth = UnityEngine.Random.Range(2, 5);
                 
-                for (int x = 0; x < _chunkSize; x++)
+                for (int x = 0; x < ConfigChunkSize; x++)
                 {
                     for (int y = riverY - riverWidth / 2; y <= riverY + riverWidth / 2; y++)
                     {
-                        if (y >= 0 && y < _chunkSize)
+                        if (y >= 0 && y < ConfigChunkSize)
                         {
                             terrainData[x, y] = TerrainType.Water;
                         }
@@ -179,6 +180,41 @@ namespace DeepAbyssHive.Terrain.Managers
             }
             
             Debug.Log($"[{_managerName}] 重新生成所有地形块完成，共 {chunkCoords.Count} 个区块");
+        }
+
+        /// <summary>
+        /// 載入地形分塊
+        /// </summary>
+        private void LoadChunk(Vector2Int chunkCoord)
+        {
+            if (_terrainChunks.ContainsKey(chunkCoord))
+                return;
+
+            // 生成地形數據
+            TerrainType[,] terrainData = GenerateChunkTerrain(chunkCoord);
+            _chunkTerrainData[chunkCoord] = terrainData;
+
+            // TODO: 創建實際的地形塊物件
+            Debug.Log($"[{_managerName}] 載入分塊 {chunkCoord}");
+        }
+
+        /// <summary>
+        /// 卸載地形分塊
+        /// </summary>
+        private void UnloadChunk(Vector2Int chunkCoord)
+        {
+            if (_terrainChunks.TryGetValue(chunkCoord, out var chunk))
+            {
+                chunk?.Cleanup();
+                _terrainChunks.Remove(chunkCoord);
+            }
+            
+            if (_chunkTerrainData.ContainsKey(chunkCoord))
+            {
+                _chunkTerrainData.Remove(chunkCoord);
+            }
+
+            Debug.Log($"[{_managerName}] 卸載分塊 {chunkCoord}");
         }
         #endregion
     }

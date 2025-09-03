@@ -101,7 +101,7 @@ namespace DeepAbyssHive.Terrain.Managers
             }
             
             // 检查本地坐标是否在有效范围内
-            if (localCoord.x < 0 || localCoord.x >= _chunkSize || localCoord.y < 0 || localCoord.y >= _chunkSize)
+            if (localCoord.x < 0 || localCoord.x >= ConfigChunkSize || localCoord.y < 0 || localCoord.y >= ConfigChunkSize)
             {
                 Debug.LogWarning($"[{_managerName}] 本地坐标超出范围: {localCoord}");
                 return TerrainType.Normal;
@@ -143,7 +143,7 @@ namespace DeepAbyssHive.Terrain.Managers
         public Vector3 GetTerrainNormal(Vector3 worldPosition)
         {
             // 采样周围点的高度来计算法线
-            float spacing = _tileSize;
+            float spacing = ConfigTileSize;
             float heightCenter = GetTerrainHeight(worldPosition);
             float heightRight = GetTerrainHeight(worldPosition + new Vector3(spacing, 0, 0));
             float heightForward = GetTerrainHeight(worldPosition + new Vector3(0, 0, spacing));
@@ -225,7 +225,7 @@ namespace DeepAbyssHive.Terrain.Managers
             
             // 计算采样范围
             Vector2Int centerChunkCoord = WorldToChunkCoord(center);
-            int chunkRadius = Mathf.CeilToInt(radius / (_chunkSize * _tileSize));
+            int chunkRadius = Mathf.CeilToInt(radius / (ConfigChunkSize * ConfigTileSize));
             float radiusSquared = radius * radius;
             
             // 遍历范围内的区块
@@ -241,12 +241,12 @@ namespace DeepAbyssHive.Terrain.Managers
                         TerrainType[,] terrainData = _chunkTerrainData[chunkCoord];
                         Vector3 chunkWorldPos = ChunkToWorldPosition(chunkCoord);
                         
-                        for (int x = 0; x < _chunkSize; x++)
+                        for (int x = 0; x < ConfigChunkSize; x++)
                         {
-                            for (int y = 0; y < _chunkSize; y++)
+                            for (int y = 0; y < ConfigChunkSize; y++)
                             {
                                 // 计算当前瓦片的世界坐标
-                                Vector3 tileWorldPos = chunkWorldPos + new Vector3(x * _tileSize, 0, y * _tileSize);
+                                Vector3 tileWorldPos = chunkWorldPos + new Vector3(x * ConfigTileSize, 0, y * ConfigTileSize);
                                 
                                 // 计算与中心点的距离
                                 float distanceSquared = Vector3.SqrMagnitude(new Vector3(tileWorldPos.x, 0, tileWorldPos.z) - 

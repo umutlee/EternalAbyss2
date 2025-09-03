@@ -6,6 +6,7 @@ namespace DeepAbyssHive.Terrain.Enums
     public enum TerrainType
     {
         Normal,
+        Ground = Normal,  // 別名，用於向後兼容
         Rock,
         Water,
         Lava,

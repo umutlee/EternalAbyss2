@@ -27,10 +27,11 @@ namespace DeepAbyssHive.Core.Boot
             }
             DontDestroyOnLoad(root);
 
-            // 2) 確保三個 Manager 存在（直接 typeof 省去反射與字串）
+            // 2) 確保四個 Manager 存在（直接 typeof 省去反射與字串）
             EnsureComponent<DeepAbyssHive.Creep.Managers.CreepManager>(root, "[BOOT] Added {0} to 'Managers'.");
             EnsureComponent<DeepAbyssHive.Units.Managers.UnitManager>(root, "[BOOT] Added {0} to 'Managers'.");
             EnsureComponent<DeepAbyssHive.SpatialIndex.Managers.SpatialIndexManager>(root, "[BOOT] Added {0} to 'Managers'.");
+            EnsureComponent<DeepAbyssHive.Terrain.Managers.TerrainManager>(root, "[BOOT] Added {0} to 'Managers'.");
         }
 
         private static T EnsureComponent<T>(GameObject go, string logFmt) where T : Component

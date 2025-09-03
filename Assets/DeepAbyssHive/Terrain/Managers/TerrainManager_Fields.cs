@@ -6,7 +6,6 @@ namespace DeepAbyssHive.Terrain.Managers
     {
         [SerializeField] private int _chunkSize = 16;
         [SerializeField] private float _tileSize = 1f;
-        [SerializeField] private int _loadRadius = 4;
 
         [SerializeField] private float _noiseScale = 0.05f;
         [SerializeField] private float _heightScale = 10f;

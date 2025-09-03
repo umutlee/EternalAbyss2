@@ -9,10 +9,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a68ec41e3abfb438f93e11185ba8840e, type: 3}
+  m_Script: {fileID: 11500000, guid: 2d559bc93328a47589ca35f5e3f2afb6, type: 3}
   m_Name: CreepConfig
   m_EditorClassIdentifier: 
-  _configName: Creeg Config
+  _configName: 
   _version: 1.0
   _description: 
   _enableDebugLog: 0

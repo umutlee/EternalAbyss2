@@ -7,6 +7,7 @@ using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
+using DeepAbyssHive.Terrain.Providers;
 // // using DeepAbyssHive.Terrain.Extensions; // 暫時註釋，Extensions可能不存在 // 暫時註釋，Extensions可能不存在
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
@@ -38,6 +39,9 @@ namespace DeepAbyssHive.Terrain.Services
         
         private int _chunkSize;
         private float _tileSize;
+        
+        // EA-M1-T01: 地形提供者
+        private ITerrainProvider _terrainProvider;
         #endregion
 
         #region 构造函数
@@ -49,11 +53,30 @@ namespace DeepAbyssHive.Terrain.Services
             _chunkTerrainData = chunkTerrainData;
             _terrainChunks = terrainChunks;
             
+            // EA-M1-T01: 初始化地形提供者（預設使用平地提供者）
+            _terrainProvider = new FlatTerrainProvider();
+            
             InitializeParameters();
         }
         #endregion
 
         #region ITerrainQueryService 实现
+
+        /// <summary>
+        /// EA-M1-T01: 採樣指定位置的地形高度
+        /// </summary>
+        public float SampleHeight(Vector3 worldPosition)
+        {
+            return _terrainProvider?.SampleHeight(worldPosition) ?? 0f;
+        }
+
+        /// <summary>
+        /// EA-M1-T01: 採樣指定位置的地形類型
+        /// </summary>
+        public TerrainType SampleType(Vector3 worldPosition)
+        {
+            return _terrainProvider?.SampleType(worldPosition) ?? TerrainType.Ground;
+        }
        
         public DeepAbyssHive.Terrain.Data.TerrainChunk GetChunkAt(Vector3 worldPosition)
         {
