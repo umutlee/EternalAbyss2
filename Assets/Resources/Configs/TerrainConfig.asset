@@ -17,8 +17,8 @@ MonoBehaviour:
   tileSize: 1
   loadRadius: 3
   unloadRadius: 5
-  noiseScale: 0.02
-  heightScale: 1.5
+  noiseScale: 0.05
+  heightScale: 3
   seed: 23456
   octaves: 4
   persistence: 0.5

@@ -198,7 +198,7 @@ MonoBehaviour:
   sceneCamera: {fileID: 2098406014}
   groundMask:
     serializedVersion: 2
-    m_Bits: 8
+    m_Bits: 256
   placePrefab: {fileID: 6190413081303504758, guid: b74c410383e3e4964ac12801ca313ad5,
     type: 3}
   previewMaterial: {fileID: 2100000, guid: df0665fb25fa0b148ab5fda04ba968f7, type: 2}
@@ -206,7 +206,7 @@ MonoBehaviour:
   previewHeight: 0.5
   placedScale: {x: 1, y: 1, z: 1}
   requireCreep: 0
-  spawnScale: 1
+  spawnScale: 10
   toggleKey: 98
   rotateCWKey: 101
   rotateCCWKey: 113
@@ -246,7 +246,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!64 &343924485
 MeshCollider:
   m_ObjectHideFlags: 0
