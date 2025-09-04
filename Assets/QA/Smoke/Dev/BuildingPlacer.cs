@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Reflection;
 using DeepAbyssHive.Creep.Managers; // 若沒有這命名空間可刪掉這行
 
 namespace DeepAbyssHive.Dev
@@ -21,6 +22,12 @@ namespace DeepAbyssHive.Dev
         
         // 放置尺寸倍率（可於 Inspector 調整，預設 1 = 不變）
         [SerializeField] private float spawnScale = 1f;
+
+        [Header("Blocking Settings")]
+        [Tooltip("擋重疊時優先使用 Collider.bounds；若 prefab 沒有 Collider 才退回 Renderer.bounds")]
+        [SerializeField] private bool useColliderBoundsForBlocking = true;
+        [Tooltip("額外外擴/縮小的邊界（世界單位）。正值＝更寬鬆容易擋，負值＝允許更靠近。")]
+        [SerializeField] private float blockPadding = 0.02f;
 
         [SerializeField] private KeyCode toggleKey = KeyCode.B;
         [SerializeField] private KeyCode rotateCWKey = KeyCode.E;
@@ -141,6 +148,61 @@ namespace DeepAbyssHive.Dev
             var pos = lastValidPos;
             pos.y -= previewHeight; // 放回地面
 
+            // —— 重疊擋（強化版）：用臨時預覽物取世界 bounds；優先 Collider，再退回 Renderer —— 
+            Bounds CalcWorldBounds(GameObject go, bool preferCollider)
+            {
+                var cols = go.GetComponentsInChildren<Collider>(true);
+                var rends = go.GetComponentsInChildren<Renderer>(true);
+                if (preferCollider && cols != null && cols.Length > 0)
+                {
+                    var b = cols[0].bounds;
+                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                    return b;
+                }
+                if (rends != null && rends.Length > 0)
+                {
+                    var b = rends[0].bounds;
+                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                    return b;
+                }
+                if (!preferCollider && cols != null && cols.Length > 0)
+                {
+                    var b = cols[0].bounds;
+                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                    return b;
+                }
+                return new Bounds(go.transform.position, Vector3.one * 0.5f);
+            }
+
+            // 建立臨時預覽（不參與物理/射線）
+            var preview = Instantiate(placePrefab, pos, rotation);
+            int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
+            if (ignoreRaycast != -1)
+            {
+                foreach (var t in preview.GetComponentsInChildren<Transform>(true))
+                    t.gameObject.layer = ignoreRaycast;
+            }
+            foreach (var c in preview.GetComponentsInChildren<Collider>(true))
+                c.enabled = false;
+
+            Bounds wb = CalcWorldBounds(preview, useColliderBoundsForBlocking);
+            var center = wb.center;
+            var half   = wb.extents + Vector3.one * blockPadding; // 可調 padding
+
+            Destroy(preview); // 僅用於量測，立即銷毀
+
+            // 檢查重疊（排除 Terrain 與 IgnoreRaycast）
+            int terrainLayer = LayerMask.NameToLayer("Terrain");
+            int blockMask = ~0;
+            if (terrainLayer != -1)      blockMask &= ~(1 << terrainLayer);
+            if (ignoreRaycast != -1)     blockMask &= ~(1 << ignoreRaycast);
+            var hits = Physics.OverlapBox(center, half, rotation, blockMask, QueryTriggerInteraction.Ignore);
+            if (hits != null && hits.Length > 0)
+            {
+                Debug.Log($"[PLACE] blocked by {hits[0].name}, cancel placing.");
+                return;
+            }
+
             // 實例化放置物
             var placed = Instantiate(placePrefab, pos, rotation);
             // 放置實體同樣採用「原比例 × 倍率」
@@ -176,9 +238,9 @@ namespace DeepAbyssHive.Dev
                 return new Bounds(go.transform.position, Vector3.one * 0.5f);
             }
 
-            var b = GetBounds(placed);
+            var placedBounds = GetBounds(placed);
             // extents 是世界座標的一半尺寸；我們沿著命中的法線（一般為 Vector3.up）把物件抬出地表
-            var halfHeight = b.extents.y;
+            var halfHeight = placedBounds.extents.y;
             const float padding = 0.02f; // 稍微離地避免 z-fight
             Vector3 up = lastHit.normal.normalized;
             placed.transform.position = lastHit.point + up * (halfHeight + padding);

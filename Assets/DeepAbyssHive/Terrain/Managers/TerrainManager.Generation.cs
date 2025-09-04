@@ -166,20 +166,30 @@ namespace DeepAbyssHive.Terrain.Managers
         }
 
         /// <summary>
-        /// 重新生成所有地形块
+        /// 以目前中心重建所有 Chunk（最小修補版）
         /// </summary>
         private void RegenerateAllChunks()
         {
-            List<Vector2Int> chunkCoords = new List<Vector2Int>(_terrainChunks.Keys);
-            
-            foreach (var chunkCoord in chunkCoords)
+            if (_terrainChunks == null || _terrainChunks.Count == 0)
             {
-                // 卸载并重新加载地形块
-                UnloadChunk(chunkCoord);
-                LoadChunk(chunkCoord);
+                // 無已載入：直接以當前中心載入一圈
+                var centerWorld = ChunkToWorldPosition(_currentCenterChunk);
+                Debug.Log($"[STREAM] RegenerateAllChunks(): cold load around center={_currentCenterChunk}");
+                LoadTerrain(centerWorld);
+                return;
             }
-            
-            Debug.Log($"[{_managerName}] 重新生成所有地形块完成，共 {chunkCoords.Count} 个区块");
+
+            // 1) 卸載
+            var keys = new System.Collections.Generic.List<UnityEngine.Vector2Int>(_terrainChunks.Keys);
+            foreach (var k in keys)
+                UnloadChunk(k);
+            _terrainChunks.Clear();
+            _chunkTerrainData?.Clear();
+
+            // 2) 以目前中心重載
+            var world = ChunkToWorldPosition(_currentCenterChunk);
+            Debug.Log($"[STREAM] RegenerateAllChunks(): reload around center={_currentCenterChunk}");
+            LoadTerrain(world);
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace DeepAbyssHive.Terrain.Managers
 {
@@ -11,6 +12,47 @@ namespace DeepAbyssHive.Terrain.Managers
     /// </summary>
     public partial class TerrainManager
     {
+        // 每個 Chunk 的當前 LOD 快取
+        private readonly Dictionary<Vector2Int, int> _chunkLOD = new Dictionary<Vector2Int, int>();
+        private const float LOD_HYSTERESIS_CHUNKS = 1f; // 1 個 chunk 寬作為遲滯
+
+        private void ApplyChunkLOD(Vector2Int coord, GameObject chunkGO, Vector3 streamCenterWorld)
+        {
+            if (!chunkGO) return;
+            Vector3 chunkCenter = ChunkToWorldPosition(coord)
+                                  + new Vector3(ConfigChunkSize * ConfigTileSize * 0.5f, 0f,
+                                                ConfigChunkSize * ConfigTileSize * 0.5f);
+            float dist = Vector3.Distance(streamCenterWorld, chunkCenter);
+            int desired = GetTargetLOD(dist);
+
+            int prev;
+            _chunkLOD.TryGetValue(coord, out prev);
+
+            // 遲滯：若目前為 0，離開 near+margin 才升到 1；若目前為 1，進入 near-margin 才降到 0
+            float chunkWorld = ConfigChunkSize * ConfigTileSize;
+            float near = Mathf.Max(1f, ViewDistance * 0.6f);
+            float margin = LOD_HYSTERESIS_CHUNKS * chunkWorld;
+            if (prev == 0 && dist <= near + margin) desired = 0;
+            if (prev == 1 && dist >= near - margin) desired = 1;
+
+            // 簡化為兩級 LOD：近距離用 0，遠距離用 1
+            desired = Mathf.Clamp(desired, 0, 1);
+
+            if (desired == prev) return;
+
+            var runtime = chunkGO.GetComponent<DeepAbyssHive.Terrain.Chunks.TerrainChunkRuntime>();
+            if (runtime)
+            {
+                runtime.SetLOD(desired);
+                _chunkLOD[coord] = desired;
+                Debug.Log($"[STREAM] LOD change {coord} => {desired}");
+            }
+            else
+            {
+                _chunkLOD[coord] = desired;
+            }
+        }
+
         [Header("Streaming")]
         [SerializeField] private float _streamUpdateInterval = 0.25f;
         [SerializeField] private int   _streamHysteresisChunks = 1;
@@ -59,6 +101,23 @@ namespace DeepAbyssHive.Terrain.Managers
                 float perBand = vd / levels;
 
                 Debug.Log($"[STREAM] center={centerChunk}, interval={_streamUpdateInterval}s, hysteresis={_streamHysteresisChunks}ch, LODbands≈{perBand:0.##} (levels={levels})");
+            }
+
+            // —— 對已載入的 chunk 依距離套 LOD ——   
+            var centerWorld = ChunkToWorldPosition(_lastStreamCenterChunk);
+            foreach (var kv in _terrainChunks)
+            {
+                var coord = kv.Key;
+                GameObject go = null;
+                // 嘗試從 ITerrainChunk 還原 GameObject
+                var asMb = kv.Value as MonoBehaviour;
+                if (asMb) go = asMb.gameObject;
+                if (!go)
+                {
+                    var found = GameObject.Find($"TerrainChunk_{coord.x}_{coord.y}");
+                    if (found) go = found;
+                }
+                if (go) ApplyChunkLOD(coord, go, centerWorld);
             }
         }
 

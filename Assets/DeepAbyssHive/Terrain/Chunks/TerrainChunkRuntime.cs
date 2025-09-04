@@ -21,6 +21,7 @@ namespace DeepAbyssHive.Terrain.Chunks
         private int   _seed;
         private float _noiseScale;
         private float _heightScale;
+        private int _lod = 0; // 0: stride 1, 1: stride 2
 
         // --- 組件快取 ---
         private MeshFilter   _mf;
@@ -62,9 +63,26 @@ namespace DeepAbyssHive.Terrain.Chunks
             _mr.receiveShadows = true;
             _mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             
-            // 指定到 "Terrain" 層（若該層存在）
+            // 指定到 "Terrain" 層（若該層存在）—包含子階層
             int terrainLayer = LayerMask.NameToLayer("Terrain");
-            if (terrainLayer != -1) gameObject.layer = terrainLayer;
+            if (terrainLayer != -1)
+            {
+                gameObject.layer = terrainLayer;
+                SetLayerRecursive(transform, terrainLayer);
+            }
+        }
+
+        private static void SetLayerRecursive(Transform t, int layer)
+        {
+            for (int i = 0; i < t.childCount; i++)
+            {
+                var c = t.GetChild(i);
+                if (c)
+                {
+                    c.gameObject.layer = layer;
+                    SetLayerRecursive(c, layer);
+                }
+            }
         }
 
         // --- ITerrainChunk ---
@@ -77,6 +95,74 @@ namespace DeepAbyssHive.Terrain.Chunks
         {
             // 以 Perlin 噪聲產生高度（MVP）
             BuildMeshFromNoise();
+        }
+
+        /// <summary>最小 LOD：0/1，分別以 stride=1/2 重新生成。</summary>
+        public void SetLOD(int lod)
+        {
+            lod = Mathf.Clamp(lod, 0, 1);
+            if (_lod == lod) return;
+            _lod = lod;
+            RebuildMeshForLOD();
+        }
+
+        private void RebuildMeshForLOD()
+        {
+            int stride = (_lod == 0) ? 1 : 2;
+            stride = Mathf.Max(1, stride);
+
+            int vertsPerSide = (_chunkSize / stride) + 1;
+            var vertices = new Vector3[vertsPerSide * vertsPerSide];
+            var uvs       = new Vector2[vertices.Length];
+            int triCount = (vertsPerSide - 1) * (vertsPerSide - 1) * 6;
+            var triangles = new int[triCount];
+
+            int vi = 0;
+            float baseX = transform.position.x;
+            float baseZ = transform.position.z;
+            for (int z = 0; z < vertsPerSide; z++)
+            {
+                for (int x = 0; x < vertsPerSide; x++, vi++)
+                {
+                    float wx = baseX + (x * stride) * _tileSize;
+                    float wz = baseZ + (z * stride) * _tileSize;
+                    float h = Mathf.PerlinNoise((_seed + wx) * _noiseScale, (_seed + wz) * _noiseScale) * _heightScale;
+                    vertices[vi] = new Vector3((x * stride) * _tileSize, h, (z * stride) * _tileSize);
+                    uvs[vi] = new Vector2(x / (float)(vertsPerSide - 1), z / (float)(vertsPerSide - 1));
+                }
+            }
+
+            int ti = 0;
+            for (int z = 0; z < vertsPerSide - 1; z++)
+            {
+                for (int x = 0; x < vertsPerSide - 1; x++)
+                {
+                    int i0 = z * vertsPerSide + x;
+                    int i1 = i0 + 1;
+                    int i2 = i0 + vertsPerSide;
+                    int i3 = i2 + 1;
+                    triangles[ti++] = i0; triangles[ti++] = i2; triangles[ti++] = i1;
+                    triangles[ti++] = i1; triangles[ti++] = i2; triangles[ti++] = i3;
+                }
+            }
+
+            var mf = GetComponent<MeshFilter>();
+            var mc = GetComponent<MeshCollider>();
+            if (!mf) mf = gameObject.AddComponent<MeshFilter>();
+            var mr = GetComponent<MeshRenderer>();
+            if (!mr) mr = gameObject.AddComponent<MeshRenderer>();
+
+            var mesh = mf.sharedMesh ? mf.sharedMesh : new Mesh();
+            mesh.indexFormat = (vertices.Length > 65000)
+                ? UnityEngine.Rendering.IndexFormat.UInt32
+                : UnityEngine.Rendering.IndexFormat.UInt16;
+            mesh.Clear();
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mf.sharedMesh = mesh;
+            if (mc) mc.sharedMesh = mesh;
         }
 
         public void Cleanup()

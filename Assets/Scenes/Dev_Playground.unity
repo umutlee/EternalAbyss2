@@ -206,7 +206,7 @@ MonoBehaviour:
   previewHeight: 0.5
   placedScale: {x: 1, y: 1, z: 1}
   requireCreep: 0
-  spawnScale: 10
+  spawnScale: 1
   toggleKey: 98
   rotateCWKey: 101
   rotateCCWKey: 113
@@ -414,6 +414,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1260670766}
   - component: {fileID: 1260670765}
+  - component: {fileID: 1260670767}
   m_Layer: 0
   m_Name: Dev Helper
   m_TagString: Untagged
@@ -448,6 +449,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1260670767
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d70787024598049feab717a11806dd4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayMask:
+    serializedVersion: 2
+    m_Bits: 256
+  showCoords: 1
 --- !u!1 &1337030030
 GameObject:
   m_ObjectHideFlags: 0
