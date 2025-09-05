@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Reflection;
 using DeepAbyssHive.Creep.Managers; // 若沒有這命名空間可刪掉這行
+using DeepAbyssHive.Common.Placement;
 
 namespace DeepAbyssHive.Dev
 {
@@ -43,9 +44,11 @@ namespace DeepAbyssHive.Dev
         private bool isPlacing;
         private Vector3 lastValidPos;
         private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
+        private PlacementValidator placementValidator; // 統一放置驗證器
 
         void Awake()
         {
+            placementValidator = new PlacementValidator(); // 初始化驗證器
             if (!sceneCamera) sceneCamera = Camera.main;
             if (!previewMaterial)
             {
@@ -196,10 +199,11 @@ namespace DeepAbyssHive.Dev
             int blockMask = ~0;
             if (terrainLayer != -1)      blockMask &= ~(1 << terrainLayer);
             if (ignoreRaycast != -1)     blockMask &= ~(1 << ignoreRaycast);
-            var hits = Physics.OverlapBox(center, half, rotation, blockMask, QueryTriggerInteraction.Ignore);
-            if (hits != null && hits.Length > 0)
+            
+            // 使用 PlacementValidator 進行統一驗證
+            if (placementValidator.IsBlocked(center, half, rotation, blockMask))
             {
-                Debug.Log($"[PLACE] blocked by {hits[0].name}, cancel placing.");
+                Debug.Log("[PLACE] blocked by collision, cancel placing.");
                 return;
             }
 
