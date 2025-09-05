@@ -88,10 +88,11 @@ namespace DeepAbyssHive.Dev
             {
                 lastHit = hit; // 保存 hit 資訊供 PlaceNow() 使用
                 
-                // 統一使用 GameConfig.snapSize 進行 Grid Snap
+                // Grid Snap（若啟用）與 Rotation Step（若啟用）：先量化，後續以量化結果計算/驗證
                 var cfg = GameConfigProvider.Current;
                 var worldPoint = hit.point;
                 var snappedPoint = SnapXZ(worldPoint, cfg.snapSize);
+                rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
                 snappedPoint.y = hit.point.y + previewHeight;
 
                 EnsurePreview();
@@ -313,6 +314,16 @@ namespace DeepAbyssHive.Dev
             float sx = Mathf.Round(v.x / step) * step;
             float sz = Mathf.Round(v.z / step) * step;
             return new Vector3(sx, v.y, sz);
+        }
+
+        private static Quaternion SnapRotationY(Quaternion rot, float stepDeg)
+        {
+            if (stepDeg <= 0f) return rot;
+            var e = rot.eulerAngles;
+            e.x = 0f; // 直立建築：避免意外傾斜
+            e.z = 0f;
+            e.y = Mathf.Round(e.y / stepDeg) * stepDeg;
+            return Quaternion.Euler(e);
         }
     }
 }

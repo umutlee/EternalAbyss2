@@ -24,6 +24,9 @@ namespace DeepAbyssHive.Core.Config
         [Header("Placement UX")]
         [Tooltip("格點對齊步長（世界單位；0=關閉）。啟用後放置中心會對齊到該步長的網格。")]
         public float snapSize = 0.0f;
+
+        [Tooltip("旋轉步進（度；0=關閉自由旋轉）。僅量化 Y 軸旋轉，並在預覽/放置均套用。")]
+        public float rotationStepDegrees = 0.0f;
     }
 
     /// <summary>
@@ -57,7 +60,7 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}");
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}");
         }
     }
 }
