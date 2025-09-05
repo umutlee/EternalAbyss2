@@ -12,6 +12,8 @@ namespace DeepAbyssHive.Common.Placement
     {
         /// <summary>SpatialIndex 並聯檢查：true=通過（無衝突）</summary>
         public static Func<Bounds, LayerMask, float, bool> SpatialIndexPredicate;
+        /// <summary>最近鄰距離檢查：回傳 true 表示「半徑內沒有鄰居」（通過）</summary>
+        public static Func<Vector3, float, LayerMask, bool> NoNeighborWithinRadiusPredicate;
         /// <summary>菌毯要求：true=該 Bounds 位於菌毯覆蓋內</summary>
         public static Func<Bounds, bool> RequireCreepPredicate;
         /// <summary>邊界檢查：true=超界（不可放）</summary>
@@ -66,11 +68,23 @@ namespace DeepAbyssHive.Common.Placement
                 }
             }
 
-            // 3.5) 最小間距（獨立於 margin）
-            if (cfg.minSpacing > 0f && ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask))
+            // 3.5) 最小間距（獨立於 margin；Prefer SpatialIndex 最近鄰）
+            if (cfg.minSpacing > 0f)
             {
-                LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
-                return LastResult;
+                bool spacingOk;
+                if (NoNeighborWithinRadiusPredicate != null)
+                {
+                    spacingOk = NoNeighborWithinRadiusPredicate(rawBounds.center, cfg.minSpacing, blockMask);
+                }
+                else
+                {
+                    spacingOk = !ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask);
+                }
+                if (!spacingOk)
+                {
+                    LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
+                    return LastResult;
+                }
             }
 
             // 4) 菌毯要求（可選）
