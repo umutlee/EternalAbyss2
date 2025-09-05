@@ -1,0 +1,139 @@
+
+
+
+---
+description: M3-T06 旋轉支援（有向 OverlapBox）＋ M3-T07 刪除工具（Dev 專用）— 最小可行接線（2025-09-05 18:40 Asia/Taipei）
+globs:
+  - DeepAbyssHive/Common/Placement/PlacementValidator.cs
+  - QA/Smoke/Dev/BuildingPlacer.cs
+  - QA/Smoke/Dev/BuildingDeleteTool.cs
+alwaysApply: true
+# PLAN
+# - PlacementValidator：新增有向版 ValidateByConfig(center, half, rotation, mask, extraMargin)，Physics 用 rotation；舊 API 保持相容。
+# - BuildingPlacer：呼叫改用有向版（傳入 center/half/rotation），讓旋轉影響實際驗證與預覽一致。
+# - BuildingDeleteTool：新增 Dev 小工具，按 Delete 或 X 射線刪除 Building 層物件；不動既有 Placer。
+# CHANGES
+PATCH: DeepAbyssHive/Common/Placement/PlacementValidator.cs
+*** /a/DeepAbyssHive/Common/Placement/PlacementValidator.cs
+--- /b/DeepAbyssHive/Common/Placement/PlacementValidator.cs
+@@
+-        public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
++        // 舊版：僅 AABB，保持相容
++        public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
++        {
++            return ValidateByConfig(rawBounds.center, rawBounds.extents, Quaternion.identity, blockMask, extraMargin);
++        }
++
++        /// <summary>
++        /// 新版：支援旋轉的放置驗證（Physics.OverlapBox 使用 rotation）
++        /// </summary>
++        public static Result<Bounds> ValidateByConfig(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask, float extraMargin = 0f)
+         {
+             var cfg = GameConfigProvider.Current;
+-            // margin 取較大者，讓呼叫端可臨時收/放
+-            float margin = Mathf.Max(cfg.margin, extraMargin);
+-
+-            var bounds = ExpandBounds(rawBounds, margin);
++            float margin = Mathf.Max(cfg.margin, extraMargin);
++            // 傳回資料仍以 AABB 表示，但物理碰撞用有向盒
++            var rawBounds = new Bounds(center, halfExtents * 2f);
++            var bounds = ExpandBounds(rawBounds, margin);
+@@
+-            if (HasPhysicsCollision(bounds, blockMask))
++            if (HasPhysicsCollisionOriented(center, halfExtents, rotation, blockMask))
+             {
+                 LastResult = PlacementResults.Collision("[Placement] Physics collision");
+                 return LastResult;
+             }
+@@
+-            if (cfg.minSpacing > 0f && ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask))
++            if (cfg.minSpacing > 0f && ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask))
+             {
+                 LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
+                 return LastResult;
+             }
+@@
+-        private static bool HasPhysicsCollision(Bounds b, LayerMask blockMask)
++        // 舊版（相容），保留給既有呼叫點
++        private static bool HasPhysicsCollision(Bounds b, LayerMask blockMask)
+         {
+             var hits = Physics.OverlapBox(
+                 b.center,
+                 b.extents,
+                 Quaternion.identity,
+                 blockMask,
+                 QueryTriggerInteraction.Ignore
+             );
+             return hits != null && hits.Length > 0;
+         }
++
++        // 新版：有向 OverlapBox
++        private static bool HasPhysicsCollisionOriented(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask)
++        {
++            var hits = Physics.OverlapBox(
++                center,
++                halfExtents,
++                rotation,
++                blockMask,
++                QueryTriggerInteraction.Ignore
++            );
++            return hits != null && hits.Length > 0;
++        }
+*** End Patch
+PATCH: QA/Smoke/Dev/BuildingPlacer.cs
+*** /a/QA/Smoke/Dev/BuildingPlacer.cs
+--- /b/QA/Smoke/Dev/BuildingPlacer.cs
+@@
+-            var worldBounds = new Bounds(center, half * 2f);
+-            var result = PlacementValidator.ValidateByConfig(worldBounds, includeMask, blockPadding);
++            // 使用有向版驗證，讓旋轉真正影響碰撞
++            var result = PlacementValidator.ValidateByConfig(center, half, rotation, includeMask, blockPadding);
+             if (!result.ok)
+             {
+                 Debug.Log($"[PLACE] blocked: {result.code} {result.message}");
+                 return;
+             }
+*** End Patch
+WRITE_CHANGE: QA/Smoke/Dev/BuildingDeleteTool.cs
+```csharp
+using UnityEngine;
+
+/// <summary>
+/// Dev 小工具：按下 Delete 或 X，射線選取 Building 層物件並刪除。
+/// 不依賴 Placer；可直接掛在任意場景物件上（例如 Managers）。
+/// </summary>
+public class BuildingDeleteTool : MonoBehaviour
+{
+    public KeyCode deleteKey1 = KeyCode.Delete;
+    public KeyCode deleteKey2 = KeyCode.X;
+
+    void Update()
+    {
+        if (!Input.GetKeyDown(deleteKey1) && !Input.GetKeyDown(deleteKey2))
+            return;
+
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        var ray = cam.ScreenPointToRay(Input.mousePosition);
+        int buildingLayer = LayerMask.NameToLayer("Building");
+        if (buildingLayer < 0) { Debug.Log("[DEV HUD] BuildingDeleteTool: Building 層不存在"); return; }
+
+        int mask = 1 << buildingLayer;
+        if (Physics.Raycast(ray, out var hit, 1000f, mask, QueryTriggerInteraction.Ignore))
+        {
+            var go = hit.collider ? hit.collider.gameObject : null;
+            if (go != null)
+            {
+                Debug.Log($"[DEV] Delete {go.name}");
+                Destroy(go);
+            }
+        }
+    }
+}
+
+
+### 驗收重點
+- **旋轉**：旋轉後的建築預覽與實際放置一致；碰撞判斷不再用 AABB 忽略旋轉。  
+- **刪除**：在 Dev 場景掛上 `BuildingDeleteTool`，對著建築按 `Delete` 或 `X` 可移除；不影響正式流程。  
+- 舊 API `ValidateByConfig(Bounds,...)` 仍可用，避免破壞既有呼叫點。
