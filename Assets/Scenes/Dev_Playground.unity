@@ -207,6 +207,8 @@ MonoBehaviour:
   placedScale: {x: 1, y: 1, z: 1}
   requireCreep: 0
   spawnScale: 1
+  useColliderBoundsForBlocking: 1
+  blockPadding: 0.02
   toggleKey: 98
   rotateCWKey: 101
   rotateCCWKey: 113
@@ -415,6 +417,9 @@ GameObject:
   - component: {fileID: 1260670766}
   - component: {fileID: 1260670765}
   - component: {fileID: 1260670767}
+  - component: {fileID: 1260670770}
+  - component: {fileID: 1260670769}
+  - component: {fileID: 1260670768}
   m_Layer: 0
   m_Name: Dev Helper
   m_TagString: Untagged
@@ -465,6 +470,63 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 256
   showCoords: 1
+  manageCursorLock: 1
+  lockOnlyWhileRMB: 1
+--- !u!114 &1260670768
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c612e6f1793bf427dbdbbdf5e163df47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  budgetPerFrame: 2000
+  rayMask:
+    serializedVersion: 2
+    m_Bits: 256
+  enableSeeding: 1
+--- !u!114 &1260670769
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d991bf546c5024a3c96deaeba210ba17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  topLeft: 1
+--- !u!114 &1260670770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2759e148d37634a7895e6e19b1515b63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  placer: {fileID: 0}
+  fallbackPrefab: {fileID: 0}
+  useColliderBoundsForBlocking: 1
+  blockPadding: 0.02
+  requireTerrainHit: 1
+  labelOffset: {x: 12, y: 18}
+  okColor: {r: 0.2, g: 1, b: 0.2, a: 1}
+  blockedColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  colorizePreview: 1
+  previewColorAlpha: 0.55
+  drawFootprintOutline: 1
+  outlineYOffset: 0.02
+  outlineWidth: 0.03
 --- !u!1 &1337030030
 GameObject:
   m_ObjectHideFlags: 0

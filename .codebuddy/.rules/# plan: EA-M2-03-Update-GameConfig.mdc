@@ -1,0 +1,139 @@
+---
+description: 
+globs:
+alwaysApply: true
+---
+
+
+
+---
+description: 外放放置規則到 GameConfigSO + 定義統一回傳型別 Result/PlaceResultCode（2025-09-05 Asia/Taipei）
+globs:
+Assets/DeepAbyssHive/Game/Config/GameConfigSO.cs
+Assets/DeepAbyssHive/Common/Placement/PlacementResult.cs
+alwaysApply: true
+---
+
+PLAN
+- 最小變更（2 檔）：新增 GameConfigSO.cs（外放放置規則與開關）、PlacementResult.cs（統一回傳型別）。
+- 不動現有 Managers/Placer；僅提供可被引用的 SO 與型別，確保 0 風險、可逐步接線。
+- 進場景後自動讀取 Resources/Configs/GameConfig.asset；若缺失則給安全預設並 DEV HUD 印出一次。
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Game/Config/GameConfigSO.cs
+using UnityEngine;
+
+namespace DeepAbyssHive.Game.Config
+{
+    /// <summary>
+    /// 放置/驗證規則的全域設定（從 Resources/Configs/GameConfig.asset 讀取）
+    /// </summary>
+    [CreateAssetMenu(fileName = "GameConfig", menuName = "DeepAbyssHive/Configs/Game Config")]
+    public class GameConfigSO : ScriptableObject
+    {
+        [Header("Placement Validation")]
+        [Tooltip("啟用並聯校驗：Physics 與 SpatialIndex 皆須通過才允許放置")]
+        public bool useSpatialIndexForPlacement = false;
+
+        [Tooltip("放置物之間的最小中心間距（世界單位）")]
+        public float minSpacing = 0.0f;
+
+        [Tooltip("碰撞檢查額外外擴邊界（世界單位）")]
+        public float margin = 0.0f;
+
+        [Tooltip("是否要求必須在菌毯上才可放置")]
+        public bool requireCreep = false;
+    }
+
+    /// <summary>
+    /// 提供目前執行中的 Game 設定快取與載入
+    /// </summary>
+    public static class GameConfigProvider
+    {
+        private static GameConfigSO _current;
+
+        /// <summary>
+        /// 優先讀取 Resources/Configs/GameConfig；若無則回退為記憶體預設
+        /// </summary>
+        public static GameConfigSO Current
+        {
+            get
+            {
+                if (_current == null)
+                {
+                    _current = Resources.Load<GameConfigSO>("Configs/GameConfig");
+                    if (_current == null)
+                    {
+                        _current = ScriptableObject.CreateInstance<GameConfigSO>();
+                        _current.name = "GameConfig (Runtime Default)";
+                    }
+                }
+                return _current;
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void LogConfigOnLoad()
+        {
+            var cfg = Current;
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}");
+        }
+    }
+}
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Common/Placement/PlacementResult.cs
+using System;
+using UnityEngine;
+
+namespace DeepAbyssHive.Common.Placement
+{
+    /// <summary>
+    /// 放置流程的標準錯誤碼
+    /// </summary>
+    public enum PlaceResultCode
+    {
+        OK = 0,
+        E_PLACE_COLLISION = 1,
+        E_OUT_OF_BOUNDS = 2,
+        E_REQUIRE_CREEP = 3,
+        E_INVALID_TYPE = 4
+    }
+
+    /// <summary>
+    /// 統一回傳容器：所有放置/驗證 API 以此回傳
+    /// </summary>
+    public class Result<T>
+    {
+        public bool ok;
+        public PlaceResultCode code;
+        public T data;
+        public string message;
+
+        private Result(bool ok, PlaceResultCode code, T data, string message)
+        {
+            this.ok = ok;
+            this.code = code;
+            this.data = data;
+            this.message = message;
+        }
+
+        public static Result<T> Success(T data, string message = null)
+            => new Result<T>(true, PlaceResultCode.OK, data, message);
+
+        public static Result<T> Fail(PlaceResultCode code, string message = null, T data = default)
+            => new Result<T>(false, code, data, message);
+    }
+
+    /// <summary>
+    /// 一些便利的工廠（常見型別）
+    /// </summary>
+    public static class PlacementResults
+    {
+        public static Result<Bounds> OkBounds(Bounds b) => Result<Bounds>.Success(b);
+        public static Result<Bounds> Collision(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_PLACE_COLLISION, msg);
+        public static Result<Bounds> OutOfBounds(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_OUT_OF_BOUNDS, msg);
+        public static Result<Bounds> RequireCreep(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_REQUIRE_CREEP, msg);
+        public static Result<Bounds> InvalidType(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_INVALID_TYPE, msg);
+    }
+}
+
+

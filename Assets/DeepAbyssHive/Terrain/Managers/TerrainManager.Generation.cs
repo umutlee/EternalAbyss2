@@ -211,6 +211,9 @@ namespace DeepAbyssHive.Terrain.Managers
                 _terrainChunks[chunkCoord] = chunk;
             }
 
+            // —— M2-01: Creep grid ensure（與 Chunk 對齊）——
+            DeepAbyssHive.Creep.Managers.CreepManagerGridHooks.OnChunkLoaded(chunkCoord, ConfigChunkSize);
+
             Debug.Log($"[{_managerName}] 載入分塊 {chunkCoord}");
         }
 
@@ -219,6 +222,9 @@ namespace DeepAbyssHive.Terrain.Managers
         /// </summary>
         private void UnloadChunk(Vector2Int chunkCoord)
         {
+            // —— M2-01: 先通知 Creep 移除該 chunk 的 grid —— 
+            DeepAbyssHive.Creep.Managers.CreepManagerGridHooks.OnChunkUnloaded(chunkCoord);
+
             if (_terrainChunks.TryGetValue(chunkCoord, out var chunk))
             {
                 chunk?.Cleanup();

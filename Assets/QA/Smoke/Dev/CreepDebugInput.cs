@@ -6,8 +6,8 @@ namespace QA.Dev
 {
     /// <summary>
     /// 只在 Editor/開發版啟用：按鍵在滑鼠指向處「增減」菌毯格子，方便肉眼測。
-    /// B：切換目前格子（沒有就加，有就移除）
-    /// N：在目前格子周圍加一個十字形
+    /// C：切換目前格子（沒有就加，有就移除）
+    /// X：在目前格子周圍加一個十字形
     /// </summary>
     [AddComponentMenu("DeepAbyss/Dev/Creep Debug Input")]
     public sealed class CreepDebugInput : MonoBehaviour
@@ -25,7 +25,7 @@ namespace QA.Dev
         {
             if (_creep == null) return;
 
-            if (Input.GetKeyDown(KeyCode.B))
+            if (Input.GetKeyDown(KeyCode.C))
             {
                 if (TryGetMouseWorldPoint(out var pos))
                 {
@@ -36,7 +36,7 @@ namespace QA.Dev
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.N))
+            if (Input.GetKeyDown(KeyCode.X))
             {
                 if (TryGetMouseWorldPoint(out var pos))
                 {
