@@ -1,0 +1,51 @@
+
+
+
+---
+description: M3-T04：minSpacing 支援 SpatialIndex 最近鄰（可選委派）；有則用，無則回退 Physics — 2025-09-05 18:05 Asia/Taipei
+globs:
+  - DeepAbyssHive/Common/Placement/PlacementValidator.cs
+alwaysApply: true
+# PLAN
+# - 在 PlacementValidator 增加可選委派：NoNeighborWithinRadiusPredicate(center, radius, mask) -> bool。
+# - 在 ValidateByConfig 的 minSpacing 段落：若委派存在，使用它（false=違反間距）；否則沿用 OverlapSphere。
+# - 其他流程不變；LastResult 照常更新。
+# CHANGES
+PATCH: DeepAbyssHive/Common/Placement/PlacementValidator.cs
+*** /a/DeepAbyssHive/Common/Placement/PlacementValidator.cs
+--- /b/DeepAbyssHive/Common/Placement/PlacementValidator.cs
+@@
+     public static class PlacementValidator
+     {
+         /// <summary>SpatialIndex 並聯檢查：true 表示通過（無衝突）</summary>
+         public static Func<Bounds, LayerMask, float, bool> SpatialIndexPredicate;
++        /// <summary>最近鄰距離檢查：回傳 true 表示「半徑內沒有鄰居」（通過）</summary>
++        public static Func<Vector3, float, LayerMask, bool> NoNeighborWithinRadiusPredicate;
+@@
+-            // 3.5) 最小間距（獨立於 margin）
+-            if (cfg.minSpacing > 0f && ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask))
+-            {
+-                LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
+-                return LastResult;
+-            }
++            // 3.5) 最小間距（獨立於 margin；Prefer SpatialIndex 最近鄰）
++            if (cfg.minSpacing > 0f)
++            {
++                bool spacingOk;
++                if (NoNeighborWithinRadiusPredicate != null)
++                {
++                    spacingOk = NoNeighborWithinRadiusPredicate(rawBounds.center, cfg.minSpacing, blockMask);
++                }
++                else
++                {
++                    spacingOk = !ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask);
++                }
++                if (!spacingOk)
++                {
++                    LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
++                    return LastResult;
++                }
++            }
+*** End Patch
+
+

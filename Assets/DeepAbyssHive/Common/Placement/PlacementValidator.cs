@@ -1,45 +1,47 @@
 using System;
 using UnityEngine;
-using DeepAbyssHive.Core.Config;
-using DeepAbyssHive.Common.Placement;
+using DeepAbyssHive.Core.Config;          // GameConfigProvider
+using DeepAbyssHive.Common.Placement;     // Result<>, PlaceResultCode, PlacementResults
 
 namespace DeepAbyssHive.Common.Placement
 {
     /// <summary>
-    /// 統一的放置驗證器，支援 Physics 檢查與 SpatialIndex/Creep 整合
+    /// 放置驗證幫手：統一檢查路徑（Physics + 可選 SpatialIndex/菌毯/邊界/最小間距）
     /// </summary>
     public static class PlacementValidator
     {
-        /// <summary>SpatialIndex 並聯檢查：true 表示通過（無衝突）</summary>
+        /// <summary>SpatialIndex 並聯檢查：true=通過（無衝突）</summary>
         public static Func<Bounds, LayerMask, float, bool> SpatialIndexPredicate;
-        /// <summary>菌毯要求：true 表示該 Bounds 位於菌毯覆蓋內</summary>
+        /// <summary>菌毯要求：true=該 Bounds 位於菌毯覆蓋內</summary>
         public static Func<Bounds, bool> RequireCreepPredicate;
-        /// <summary>邊界檢查：true 表示超界（不可放）</summary>
+        /// <summary>邊界檢查：true=超界（不可放）</summary>
         public static Func<Bounds, bool> OutOfBoundsPredicate;
 
-        /// <summary>最後一次驗證結果（給 Dev HUD 用）</summary>
+        /// <summary>最後一次驗證結果（供 HUD/Debug）</summary>
         public static Result<Bounds> LastResult { get; private set; }
+
         public static bool HasSpatialIndex => SpatialIndexPredicate != null;
         public static bool HasRequireCreep => RequireCreepPredicate != null;
         public static bool HasOutOfBounds => OutOfBoundsPredicate != null;
 
         /// <summary>
-        /// 驗證指定位置和邊界是否可以放置物件
+        /// 依 GameConfig 驗證放置；blockMask：阻擋圖層；extraMargin：臨時外擴
         /// </summary>
-        public static Result<Bounds> ValidatePlacement(Vector3 center, Vector3 size, LayerMask blockMask)
+        public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
         {
             var cfg = GameConfigProvider.Current;
-            var margin = cfg.margin;
-            var bounds = new Bounds(center, size + Vector3.one * margin);
+            // margin 取較大者（config vs 呼叫端）
+            float margin = Mathf.Max(cfg.margin, extraMargin);
+            var bounds = ExpandBounds(rawBounds, margin);
 
-            // 1) Out-of-bounds（可選）
+            // 1) 邊界（可選）
             if (OutOfBoundsPredicate != null && OutOfBoundsPredicate(bounds))
             {
                 LastResult = PlacementResults.OutOfBounds("[Placement] Out of bounds");
                 return LastResult;
             }
 
-            // 2) Physics 檢查（必要）
+            // 2) Physics
             if (HasPhysicsCollision(bounds, blockMask))
             {
                 LastResult = PlacementResults.Collision("[Placement] Physics collision");
@@ -51,7 +53,8 @@ namespace DeepAbyssHive.Common.Placement
             {
                 if (SpatialIndexPredicate != null)
                 {
-                    if (!SpatialIndexPredicate(bounds, blockMask, margin))
+                    bool spatialOk = SpatialIndexPredicate(bounds, blockMask, margin);
+                    if (!spatialOk)
                     {
                         LastResult = PlacementResults.Collision("[Placement] SpatialIndex collision");
                         return LastResult;
@@ -63,8 +66,8 @@ namespace DeepAbyssHive.Common.Placement
                 }
             }
 
-            // 3.5) 最小間距（獨立於 margin 的規則）
-            if (cfg.minSpacing > 0f && ViolatesMinSpacing(new Bounds(center, size), cfg.minSpacing, blockMask))
+            // 3.5) 最小間距（獨立於 margin）
+            if (cfg.minSpacing > 0f && ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask))
             {
                 LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
                 return LastResult;
@@ -80,8 +83,18 @@ namespace DeepAbyssHive.Common.Placement
                 }
             }
 
+            // OK
             LastResult = PlacementResults.OkBounds(bounds);
             return LastResult;
+        }
+
+        private static Bounds ExpandBounds(Bounds b, float margin)
+        {
+            if (margin <= 0f) return b;
+            var s = b.size;
+            s.x += margin * 2f; s.y += margin * 2f; s.z += margin * 2f;
+            b.size = s;
+            return b;
         }
 
         private static bool HasPhysicsCollision(Bounds b, LayerMask blockMask)
@@ -97,8 +110,8 @@ namespace DeepAbyssHive.Common.Placement
         }
 
         /// <summary>
-        /// 最小間距檢查（不依賴 margin）：以中心為球心，用半徑=minSpacing*0.5f 快查周遭是否有其他放置物。
-        /// 注意：這是 MVP 快徑；若之後要更精準，可改為用 SpatialIndex 最近鄰距離。
+        /// 最小間距：以中心球體（半徑=minSpacing*0.5f）快查周遭是否有其他放置物。
+        /// 後續可替換為 SpatialIndex 最近鄰以更精準。
         /// </summary>
         private static bool ViolatesMinSpacing(Bounds originalBounds, float minSpacing, LayerMask blockMask)
         {

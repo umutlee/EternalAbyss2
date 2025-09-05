@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: GameConfig
   m_EditorClassIdentifier: 
   useSpatialIndexForPlacement: 0
-  minSpacing: 0
+  minSpacing: 2
   margin: 0
   requireCreep: 0
+  snapSize: 1

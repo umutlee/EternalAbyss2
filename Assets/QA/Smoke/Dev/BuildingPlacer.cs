@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Reflection;
 using DeepAbyssHive.Creep.Managers; // 若沒有這命名空間可刪掉這行
 using DeepAbyssHive.Common.Placement;
+using DeepAbyssHive.Core.Config;
 
 namespace DeepAbyssHive.Dev
 {
@@ -44,6 +45,11 @@ namespace DeepAbyssHive.Dev
         private bool isPlacing;
         private Vector3 lastValidPos;
         private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
+        
+        // 預覽狀態快取（避免重複計算）
+        private Vector3 lastPreviewCenter;
+        private Bounds lastPreviewBounds;
+        private Result<Bounds> lastPreviewResult;
 
         void Awake()
         {
@@ -81,17 +87,20 @@ namespace DeepAbyssHive.Dev
             if (Physics.Raycast(ray, out var hit, 5000f, groundMask))
             {
                 lastHit = hit; // 保存 hit 資訊供 PlaceNow() 使用
-                var p = hit.point;
-                int cell = Mathf.Max(1, footprintSize);
-                p.x = Mathf.Floor(p.x / cell) * cell + cell * 0.5f;
-                p.z = Mathf.Floor(p.z / cell) * cell + cell * 0.5f;
-                p.y = hit.point.y + previewHeight;
+                
+                // 統一使用 GameConfig.snapSize 進行 Grid Snap
+                var cfg = GameConfigProvider.Current;
+                var worldPoint = hit.point;
+                var snappedPoint = SnapXZ(worldPoint, cfg.snapSize);
+                snappedPoint.y = hit.point.y + previewHeight;
 
                 EnsurePreview();
-                previewInstance.transform.SetPositionAndRotation(p, rotation);
-                lastValidPos = p;
+                previewInstance.transform.SetPositionAndRotation(snappedPoint, rotation);
+                lastValidPos = snappedPoint;
 
-                SetPreviewTint(new Color(0f, 1f, 0f, 0.35f)); // 先不檢查菌毯就綠色
+                // 實時驗證預覽位置
+                UpdatePreviewValidation(snappedPoint);
+                
                 if (Input.GetMouseButtonDown(0))
                     PlaceNow();
             }
@@ -146,65 +155,15 @@ namespace DeepAbyssHive.Dev
 
         private void PlaceNow()
         {
-            var pos = lastValidPos;
-            pos.y -= previewHeight; // 放回地面
-
-            // —— 重疊擋（強化版）：用臨時預覽物取世界 bounds；優先 Collider，再退回 Renderer —— 
-            Bounds CalcWorldBounds(GameObject go, bool preferCollider)
+            // 重用預覽的驗證結果，避免重複計算
+            if (lastPreviewResult == null || !lastPreviewResult.ok)
             {
-                var cols = go.GetComponentsInChildren<Collider>(true);
-                var rends = go.GetComponentsInChildren<Renderer>(true);
-                if (preferCollider && cols != null && cols.Length > 0)
-                {
-                    var b = cols[0].bounds;
-                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
-                    return b;
-                }
-                if (rends != null && rends.Length > 0)
-                {
-                    var b = rends[0].bounds;
-                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-                    return b;
-                }
-                if (!preferCollider && cols != null && cols.Length > 0)
-                {
-                    var b = cols[0].bounds;
-                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
-                    return b;
-                }
-                return new Bounds(go.transform.position, Vector3.one * 0.5f);
-            }
-
-            // 建立臨時預覽（不參與物理/射線）
-            var preview = Instantiate(placePrefab, pos, rotation);
-            int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
-            if (ignoreRaycast != -1)
-            {
-                foreach (var t in preview.GetComponentsInChildren<Transform>(true))
-                    t.gameObject.layer = ignoreRaycast;
-            }
-            foreach (var c in preview.GetComponentsInChildren<Collider>(true))
-                c.enabled = false;
-
-            Bounds wb = CalcWorldBounds(preview, useColliderBoundsForBlocking);
-            var center = wb.center;
-            var half   = wb.extents + Vector3.one * blockPadding; // 可調 padding
-
-            Destroy(preview); // 僅用於量測，立即銷毀
-
-            // 檢查重疊（排除 Terrain 與 IgnoreRaycast）
-            int terrainLayer = LayerMask.NameToLayer("Terrain");
-            int blockMask = ~0;
-            if (terrainLayer != -1)      blockMask &= ~(1 << terrainLayer);
-            if (ignoreRaycast != -1)     blockMask &= ~(1 << ignoreRaycast);
-            
-            // 使用 PlacementValidator 進行統一驗證
-            var result = PlacementValidator.ValidatePlacement(center, half * 2f, blockMask);
-            if (!result.ok)
-            {
-                Debug.Log($"[PLACE] {result.message}, cancel placing.");
+                Debug.Log($"[PLACE] Cannot place: {lastPreviewResult?.message ?? "No preview validation"}");
                 return;
             }
+
+            var pos = lastValidPos;
+            pos.y -= previewHeight; // 放回地面
 
             // 實例化放置物
             var placed = Instantiate(placePrefab, pos, rotation);
@@ -261,6 +220,98 @@ namespace DeepAbyssHive.Dev
             previewInstance = null;
             if (previewRuntimeMat) Destroy(previewRuntimeMat);
             previewRuntimeMat = null;
+        }
+
+        private void UpdatePreviewValidation(Vector3 previewPos)
+        {
+            if (!previewInstance) return;
+
+            // 計算預覽物件的世界邊界（先 Snap 再算 bounds）
+            var previewCenter = previewPos;
+            previewCenter.y -= previewHeight; // 回到地面高度進行驗證
+
+            // 建立臨時預覽物件來計算 bounds（與 PlaceNow 邏輯一致）
+            var tempPreview = Instantiate(placePrefab, previewCenter, rotation);
+            int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
+            if (ignoreRaycast != -1)
+            {
+                foreach (var t in tempPreview.GetComponentsInChildren<Transform>(true))
+                    t.gameObject.layer = ignoreRaycast;
+            }
+            foreach (var c in tempPreview.GetComponentsInChildren<Collider>(true))
+                c.enabled = false;
+
+            Bounds wb = CalcWorldBounds(tempPreview, useColliderBoundsForBlocking);
+            Destroy(tempPreview); // 立即銷毀臨時物件
+
+            // 統一的掩碼設定（與 PlaceNow 一致）
+            int terrainLayer = LayerMask.NameToLayer("Terrain");
+            int includeMask = ~0;
+            if (terrainLayer != -1) includeMask &= ~(1 << terrainLayer);
+            if (ignoreRaycast != -1) includeMask &= ~(1 << ignoreRaycast);
+
+            // 防抖：只在位置或旋轉變化時才重新驗證
+            if (Vector3.Distance(wb.center, lastPreviewCenter) < 0.01f && 
+                lastPreviewBounds.size == wb.size)
+            {
+                return; // 位置沒有顯著變化，跳過驗證
+            }
+
+            // 執行驗證（這會更新 PlacementValidator.LastResult）
+            lastPreviewCenter = wb.center;
+            lastPreviewBounds = wb;
+            lastPreviewResult = PlacementValidator.ValidateByConfig(wb, includeMask, blockPadding);
+
+            // 根據驗證結果設定預覽顏色
+            var previewColor = GetPreviewColor(lastPreviewResult.code, lastPreviewResult.ok);
+            SetPreviewTint(previewColor);
+        }
+
+        private Color GetPreviewColor(PlaceResultCode code, bool ok)
+        {
+            if (ok) return new Color(0f, 1f, 0f, 0.35f); // 綠色
+            
+            switch (code)
+            {
+                case PlaceResultCode.E_PLACE_COLLISION: return new Color(1f, 0f, 0f, 0.35f); // 紅色
+                case PlaceResultCode.E_REQUIRE_CREEP:   return new Color(1f, 1f, 0f, 0.35f); // 黃色
+                case PlaceResultCode.E_OUT_OF_BOUNDS:   return new Color(1f, 0f, 1f, 0.35f); // 品紅
+                case PlaceResultCode.E_INVALID_TYPE:    return new Color(0f, 1f, 1f, 0.35f); // 青色
+                default:                                return new Color(0.5f, 0.5f, 0.5f, 0.35f); // 灰色
+            }
+        }
+
+        private Bounds CalcWorldBounds(GameObject go, bool preferCollider)
+        {
+            var cols = go.GetComponentsInChildren<Collider>(true);
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            if (preferCollider && cols != null && cols.Length > 0)
+            {
+                var b = cols[0].bounds;
+                for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                return b;
+            }
+            if (rends != null && rends.Length > 0)
+            {
+                var b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                return b;
+            }
+            if (!preferCollider && cols != null && cols.Length > 0)
+            {
+                var b = cols[0].bounds;
+                for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                return b;
+            }
+            return new Bounds(go.transform.position, Vector3.one * 0.5f);
+        }
+
+        private static Vector3 SnapXZ(Vector3 v, float step)
+        {
+            if (step <= 0f) return v;
+            float sx = Mathf.Round(v.x / step) * step;
+            float sz = Mathf.Round(v.z / step) * step;
+            return new Vector3(sx, v.y, sz);
         }
     }
 }

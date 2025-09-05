@@ -20,6 +20,10 @@ namespace DeepAbyssHive.Core.Config
 
         [Tooltip("是否要求必須在菌毯上才可放置")]
         public bool requireCreep = false;
+
+        [Header("Placement UX")]
+        [Tooltip("格點對齊步長（世界單位；0=關閉）。啟用後放置中心會對齊到該步長的網格。")]
+        public float snapSize = 0.0f;
     }
 
     /// <summary>
@@ -53,7 +57,7 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}");
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}");
         }
     }
 }
