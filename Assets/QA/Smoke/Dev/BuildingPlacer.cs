@@ -44,11 +44,9 @@ namespace DeepAbyssHive.Dev
         private bool isPlacing;
         private Vector3 lastValidPos;
         private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
-        private PlacementValidator placementValidator; // 統一放置驗證器
 
         void Awake()
         {
-            placementValidator = new PlacementValidator(); // 初始化驗證器
             if (!sceneCamera) sceneCamera = Camera.main;
             if (!previewMaterial)
             {
@@ -201,9 +199,10 @@ namespace DeepAbyssHive.Dev
             if (ignoreRaycast != -1)     blockMask &= ~(1 << ignoreRaycast);
             
             // 使用 PlacementValidator 進行統一驗證
-            if (placementValidator.IsBlocked(center, half, rotation, blockMask))
+            var result = PlacementValidator.ValidatePlacement(center, half * 2f, blockMask);
+            if (!result.ok)
             {
-                Debug.Log("[PLACE] blocked by collision, cancel placing.");
+                Debug.Log($"[PLACE] {result.message}, cancel placing.");
                 return;
             }
 
