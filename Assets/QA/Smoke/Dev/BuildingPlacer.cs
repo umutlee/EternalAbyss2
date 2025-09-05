@@ -260,7 +260,8 @@ namespace DeepAbyssHive.Dev
             // 執行驗證（這會更新 PlacementValidator.LastResult）
             lastPreviewCenter = wb.center;
             lastPreviewBounds = wb;
-            lastPreviewResult = PlacementValidator.ValidateByConfig(wb, includeMask, blockPadding);
+            // 使用有向版驗證，讓旋轉真正影響碰撞
+            lastPreviewResult = PlacementValidator.ValidateByConfig(wb.center, wb.extents, rotation, includeMask, blockPadding);
 
             // 根據驗證結果設定預覽顏色
             var previewColor = GetPreviewColor(lastPreviewResult.code, lastPreviewResult.ok);

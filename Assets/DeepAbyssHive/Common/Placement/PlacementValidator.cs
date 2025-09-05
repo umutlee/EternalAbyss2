@@ -26,14 +26,21 @@ namespace DeepAbyssHive.Common.Placement
         public static bool HasRequireCreep => RequireCreepPredicate != null;
         public static bool HasOutOfBounds => OutOfBoundsPredicate != null;
 
-        /// <summary>
-        /// 依 GameConfig 驗證放置；blockMask：阻擋圖層；extraMargin：臨時外擴
-        /// </summary>
+        // 舊版：僅 AABB，保持相容
         public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
         {
+            return ValidateByConfig(rawBounds.center, rawBounds.extents, Quaternion.identity, blockMask, extraMargin);
+        }
+
+        /// <summary>
+        /// 新版：支援旋轉的放置驗證（Physics.OverlapBox 使用 rotation）
+        /// </summary>
+        public static Result<Bounds> ValidateByConfig(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask, float extraMargin = 0f)
+        {
             var cfg = GameConfigProvider.Current;
-            // margin 取較大者（config vs 呼叫端）
             float margin = Mathf.Max(cfg.margin, extraMargin);
+            // 傳回資料仍以 AABB 表示，但物理碰撞用有向盒
+            var rawBounds = new Bounds(center, halfExtents * 2f);
             var bounds = ExpandBounds(rawBounds, margin);
 
             // 1) 邊界（可選）
@@ -44,7 +51,7 @@ namespace DeepAbyssHive.Common.Placement
             }
 
             // 2) Physics
-            if (HasPhysicsCollision(bounds, blockMask))
+            if (HasPhysicsCollisionOriented(center, halfExtents, rotation, blockMask))
             {
                 LastResult = PlacementResults.Collision("[Placement] Physics collision");
                 return LastResult;
@@ -111,12 +118,26 @@ namespace DeepAbyssHive.Common.Placement
             return b;
         }
 
+        // 舊版（相容），保留給既有呼叫點
         private static bool HasPhysicsCollision(Bounds b, LayerMask blockMask)
         {
             var hits = Physics.OverlapBox(
                 b.center,
                 b.extents,
                 Quaternion.identity,
+                blockMask,
+                QueryTriggerInteraction.Ignore
+            );
+            return hits != null && hits.Length > 0;
+        }
+
+        // 新版：有向 OverlapBox
+        private static bool HasPhysicsCollisionOriented(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask)
+        {
+            var hits = Physics.OverlapBox(
+                center,
+                halfExtents,
+                rotation,
                 blockMask,
                 QueryTriggerInteraction.Ignore
             );
