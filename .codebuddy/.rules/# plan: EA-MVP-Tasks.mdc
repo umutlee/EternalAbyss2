@@ -98,6 +98,20 @@ alwaysApply: true
 
 ---
 
+
+new M3
+**M3：建築放置與空間檢查（與菌毯耦合）** ⏩ 進行中  
+- M03-01：**minSpacing 規則**（本 MDC）。  
+- M03-02：**SpatialIndex 最近鄰優化**（可選）：  
+  - 若 `SpatialIndex` 支援最近鄰查詢，就把 `ViolatesMinSpacing` 換成「查最近距離 < minSpacing → collision」。  
+- M03-03：**Grid Snap（可選）**：  
+  - 在 `BuildingPlacer` 增加 `snapSize`（GameConfig 外放），預覽與實際放置共用。  
+- M03-04：**預覽顏色與錯誤碼提示**（已具備基礎，強化 UI 文案即可）。  
+- M03-05：**SMOKE**：  
+  - 放置在 creep 外、壓建築、壓邊界、距離不足 → 分別回 `E_REQUIRE_CREEP / E_PLACE_COLLISION / E_OUT_OF_BOUNDS / E_PLACE_COLLISION`。
+
+--
+old M3
 ## **M3 — 遊戲循環 / UI / 存讀 / 穩定化**
 
 ⬜️ **EA-M3-T01 TimeService \+ Pause/×1×2×4**  
