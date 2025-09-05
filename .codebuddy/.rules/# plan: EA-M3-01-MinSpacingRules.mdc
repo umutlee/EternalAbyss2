@@ -1,139 +1,98 @@
----
-description: 
+
+
+
+
+—
+description: EA-M03-T01：放置最小間距（minSpacing）規則落地（與 Physics/SpatialIndex 並聯且可回退）— 2025-09-05 16:20 Asia/Taipei
 globs:
+  - DeepAbyssHive/Common/Placement/PlacementValidator.cs
 alwaysApply: true
----
-
-
-
----
-description: 外放放置規則到 GameConfigSO + 定義統一回傳型別 Result/PlaceResultCode（2025-09-05 Asia/Taipei）
-globs:
-Assets/DeepAbyssHive/Game/Config/GameConfigSO.cs
-Assets/DeepAbyssHive/Common/Placement/PlacementResult.cs
-alwaysApply: true
----
-
-PLAN
-- 最小變更（2 檔）：新增 GameConfigSO.cs（外放放置規則與開關）、PlacementResult.cs（統一回傳型別）。
-- 不動現有 Managers/Placer；僅提供可被引用的 SO 與型別，確保 0 風險、可逐步接線。
-- 進場景後自動讀取 Resources/Configs/GameConfig.asset；若缺失則給安全預設並 DEV HUD 印出一次。
-CHANGES
-WRITE_CHANGE: Assets/DeepAbyssHive/Game/Config/GameConfigSO.cs
-using UnityEngine;
-
-namespace DeepAbyssHive.Game.Config
-{
-    /// <summary>
-    /// 放置/驗證規則的全域設定（從 Resources/Configs/GameConfig.asset 讀取）
-    /// </summary>
-    [CreateAssetMenu(fileName = "GameConfig", menuName = "DeepAbyssHive/Configs/Game Config")]
-    public class GameConfigSO : ScriptableObject
-    {
-        [Header("Placement Validation")]
-        [Tooltip("啟用並聯校驗：Physics 與 SpatialIndex 皆須通過才允許放置")]
-        public bool useSpatialIndexForPlacement = false;
-
-        [Tooltip("放置物之間的最小中心間距（世界單位）")]
-        public float minSpacing = 0.0f;
-
-        [Tooltip("碰撞檢查額外外擴邊界（世界單位）")]
-        public float margin = 0.0f;
-
-        [Tooltip("是否要求必須在菌毯上才可放置")]
-        public bool requireCreep = false;
-    }
-
-    /// <summary>
-    /// 提供目前執行中的 Game 設定快取與載入
-    /// </summary>
-    public static class GameConfigProvider
-    {
-        private static GameConfigSO _current;
-
-        /// <summary>
-        /// 優先讀取 Resources/Configs/GameConfig；若無則回退為記憶體預設
-        /// </summary>
-        public static GameConfigSO Current
-        {
-            get
-            {
-                if (_current == null)
-                {
-                    _current = Resources.Load<GameConfigSO>("Configs/GameConfig");
-                    if (_current == null)
-                    {
-                        _current = ScriptableObject.CreateInstance<GameConfigSO>();
-                        _current.name = "GameConfig (Runtime Default)";
-                    }
-                }
-                return _current;
-            }
-        }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void LogConfigOnLoad()
-        {
-            var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}");
-        }
-    }
-}
-
-WRITE_CHANGE: Assets/DeepAbyssHive/Common/Placement/PlacementResult.cs
-using System;
-using UnityEngine;
-
-namespace DeepAbyssHive.Common.Placement
-{
-    /// <summary>
-    /// 放置流程的標準錯誤碼
-    /// </summary>
-    public enum PlaceResultCode
-    {
-        OK = 0,
-        E_PLACE_COLLISION = 1,
-        E_OUT_OF_BOUNDS = 2,
-        E_REQUIRE_CREEP = 3,
-        E_INVALID_TYPE = 4
-    }
-
-    /// <summary>
-    /// 統一回傳容器：所有放置/驗證 API 以此回傳
-    /// </summary>
-    public class Result<T>
-    {
-        public bool ok;
-        public PlaceResultCode code;
-        public T data;
-        public string message;
-
-        private Result(bool ok, PlaceResultCode code, T data, string message)
-        {
-            this.ok = ok;
-            this.code = code;
-            this.data = data;
-            this.message = message;
-        }
-
-        public static Result<T> Success(T data, string message = null)
-            => new Result<T>(true, PlaceResultCode.OK, data, message);
-
-        public static Result<T> Fail(PlaceResultCode code, string message = null, T data = default)
-            => new Result<T>(false, code, data, message);
-    }
-
-    /// <summary>
-    /// 一些便利的工廠（常見型別）
-    /// </summary>
-    public static class PlacementResults
-    {
-        public static Result<Bounds> OkBounds(Bounds b) => Result<Bounds>.Success(b);
-        public static Result<Bounds> Collision(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_PLACE_COLLISION, msg);
-        public static Result<Bounds> OutOfBounds(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_OUT_OF_BOUNDS, msg);
-        public static Result<Bounds> RequireCreep(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_REQUIRE_CREEP, msg);
-        public static Result<Bounds> InvalidType(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_INVALID_TYPE, msg);
-    }
-}
+—
+# PLAN
+# - 在 PlacementValidator 中新增「minSpacing」檢查：
+#   * 若 GameConfigSO.minSpacing > 0，將額外做一次距離檢查，不依賴 margin。
+#   * 預設用 Physics.OverlapSphere 作為快徑（排除 Terrain/IgnoreRaycast 等你現有遮罩）。
+#   * 如果已接 SpatialIndexPredicate，也能共存；任何一條失敗都視為 E_PLACE_COLLISION。
+# - 單檔、少量增補，保持回溯相容；未設定 minSpacing 時行為完全不變。
+# CHANGES
+PATCH: DeepAbyssHive/Common/Placement/PlacementValidator.cs
+*** /a/DeepAbyssHive/Common/Placement/PlacementValidator.cs
+--- /b/DeepAbyssHive/Common/Placement/PlacementValidator.cs
+@@
+-        public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
++        public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
+         {
+             var cfg = GameConfigProvider.Current;
+             // margin 取較大者，讓呼叫端可臨時收/放
+             float margin = Mathf.Max(cfg.margin, extraMargin);
+ 
+             var bounds = ExpandBounds(rawBounds, margin);
+@@
+-            // 3) SpatialIndex 並聯（可選）
++            // 3) SpatialIndex 並聯（可選）
+             if (cfg.useSpatialIndexForPlacement)
+             {
+                 if (SpatialIndexPredicate != null)
+                 {
+                     bool spatialOk = SpatialIndexPredicate.Invoke(bounds, blockMask, margin);
+                     if (!spatialOk)
+-                        return PlacementResults.Collision("[Placement] SpatialIndex collision");
++                        return PlacementResults.Collision("[Placement] SpatialIndex collision");
+                 }
+                 else
+                 {
+                     Debug.LogWarning("[DEV HUD] GameConfig.useSpatialIndexForPlacement=true，但尚未連線 SpatialIndexPredicate；目前僅使用 Physics 結果。");
+                 }
+             }
+ 
++            // 3.5) 最小間距（獨立於 margin 的規則）
++            if (cfg.minSpacing > 0f && ViolatesMinSpacing(rawBounds, cfg.minSpacing, blockMask))
++            {
++                return PlacementResults.Collision("[Placement] MinSpacing violation");
++            }
++
+             // 4) 菌毯要求（可選）
+             if (cfg.requireCreep && RequireCreepPredicate != null)
+             {
+                 bool onCreep = RequireCreepPredicate.Invoke(bounds);
+                 if (!onCreep)
+                     return PlacementResults.RequireCreep("[Placement] Require creep");
+             }
+ 
+             // 全數通過
+             return PlacementResults.OkBounds(bounds);
+         }
+@@
+         private static bool HasPhysicsCollision(Bounds b, LayerMask blockMask)
+         {
+             // 使用 OverlapBox 以 bounds 中心/半徑檢查阻擋；忽略 Trigger 以符合放置直覺
+             var hits = Physics.OverlapBox(
+                 b.center,
+                 b.extents,
+                 Quaternion.identity,
+                 blockMask,
+                 QueryTriggerInteraction.Ignore
+             );
+             return hits != null && hits.Length > 0;
+         }
++
++        /// <summary>
++        /// 最小間距檢查（不依賴 margin）：以中心為球心，用半徑=minSpacing*0.5f 快查周遭是否有其他放置物。
++        /// 注意：這是 MVP 快徑；若之後要更精準，可改為用 SpatialIndex 最近鄰距離。
++        /// </summary>
++        private static bool ViolatesMinSpacing(Bounds originalBounds, float minSpacing, LayerMask blockMask)
++        {
++            if (minSpacing <= 0f) return false;
++            float r = minSpacing * 0.5f;
++            var hits = Physics.OverlapSphere(
++                originalBounds.center,
++                r,
++                blockMask,
++                QueryTriggerInteraction.Ignore
++            );
++            return hits != null && hits.Length > 0;
++        }
+     }
+ }
 
 

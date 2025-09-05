@@ -63,6 +63,13 @@ namespace DeepAbyssHive.Common.Placement
                 }
             }
 
+            // 3.5) 最小間距（獨立於 margin 的規則）
+            if (cfg.minSpacing > 0f && ViolatesMinSpacing(new Bounds(center, size), cfg.minSpacing, blockMask))
+            {
+                LastResult = PlacementResults.Collision("[Placement] MinSpacing violation");
+                return LastResult;
+            }
+
             // 4) 菌毯要求（可選）
             if (cfg.requireCreep && RequireCreepPredicate != null)
             {
@@ -83,6 +90,23 @@ namespace DeepAbyssHive.Common.Placement
                 b.center,
                 b.extents,
                 Quaternion.identity,
+                blockMask,
+                QueryTriggerInteraction.Ignore
+            );
+            return hits != null && hits.Length > 0;
+        }
+
+        /// <summary>
+        /// 最小間距檢查（不依賴 margin）：以中心為球心，用半徑=minSpacing*0.5f 快查周遭是否有其他放置物。
+        /// 注意：這是 MVP 快徑；若之後要更精準，可改為用 SpatialIndex 最近鄰距離。
+        /// </summary>
+        private static bool ViolatesMinSpacing(Bounds originalBounds, float minSpacing, LayerMask blockMask)
+        {
+            if (minSpacing <= 0f) return false;
+            float r = minSpacing * 0.5f;
+            var hits = Physics.OverlapSphere(
+                originalBounds.center,
+                r,
                 blockMask,
                 QueryTriggerInteraction.Ignore
             );

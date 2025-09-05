@@ -50,23 +50,62 @@ tags: ["context", "memo", "project-state"]
 - **建築阻擋**: Physics.CheckBox 檢測，智能 Building 層識別
 - **CanEnterFrom**: 三重門檻檢查 (冷卻/坡度/建築)
 
-### 建築放置系統 (BuildingPlacer)
+### 建築放置系統 (BuildingPlacer) ✅ M2 階段完成
 - **輸入**: Raycast 從 Scene/Main Camera
 - **圖層**: Terrain 層用於 Chunk，Building 層用於建築
 - **視覺**: 預覽綠/紅色 + 腳印 Gizmo
 - **互動**: 放置後自動選中/框取，保持 Prefab 原始縮放
 
+#### M2-04: 統一驗證系統 (PlacementValidator)
+- **PlacementValidator.cs**: 統一的建築放置驗證邏輯
+- **驗證規則**: 地形檢查、碰撞檢測、菌毯需求、邊界限制
+- **API 統一**: ValidatePlacement 方法提供一致的驗證介面
+- **錯誤回報**: 結構化的驗證結果與錯誤訊息
+
+#### M2-05: 自動接線系統 (PlacementAutoWire)
+- **PlacementAutoWire.cs**: 建築放置後的自動系統整合
+- **自動註冊**: 新建築自動加入 SpatialIndex 和相關管理系統
+- **依賴解析**: 自動處理建築間的依賴關係和連接
+- **生命週期**: 統一管理建築的創建、更新、銷毀流程
+
+#### M2-06: 調試工具 (PlacementDebugHUD)
+- **PlacementDebugHUD.cs**: 建築放置系統的實時調試介面
+- **狀態顯示**: 當前放置模式、驗證結果、性能統計
+- **視覺輔助**: 網格顯示、碰撞邊界、菌毯覆蓋範圍
+- **開發輔助**: 快速切換建築類型、重置系統狀態
+
+## M2 階段完成的設計規範
+
+### 1. 統一驗證系統 ✅ 已實現
+- **PlacementValidator**: 統一的建築放置驗證邏輯
+- **驗證流程**: 地形檢查 → 碰撞檢測 → 菌毯需求 → 邊界限制
+- **API 標準化**: ValidatePlacement 方法提供一致的驗證介面
+- **結果回報**: 結構化的驗證結果與詳細錯誤訊息
+
+### 2. 自動系統整合 ✅ 已實現
+- **PlacementAutoWire**: 建築放置後的自動系統整合
+- **自動註冊**: SpatialIndex 和管理系統的自動加入
+- **依賴管理**: 建築間依賴關係的自動處理
+- **生命週期**: 統一的創建、更新、銷毀流程
+
+### 3. 開發調試支援 ✅ 已實現
+- **PlacementDebugHUD**: 實時調試介面和視覺輔助
+- **狀態監控**: 放置模式、驗證結果、性能統計
+- **視覺輔助**: 網格、邊界、菌毯覆蓋範圍顯示
+
 ## 設計規範 (待實現)
 
 ### 1. 錯誤碼與放置結果系統
 ```csharp
-// PlaceResultCode 枚舉
+// PlaceResultCode 枚舉 (進階版本)
 enum PlaceResultCode {
     OK,                    // 放置成功
     E_PLACE_COLLISION,     // 與其他物件重疊
     E_OUT_OF_BOUNDS,       // 超出可用區域
     E_REQUIRE_CREEP,       // 需要菌毯但條件不符
-    E_INVALID_TYPE         // Prefab/類型不合法
+    E_INVALID_TYPE,        // Prefab/類型不合法
+    E_INSUFFICIENT_SPACE,  // 最小間距不足 (M3 新增)
+    E_RESOURCE_LIMIT       // 資源限制 (M3 新增)
 }
 
 // Result<T> 統一回傳容器
@@ -77,7 +116,7 @@ struct Result<T> {
     string message;       // 人類可讀錯誤訊息
 }
 ```
-**目的**: 統一所有放置相關 API 的回傳格式，支援建築/單位/裝飾物
+**目的**: 擴展錯誤碼支援 M3 階段的最小間距和資源管理
 
 ### 2. SpatialIndex 並聯校驗系統
 ```csharp
@@ -93,12 +132,19 @@ if (useSpatialIndexForPlacement) {
 ```
 **目的**: 結合 Unity Physics (可靠) 與 SpatialIndex (高效)，開關式漸進導入
 
-## 待辦事項
-- SpatialIndex 放置校驗整合
-- 菌毯收縮/淨化機制
-- LOD 遲滯閾值優化
-- 錯誤碼/Result<T> 系統實現
-- 參數外放與模板化
+## M2 階段完成總結
+✅ **菌毯系統**: Frontier 擴張、門檻系統、冷卻機制  
+✅ **建築放置**: 統一驗證、自動接線、調試工具  
+✅ **地形生成**: Perlin 噪聲、Mesh/Collider 生成  
+✅ **開發工具**: CreepBrushAndRunner、PlacementDebugHUD、EditorFlyCamera  
+
+## M3 階段待辦事項
+- **最小間距規則**: 建築間距驗證與視覺提示
+- **資源管理系統**: 資源消耗與限制檢查
+- **SpatialIndex 放置校驗整合**: 雙重驗證系統
+- **菌毯收縮/淨化機制**: 菌毯生命週期管理
+- **LOD 遲滯閾值優化**: 性能優化
+- **錯誤碼/Result<T> 系統擴展**: 支援新的驗證規則
 
 ## 開發工具位置
 - **QA 工具**: Assets/QA/Smoke/Dev/ (不要創建新的 QA/Dev 目錄)
