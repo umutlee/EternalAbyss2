@@ -1,63 +1,178 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace DeepAbyssHive.Creep.Managers
 {
-    // 與現有 CreepManager 同 namespace / 同類別名 → partial 擴充
-    public sealed partial class CreepManager : MonoBehaviour
+    // 最小擴充：不動原有 CreepManager 的生命週期/結構
+    public partial class CreepManager : MonoBehaviour
     {
-        [Header("Creep Grid (Dev-Minimal)")]
-        [SerializeField] private float cellSize = 1f;
+        // 每個 Chunk 一份 grid（bitset）
+        private readonly Dictionary<Vector2Int, CreepGrid> _grids = new Dictionary<Vector2Int, CreepGrid>();
 
-        // Scene 視窗可視化顏色（只在編輯器/除錯用）
-        [SerializeField] private Color gizmoColor = new Color(0.3f, 1f, 0.3f, 0.25f);
-
-        // 簡單的佔用集合：存「哪一些格子有菌毯」
-        private readonly HashSet<Vector2Int> _occupiedCells = new HashSet<Vector2Int>();
-
-        /// <summary>查詢世界座標是否在菌毯上。</summary>
-        public bool IsOnCreep(Vector3 worldPos)
+        // 如果原類沒有單例，這裡提供「保守型」取用；有單例也不衝突（我們不賦值）
+        public static CreepManager GetActive()
         {
-            return _occupiedCells.Contains(WorldToCell(worldPos));
+            // 尋找場景中的第一個活動 CreepManager（Boot 會掛上去）
+            return FindObjectOfType<CreepManager>(includeInactive: false);
         }
 
-        /// <summary>把世界座標換成格子座標（XZ 平面）。</summary>
+        private struct CreepGrid
+        {
+            public int size;          // 邊長（格數），size×size
+            public BitArray bits;     // true=有菌毯
+            public int setCount;      // 目前 true 的數量（覆蓋格數）
+        }
+
+        private static int Idx(int x, int y, int size) => y * size + x;
+
+        // 建立/確保網格
+        public void EnsureGrid(Vector2Int chunkCoord, int chunkSize)
+        {
+            if (_grids.ContainsKey(chunkCoord)) return;
+            int s = Mathf.Max(1, chunkSize);
+            var ba = new BitArray(s * s, false);
+            _grids[chunkCoord] = new CreepGrid { size = s, bits = ba, setCount = 0 };
+            // Debug.Log($"[CREEP] EnsureGrid {chunkCoord} size={s}");
+        }
+
+        public void RemoveGrid(Vector2Int chunkCoord)
+        {
+            if (_grids.Remove(chunkCoord))
+            {
+                // Debug.Log($"[CREEP] RemoveGrid {chunkCoord}");
+            }
+        }
+
+        public bool IsSet(Vector2Int chunkCoord, int x, int y)
+        {
+            if (!_grids.TryGetValue(chunkCoord, out var g)) return false;
+            if ((uint)x >= (uint)g.size || (uint)y >= (uint)g.size) return false;
+            return g.bits[Idx(x, y, g.size)];
+        }
+
+        public void Set(Vector2Int chunkCoord, int x, int y)
+        {
+            if (!_grids.TryGetValue(chunkCoord, out var g)) return;
+            if ((uint)x >= (uint)g.size || (uint)y >= (uint)g.size) return;
+            int i = Idx(x, y, g.size);
+            if (!g.bits[i])
+            {
+                g.bits[i] = true;
+                g.setCount++;
+                _grids[chunkCoord] = g; // 結構體回寫
+            }
+        }
+
+        public void Unset(Vector2Int chunkCoord, int x, int y)
+        {
+            if (!_grids.TryGetValue(chunkCoord, out var g)) return;
+            if ((uint)x >= (uint)g.size || (uint)y >= (uint)g.size) return;
+            int i = Idx(x, y, g.size);
+            if (g.bits[i])
+            {
+                g.bits[i] = false;
+                g.setCount--;
+                if (g.setCount < 0) g.setCount = 0;
+                _grids[chunkCoord] = g;
+            }
+        }
+
+        // 取得總格數與覆蓋格數（for HUD/統計）
+        public void GetTotals(out int totalCells, out int coveredCells)
+        {
+            totalCells = 0; coveredCells = 0;
+            foreach (var kv in _grids)
+            {
+                var g = kv.Value;
+                totalCells  += g.size * g.size;
+                coveredCells += g.setCount;
+            }
+        }
+
+        // === 便利方法：為 CreepDebugInput 等提供簡化 API ===
+        
+        /// <summary>
+        /// 將世界座標轉換為格子座標（假設每格 2x2 單位，與 TerrainManager 一致）
+        /// </summary>
         public Vector2Int WorldToCell(Vector3 worldPos)
         {
-            int cx = Mathf.FloorToInt(worldPos.x / Mathf.Max(0.0001f, cellSize));
-            int cz = Mathf.FloorToInt(worldPos.z / Mathf.Max(0.0001f, cellSize));
-            return new Vector2Int(cx, cz);
+            // 假設格子大小為 2x2 單位（與 TerrainManager 的 CellSize 一致）
+            const float cellSize = 2f;
+            return new Vector2Int(
+                Mathf.FloorToInt(worldPos.x / cellSize),
+                Mathf.FloorToInt(worldPos.z / cellSize)
+            );
         }
 
-        /// <summary>把格子中心換回世界座標（Y=0）。</summary>
-        public Vector3 CellToWorldCenter(Vector2Int cell)
+        /// <summary>
+        /// 在指定格子座標添加菌毯
+        /// </summary>
+        public void AddCreep(Vector2Int cellCoord)
         {
-            return new Vector3((cell.x + 0.5f) * cellSize, 0f, (cell.y + 0.5f) * cellSize);
+            // 將格子座標轉換為 chunk 座標和本地座標
+            // 假設每個 chunk 是 32x32 格子
+            const int chunkSize = 32;
+            Vector2Int chunkCoord = new Vector2Int(
+                Mathf.FloorToInt((float)cellCoord.x / chunkSize),
+                Mathf.FloorToInt((float)cellCoord.y / chunkSize)
+            );
+            
+            int localX = cellCoord.x - chunkCoord.x * chunkSize;
+            int localY = cellCoord.y - chunkCoord.y * chunkSize;
+            
+            // 確保本地座標為正數
+            if (localX < 0) { localX += chunkSize; chunkCoord.x--; }
+            if (localY < 0) { localY += chunkSize; chunkCoord.y--; }
+            
+            // 確保 grid 存在
+            EnsureGrid(chunkCoord, chunkSize);
+            Set(chunkCoord, localX, localY);
         }
 
-        /// <summary>在格子上加菌毯，回傳是否真的有新增。</summary>
-        public bool AddCreep(Vector2Int cell) => _occupiedCells.Add(cell);
-
-        /// <summary>移除格子的菌毯，回傳是否真的有移除。</summary>
-        public bool RemoveCreep(Vector2Int cell) => _occupiedCells.Remove(cell);
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        // 在編輯器 / 開發版畫格子，直觀看配置
-        private void OnDrawGizmosSelected()
+        /// <summary>
+        /// 移除指定格子座標的菌毯
+        /// </summary>
+        /// <returns>如果成功移除返回 true，如果該格子本來就沒有菌毯返回 false</returns>
+        public bool RemoveCreep(Vector2Int cellCoord)
         {
-            if (_occupiedCells == null || _occupiedCells.Count == 0) return;
-
-            var prev = Gizmos.color;
-            Gizmos.color = gizmoColor;
-
-            Vector3 size = new Vector3(cellSize, 0.02f, cellSize);
-            foreach (var cell in _occupiedCells)
+            // 將格子座標轉換為 chunk 座標和本地座標
+            const int chunkSize = 32;
+            Vector2Int chunkCoord = new Vector2Int(
+                Mathf.FloorToInt((float)cellCoord.x / chunkSize),
+                Mathf.FloorToInt((float)cellCoord.y / chunkSize)
+            );
+            
+            int localX = cellCoord.x - chunkCoord.x * chunkSize;
+            int localY = cellCoord.y - chunkCoord.y * chunkSize;
+            
+            // 確保本地座標為正數
+            if (localX < 0) { localX += chunkSize; chunkCoord.x--; }
+            if (localY < 0) { localY += chunkSize; chunkCoord.y--; }
+            
+            // 檢查是否有菌毯
+            bool hadCreep = IsSet(chunkCoord, localX, localY);
+            if (hadCreep)
             {
-                Gizmos.DrawCube(CellToWorldCenter(cell) + Vector3.up * 0.01f, size);
+                Unset(chunkCoord, localX, localY);
             }
-
-            Gizmos.color = prev;
+            return hadCreep;
         }
-#endif
+    }
+
+    // 提供 Terrain 端易用的 Hook，不侵入 CreepManager 內部
+    public static class CreepManagerGridHooks
+    {
+        public static void OnChunkLoaded(Vector2Int chunkCoord, int chunkSize)
+        {
+            var cm = CreepManager.GetActive();
+            if (cm) { cm.EnsureGrid(chunkCoord, chunkSize); cm.EnsureCooldown(chunkCoord, chunkSize); }
+        }
+
+        public static void OnChunkUnloaded(Vector2Int chunkCoord)
+        {
+            var cm = CreepManager.GetActive();
+            if (cm) { cm.RemoveGrid(chunkCoord); cm.RemoveCooldown(chunkCoord); }
+        }
     }
 }

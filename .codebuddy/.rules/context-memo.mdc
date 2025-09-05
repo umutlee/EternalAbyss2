@@ -1,0 +1,27 @@
+---
+description: 
+globs:
+alwaysApply: true
+---
+
+
+
+
+
+Unity 2022.3.62f1；目标：PC/Android/iOS/MacOS
+
+Dev 场景：Assets/Scenes/Dev/Dev_Playground.unity（Build 0）
+
+Boot：BootEnsureManagers 创建 Managers 并确保 CreepManager / UnitManager / SpatialIndexManager
+
+Config：Assets/Resources/Configs/TerrainConfig.asset（含 chunkSize/tileSize/loadRadius/maxLODLevels/viewDistance/seed/noiseScale/heightScale/maxModificationsPerFrame），CreepConfig.asset，GameConfig.asset
+
+地形：T02 串流与 _streamTarget、HUD；T03 Perlin 生成 Mesh/Collider，可通过 noiseScale=0.05,heightScale=3.0 得到可建地
+
+菌毯：预算化扩张 + 冷却 + 坡度/阶差门槛 + 建筑阻挡；Dev 刷子+Runner；随 Chunk 加载建立/移除网格与冷却表
+- M2-02: frontier 队列系统 (CreepManager.Expansion.cs)，左键种子+自动扩张 (CreepBrushAndRunner.cs)，性能统计 HUD
+- M2-03: 冷却机制 (CreepManager.Cooling.cs)，地形坡度/高度差门槛，建筑阻挡检测，游标式冷却递减
+
+建筑放置：Raycast 从 Scene/Main Camera；Terrain层用于 Chunk，Building层用于建筑；预览绿/红＋脚印 Gizmo；放置后自动选中/框取；可保持 Prefab 原始缩放
+
+待办：SpatialIndex 放置校验、收缩/净化、LOD 迟滞阈值、错误码/Result<T> 统一、参数外放与模板化
