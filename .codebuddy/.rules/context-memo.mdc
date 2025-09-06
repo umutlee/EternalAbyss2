@@ -50,17 +50,17 @@ tags: ["context", "memo", "project-state"]
 - **建築阻擋**: Physics.CheckBox 檢測，智能 Building 層識別
 - **CanEnterFrom**: 三重門檻檢查 (冷卻/坡度/建築)
 
-### 建築放置系統 (BuildingPlacer) ✅ M3 階段完成
+### 建築放置系統 (BuildingPlacer) ✅ M3 階段全面完成
 - **輸入**: Raycast 從 Scene/Main Camera
 - **圖層**: Terrain 層用於 Chunk，Building 層用於建築
-- **視覺**: 預覽綠/紅色 + 腳印 Gizmo
+- **視覺**: 預覽綠/紅色 + 腳印 Gizmo，統一色表管理
 - **互動**: 放置後自動選中/框取，保持 Prefab 原始縮放
 
 #### M3-T01~T03: 核心放置系統 ✅ 已完成
-- **PlacementValidator.cs**: 統一驗證系統，支援最小間距、格點對齊
-- **BuildingPlacer.cs**: 實時預覽驗證、Grid Snap、旋轉支援
-- **PlacementStatusHUD.cs**: 狀態顯示和調試信息
-- **GameConfigSO.cs**: 配置化參數 (minSpacing, snapSize, rotationStepDegrees)
+- **PlacementValidator.cs**: 統一驗證系統，支援最小間距、格點對齊、有向碰撞
+- **BuildingPlacer.cs**: 實時預覽驗證、Grid Snap、旋轉支援、預覽/放置一致性
+- **PlacementStatusHUD.cs**: 狀態顯示和調試信息，統一 UI 工具
+- **GameConfigSO.cs**: 全面配置化參數 (minSpacing, snapSize, rotationStepDegrees, 熱鍵管理)
 
 #### M3-T04: SpatialIndex 最近鄰委派 ✅ 已完成
 - **NoNeighborWithinRadiusPredicate**: 可選的 SpatialIndex 最近鄰檢查
@@ -68,8 +68,8 @@ tags: ["context", "memo", "project-state"]
 - **性能優化**: 優先使用高效的空間索引，回退到可靠的物理檢測
 
 #### M3-T05: SMOKE 測試系統 ✅ 已完成
-- **PlacementSmoke.cs**: F7 鍵觸發的自動化測試腳本
-- **測試案例**: minSpacing 違反/通過的基本驗證
+- **PlacementSmoke.cs**: 配置化熱鍵觸發的自動化測試腳本
+- **測試案例**: A/B/C/D 四種案例 (間距/旋轉/刪除重建)
 - **回歸測試**: PASS/FAIL 輸出，適用於開發階段快速驗證
 
 #### M3-T06: 建築旋轉支援 ✅ 已完成
@@ -78,6 +78,39 @@ tags: ["context", "memo", "project-state"]
 - **向後兼容**: 保持舊版 ValidateByConfig(Bounds, mask, extraMargin) API
 
 #### M3-T07: 建築刪除工具 ✅ 已完成
+- **BuildingDeleteTool.cs**: 配置化熱鍵的射線選取刪除工具
+- **獨立設計**: 不依賴 Placer，可掛載在任意場景物件
+- **精確選取**: 使用射線檢測 Building 層物件
+
+#### M3-T08: 旋轉步進配置 ✅ 已完成
+- **rotationStepDegrees**: GameConfig 中的旋轉量化參數
+- **SnapRotationY**: 僅量化 Y 軸旋轉，避免建築意外傾斜
+- **統一量化**: 預覽和放置使用相同的 Grid Snap + Rotation Step
+
+#### M3-T09: 預覽/放置一致性 ✅ 已完成
+- **預覽快取系統**: 避免預覽和放置的微小差異
+- **統一驗證流程**: Update() 和 PlaceNow() 使用相同的量化和驗證邏輯
+- **性能優化**: 重用驗證結果，避免重複計算
+
+#### M3-T10: 遮罩與層一致性 ✅ 已完成
+- **PlacementLayerUtil.cs**: 統一管理圖層遮罩計算
+- **GetPlacementBlockMask()**: 放置驗證用遮罩，排除 Terrain/IgnoreRaycast
+- **GetBuildingOnlyMask()**: Building 層專用遮罩，用於刪除工具
+
+#### M3-T11: HUD 與訊息一致性 ✅ 已完成
+- **PlacementUiUtil.cs**: 統一管理顏色和訊息邏輯
+- **ColorFor()**: 統一顏色規則，支援預覽透明度控制
+- **TextFor()**: 統一 HUD 訊息格式，去除系統前綴
+
+#### M3-T12/T13: SMOKE 測試擴充 + Editor 工具 ✅ 已完成
+- **擴充測試**: 45°/90° 旋轉測試、刪除重建邏輯測試
+- **GameConfigMenu.cs**: Editor 菜單自動創建/選取 GameConfig
+- **完整驗證**: 四種測試案例確保系統穩定性
+
+#### M3-Final: Dev 熱鍵統一管理 ✅ 已完成
+- **集中配置**: placementSmokeKey, buildingDeleteKey1/2 統一在 GameConfig
+- **智能回退**: GameConfig None 時回退到 Inspector 設置
+- **避免衝突**: 統一管理所有 Dev 工具熱鍵
 - **BuildingDeleteTool.cs**: Delete/X 鍵射線選取刪除 Building 層物件
 - **獨立設計**: 不依賴 Placer，可掛載在任意場景物件
 - **開發輔助**: 適用於開發階段快速清理建築
@@ -89,23 +122,35 @@ tags: ["context", "memo", "project-state"]
 
 ## M3 階段完成的設計規範
 
-### 1. 統一驗證系統 ✅ 已實現並擴展
-- **PlacementValidator**: 統一的建築放置驗證邏輯
+### 1. 統一驗證系統 ✅ 已實現並完善
+- **PlacementValidator**: 統一的建築放置驗證邏輯，支援有向碰撞檢測
 - **驗證流程**: 邊界檢查 → Physics 碰撞 → SpatialIndex 並聯 → 最小間距 → 菌毯需求
-- **API 雙版本**: 舊版 AABB + 新版有向 (支援旋轉)
+- **API 雙版本**: 舊版 AABB + 新版有向 (支援旋轉)，完全向後兼容
 - **委派系統**: SpatialIndex/菌毯/邊界/最近鄰的可選委派接口
 
-### 2. 配置化設計 ✅ 已實現
-- **GameConfigSO**: 統一配置參數管理
+### 2. 配置化設計 ✅ 已實現並擴展
+- **GameConfigSO**: 統一配置參數管理，包含 Dev 工具熱鍵
 - **核心參數**: minSpacing, margin, snapSize, rotationStepDegrees
 - **開關控制**: useSpatialIndexForPlacement, requireCreep
+- **熱鍵管理**: placementSmokeKey, buildingDeleteKey1/2 集中配置
 - **實時日誌**: 配置載入時自動輸出所有參數
 
-### 3. 開發工具完備 ✅ 已實現
-- **PlacementSmoke**: F7 自動化測試，PASS/FAIL 輸出
-- **BuildingDeleteTool**: Delete/X 鍵快速刪除建築
-- **PlacementStatusHUD**: 實時狀態顯示和調試信息
+### 3. 統一工具系統 ✅ 已實現
+- **PlacementLayerUtil**: 統一圖層遮罩管理，避免各處手寫不一致
+- **PlacementUiUtil**: 統一顏色和訊息管理，確保 UI 一致性
+- **Editor 工具**: GameConfigMenu 自動創建/選取配置資產
+
+### 4. 開發工具完備 ✅ 已實現並擴展
+- **PlacementSmoke**: 配置化熱鍵自動化測試，四種測試案例
+- **BuildingDeleteTool**: 配置化熱鍵快速刪除建築
+- **PlacementStatusHUD**: 實時狀態顯示和調試信息，統一 UI
 - **階段性備份**: 每個任務完成後 git 備份 + Neo4j 記錄
+
+### 5. 熱鍵管理最佳實踐 ✅ 已建立
+- **集中配置**: 所有遊戲功能操作按鍵統一在 GameConfig.asset 管理
+- **智能回退**: GameConfig 設為 None 時自動回退到 Inspector 設置
+- **避免衝突**: 統一管理避免不同組件使用重複按鍵
+- **向後兼容**: 保持現有 Inspector 設置不受影響
 
 ## M3 階段已實現的設計規範
 
@@ -155,12 +200,14 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 **狀態**: 完整的委派系統，支援外部系統接入驗證邏輯
 
 ## M3 階段完成總結 ✅ 全面完成
-✅ **建築放置系統**: 最小間距、格點對齊、旋轉支援、刪除工具  
+✅ **建築放置系統**: 最小間距、格點對齊、旋轉支援、刪除工具、預覽一致性  
 ✅ **SpatialIndex 整合**: 委派系統、最近鄰檢查、向後兼容  
-✅ **配置化設計**: GameConfig 統一參數管理  
-✅ **開發工具**: SMOKE 測試、刪除工具、狀態 HUD  
-✅ **API 擴展**: 有向碰撞檢測、雙版本 API  
-✅ **測試驗證**: 自動化測試腳本、回歸驗證  
+✅ **統一工具系統**: 遮罩管理、UI 工具、顏色訊息統一  
+✅ **配置化設計**: GameConfig 統一參數管理、熱鍵集中配置  
+✅ **開發工具**: SMOKE 測試擴充、刪除工具、狀態 HUD、Editor 菜單  
+✅ **API 擴展**: 有向碰撞檢測、雙版本 API、完全向後兼容  
+✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
+✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
 
 ## M2 階段完成總結
 ✅ **菌毯系統**: Frontier 擴張、門檻系統、冷卻機制  
@@ -174,6 +221,13 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **單位生產系統**: 單位孵化和管理
 - **LOD 遲滯閾值優化**: 性能優化
 - **多人同步準備**: 網路同步基礎架構
+
+## 熱鍵管理最佳實踐 (M3 建立)
+**重要原則**: 以後所有遊戲功能操作按鍵都應該使用可自定義的做法，並集中到 GameConfig.asset 管理
+- **集中配置**: 避免各組件分散定義按鍵造成衝突
+- **智能回退**: GameConfig 設為 None 時回退到 Inspector 設置
+- **向後兼容**: 保持現有設置不受影響
+- **統一管理**: 新功能按鍵都應遵循此模式
 
 ## 開發工具位置
 - **QA 工具**: Assets/QA/Smoke/Dev/ (不要創建新的 QA/Dev 目錄)
