@@ -420,6 +420,9 @@ GameObject:
   - component: {fileID: 1260670770}
   - component: {fileID: 1260670769}
   - component: {fileID: 1260670768}
+  - component: {fileID: 1260670772}
+  - component: {fileID: 1260670771}
+  - component: {fileID: 1260670773}
   m_Layer: 0
   m_Name: Dev Helper
   m_TagString: Untagged
@@ -527,6 +530,44 @@ MonoBehaviour:
   drawFootprintOutline: 1
   outlineYOffset: 0.02
   outlineWidth: 0.03
+--- !u!114 &1260670771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f2dba97f74be4efcb83b647f0f8d7e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1260670772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0bdfd9d5f5f9a4201be213ed8ad97d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1260670773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76032e30ed0284ac08634286f30d34fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  deleteKey1: 127
+  deleteKey2: 100
 --- !u!1 &1337030030
 GameObject:
   m_ObjectHideFlags: 0
