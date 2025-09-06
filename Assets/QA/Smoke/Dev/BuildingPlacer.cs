@@ -8,6 +8,9 @@ namespace DeepAbyssHive.Dev
 {
     public class BuildingPlacer : MonoBehaviour
     {
+        // 預覽顏色透明度（固定值，避免預覽不透明）
+        private const float PREVIEW_ALPHA = 0.35f;
+        
         // --- T07: 預覽/放置一致性快取 ---
         private Vector3 _lastPreviewCenter;
         private Quaternion _lastPreviewRotation;
@@ -325,16 +328,22 @@ namespace DeepAbyssHive.Dev
 
         private static Color GetTintFromResult(Result<Bounds> r)
         {
-            if (r == null) return Color.white;
-            if (r.ok) return new Color(0f, 1f, 0f, 0.35f); // 綠色
-            switch (r.code)
+            Color c;
+            if (r == null) c = Color.white;
+            else if (r.ok) c = Color.green;
+            else
             {
-                case PlaceResultCode.E_PLACE_COLLISION: return new Color(1f, 0f, 0f, 0.35f); // 紅色
-                case PlaceResultCode.E_REQUIRE_CREEP:   return new Color(1f, 1f, 0f, 0.35f); // 黃色
-                case PlaceResultCode.E_OUT_OF_BOUNDS:   return new Color(1f, 0f, 1f, 0.35f); // 品紅
-                case PlaceResultCode.E_INVALID_TYPE:    return new Color(0f, 1f, 1f, 0.35f); // 青色
-                default: return new Color(0.5f, 0.5f, 0.5f, 0.35f); // 灰色
+                switch (r.code)
+                {
+                    case PlaceResultCode.E_PLACE_COLLISION: c = Color.red; break;
+                    case PlaceResultCode.E_REQUIRE_CREEP:   c = Color.yellow; break;
+                    case PlaceResultCode.E_OUT_OF_BOUNDS:   c = new Color(1f, 0f, 1f); break; // magenta
+                    case PlaceResultCode.E_INVALID_TYPE:    c = Color.cyan; break;
+                    default:                                c = Color.white; break;
+                }
             }
+            c.a = PREVIEW_ALPHA; // 統一預覽透明度
+            return c;
         }
     }
 }
