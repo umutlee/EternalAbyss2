@@ -214,13 +214,72 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **地形生成**: Perlin 噪聲、Mesh/Collider 生成  
 ✅ **開發工具**: CreepBrushAndRunner、EditorFlyCamera  
 
-## M4 階段待辦事項 (下一階段)
-- **資源管理系統**: 資源消耗與限制檢查
-- **菌毯收縮/淨化機制**: 菌毯生命週期管理
-- **建築升級系統**: 建築等級和功能擴展
-- **單位生產系統**: 單位孵化和管理
-- **LOD 遲滯閾值優化**: 性能優化
-- **多人同步準備**: 網路同步基礎架構
+## M4 階段：單位/路徑最小整合 (2025-09-06 開始)
+
+### 目標與原則
+- **目標**: 地面單位能從 A 走到 B，≈200 隻同時移動仍流暢
+- **原則**: 最小可行修補，1–3 檔、≤200 行、零編譯錯、Smoke 綠燈
+- **選型**: 輕量「格網 A*」（與 Creep Grid/Chunk 對齊）
+- **整合**: Creep Grid 移速加成、Building 層動態阻擋、Terrain 坡度/高差門檻
+
+### M4 任務拆解
+
+#### M4-T01: Nav Grid 介面與取樣器 ✅ 待開始
+- **IPathGrid**: 取樣可走/成本/鄰接，對齊 creep grid 尺寸
+- **GridSampler**: IsWalkable(x,y) 綜合坡度/高差/Building 層/地圖邊界
+- **Cost(x,y)**: 基礎成本 + off-creep 罰值（讓單位偏好走 creep）
+- **來源**: CreepManager、TerrainManager、Physics（Building）
+- **驗收**: DEV HUD 取樣 100×100 區塊，統計 walkable% 與平均 cost
+
+#### M4-T02: A* 單檔輕量實作 ✅ 待開始
+- **檔案**: DeepAbyssHive/Units/Pathfinding/GridAStar.cs
+- **功能**: 8 向或 4 向連通、開放表（小根堆）＋封閉表（位元陣列）
+- **Heuristic**: Manhattan（4向）或 Octile（8向）
+- **安全閥**: 節點展開/路徑長度上限，避免最壞情況卡住
+- **驗收**: 單次求路 < 1ms（PC），失敗時回 Result<List<Vector3>>
+
+#### M4-T03: UnitAgent 與 Path 請求管線 ✅ 待開始
+- **UnitAgent.cs**: SetDestination(Vector3)、TickMove(dt) 沿路徑移動
+- **UnitManager**: 內建請求佇列，每幀處理 N 筆（pathRequestsPerFrame）
+- **GameConfig**: pathRequestsPerFrame 外放（預設 32）
+- **驗收**: 生成 50 隻 → 指定目標點，全部能動且沒有卡死
+
+#### M4-T04: Dev Spawner & 指令（200 隻壓測） ✅ 待開始
+- **UnitDevSpawner.cs**: GameConfig 熱鍵（預設 F9）生成 N 隻
+- **右鍵指定**: 目標點或第二個熱鍵
+- **遮罩規則**: 使用 PlacementLayerUtil 避免點到錯層
+- **驗收**: 生成 200 隻、跑 10 秒不卡頓，SMOKE 印出 FPS/求路數/失敗率
+
+#### M4-T05: Creep 交互（移速加成） ✅ 待開始
+- **取樣頻率**: UnitAgent 每 0.25s 取樣當前格
+- **速度調整**: on-creep → speed *= creepSpeedMul，off-creep → speed *= offCreepSpeedMul
+- **GameConfig**: creepSpeedMul（1.25）、offCreepSpeedMul（0.85）外放
+- **驗收**: 走進菌毯路段時明顯提速，Console 印狀態切換
+
+#### M4-T06: 障礙動態更新（建築放置/刪除） ✅ 待開始
+- **通知機制**: BuildingPlacer 成功放置/刪除後向 UnitManager 發 NotifyObstacleChanged(Bounds)
+- **Lazy 更新**: GridSampler 標記區塊需重取樣，不整圖重建
+- **驗收**: 建築生成/刪除後，單位能繞行，不會穿越新障礙
+
+#### M4-T07: SMOKE 套件（Units） ✅ 待開始
+- **UnitsSmoke.cs**: 熱鍵（預設 F10）生成 200 隻，隨機起訖 5 組
+- **測試流程**: 跑路 8 秒，輸出 req/s、path/ms、avgLen、fail%
+- **綠燈標準**: fail < 2%，平均求路 < 1.5ms（PC）
+- **驗收**: 一鍵測出穩定數據
+
+### 落地順序
+1. **T01+T02**: Grid + A* → Console 單測可跑通
+2. **T03**: Agent/Manager → 單位可以走
+3. **T04**: Spawner → 200 隻壓測
+4. **T05**: Creep 速度加成 → 體感差異明顯
+5. **T06**: 建築動態障礙 → 與 M3 打通
+6. **T07**: SMOKE-Units → 綠燈標準固化
+
+### 影響面與依賴
+- **不改**: 既有 BOOT/SMOKE 日誌
+- **依賴**: CreepManager 查詢、CreepRules 門檻、PlacementLayerUtil 遮罩
+- **新增**: Dev/Smoke 腳本都在 QA/Smoke/Dev 目錄
+- **GameConfig 外放**: pathRequestsPerFrame、creepSpeedMul、offCreepSpeedMul、devSpawnCount、devUnitsKey/devUnitsTestKey
 
 ## 熱鍵管理最佳實踐 (M3 建立)
 **重要原則**: 以後所有遊戲功能操作按鍵都應該使用可自定義的做法，並集中到 GameConfig.asset 管理
