@@ -8,6 +8,11 @@ namespace DeepAbyssHive.Dev
 {
     public class BuildingPlacer : MonoBehaviour
     {
+        // --- T07: 預覽/放置一致性快取 ---
+        private Vector3 _lastPreviewCenter;
+        private Quaternion _lastPreviewRotation;
+        private Bounds _lastPreviewBounds;
+        private Result<Bounds> _lastPreviewResult;
         [Header("Basics")]
         [SerializeField] private Camera sceneCamera;                 // 不填就用 Camera.main
         [SerializeField] private LayerMask groundMask;               // 指定「Ground」Layer
@@ -45,11 +50,6 @@ namespace DeepAbyssHive.Dev
         private bool isPlacing;
         private Vector3 lastValidPos;
         private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
-        
-        // 預覽狀態快取（避免重複計算）
-        private Vector3 lastPreviewCenter;
-        private Bounds lastPreviewBounds;
-        private Result<Bounds> lastPreviewResult;
 
         void Awake()
         {
@@ -88,19 +88,39 @@ namespace DeepAbyssHive.Dev
             {
                 lastHit = hit; // 保存 hit 資訊供 PlaceNow() 使用
                 
-                // Grid Snap（若啟用）與 Rotation Step（若啟用）：先量化，後續以量化結果計算/驗證
                 var cfg = GameConfigProvider.Current;
                 var worldPoint = hit.point;
-                var snappedPoint = SnapXZ(worldPoint, cfg.snapSize);
+                // 先量化中心與旋轉（與放置相同順序）
+                var center = SnapXZ(worldPoint, cfg.snapSize);
                 rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
-                snappedPoint.y = hit.point.y + previewHeight;
+                center.y = hit.point.y + previewHeight;
+
+                // 統一遮罩：排除 Terrain/IgnoreRaycast（維持原規則）
+                int terrainLayer = LayerMask.NameToLayer("Terrain");
+                int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
+                int includeMask = ~0;
+                if (terrainLayer != -1) includeMask &= ~(1 << terrainLayer);
+                if (ignoreRaycast != -1) includeMask &= ~(1 << ignoreRaycast);
+
+                // 建立 Bounds（以量化後中心/半徑）
+                var half = CalcHalfExtents();
+                var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                
+                // 預覽即時驗證（有向版；旋轉參與 OverlapBox）
+                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding);
+
+                // 記錄給 PlaceNow() 重用，避免再次計算造成微差
+                _lastPreviewCenter = worldBounds.center;
+                _lastPreviewRotation = rotation;
+                _lastPreviewBounds = worldBounds;
+                _lastPreviewResult = result;
+
+                // 依結果上色（OK=綠／Collision=紅／RequireCreep=黃／OutOfBounds=品紅／InvalidType=青）
+                SetPreviewTint(GetTintFromResult(result));
 
                 EnsurePreview();
-                previewInstance.transform.SetPositionAndRotation(snappedPoint, rotation);
-                lastValidPos = snappedPoint;
-
-                // 實時驗證預覽位置
-                UpdatePreviewValidation(snappedPoint);
+                previewInstance.transform.SetPositionAndRotation(center, rotation);
+                lastValidPos = center;
                 
                 if (Input.GetMouseButtonDown(0))
                     PlaceNow();
@@ -156,18 +176,39 @@ namespace DeepAbyssHive.Dev
 
         private void PlaceNow()
         {
-            // 重用預覽的驗證結果，避免重複計算
-            if (lastPreviewResult == null || !lastPreviewResult.ok)
+            // 優先重用預覽快取；確保與 Update() 完全一致
+            Vector3 center = _lastPreviewCenter;
+            Quaternion rotation = _lastPreviewRotation;
+            Bounds worldBounds = _lastPreviewBounds;
+            var cached = _lastPreviewResult;
+
+            // 若快取尚未建立（或外部呼叫 PlaceNow），才重算一次
+            if (cached == null)
             {
-                Debug.Log($"[PLACE] Cannot place: {lastPreviewResult?.message ?? "No preview validation"}");
+                var cfg = GameConfigProvider.Current;
+                var worldPoint = lastHit.point;
+                center = SnapXZ(worldPoint, cfg.snapSize);
+                rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
+
+                int terrainLayer = LayerMask.NameToLayer("Terrain");
+                int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
+                int includeMask = ~0;
+                if (terrainLayer != -1) includeMask &= ~(1 << terrainLayer);
+                if (ignoreRaycast != -1) includeMask &= ~(1 << ignoreRaycast);
+
+                var half = CalcHalfExtents();
+                worldBounds = new Bounds(center, half * 2f);
+                cached = PlacementValidator.ValidateByConfig(center, half, rotation, includeMask, blockPadding);
+            }
+
+            if (!cached.ok)
+            {
+                Debug.Log($"[PLACE] blocked: {cached.code} {cached.message}");
                 return;
             }
 
-            var pos = lastValidPos;
-            pos.y -= previewHeight; // 放回地面
-
-            // 實例化放置物
-            var placed = Instantiate(placePrefab, pos, rotation);
+            // 實例化放置物（在 center/rotation 生成建築實例）
+            var placed = Instantiate(placePrefab, center, rotation);
             // 放置實體同樣採用「原比例 × 倍率」
             {
                 var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
@@ -223,65 +264,9 @@ namespace DeepAbyssHive.Dev
             previewRuntimeMat = null;
         }
 
-        private void UpdatePreviewValidation(Vector3 previewPos)
-        {
-            if (!previewInstance) return;
 
-            // 計算預覽物件的世界邊界（先 Snap 再算 bounds）
-            var previewCenter = previewPos;
-            previewCenter.y -= previewHeight; // 回到地面高度進行驗證
 
-            // 建立臨時預覽物件來計算 bounds（與 PlaceNow 邏輯一致）
-            var tempPreview = Instantiate(placePrefab, previewCenter, rotation);
-            int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
-            if (ignoreRaycast != -1)
-            {
-                foreach (var t in tempPreview.GetComponentsInChildren<Transform>(true))
-                    t.gameObject.layer = ignoreRaycast;
-            }
-            foreach (var c in tempPreview.GetComponentsInChildren<Collider>(true))
-                c.enabled = false;
 
-            Bounds wb = CalcWorldBounds(tempPreview, useColliderBoundsForBlocking);
-            Destroy(tempPreview); // 立即銷毀臨時物件
-
-            // 統一的掩碼設定（與 PlaceNow 一致）
-            int terrainLayer = LayerMask.NameToLayer("Terrain");
-            int includeMask = ~0;
-            if (terrainLayer != -1) includeMask &= ~(1 << terrainLayer);
-            if (ignoreRaycast != -1) includeMask &= ~(1 << ignoreRaycast);
-
-            // 防抖：只在位置或旋轉變化時才重新驗證
-            if (Vector3.Distance(wb.center, lastPreviewCenter) < 0.01f && 
-                lastPreviewBounds.size == wb.size)
-            {
-                return; // 位置沒有顯著變化，跳過驗證
-            }
-
-            // 執行驗證（這會更新 PlacementValidator.LastResult）
-            lastPreviewCenter = wb.center;
-            lastPreviewBounds = wb;
-            // 使用有向版驗證，讓旋轉真正影響碰撞
-            lastPreviewResult = PlacementValidator.ValidateByConfig(wb.center, wb.extents, rotation, includeMask, blockPadding);
-
-            // 根據驗證結果設定預覽顏色
-            var previewColor = GetPreviewColor(lastPreviewResult.code, lastPreviewResult.ok);
-            SetPreviewTint(previewColor);
-        }
-
-        private Color GetPreviewColor(PlaceResultCode code, bool ok)
-        {
-            if (ok) return new Color(0f, 1f, 0f, 0.35f); // 綠色
-            
-            switch (code)
-            {
-                case PlaceResultCode.E_PLACE_COLLISION: return new Color(1f, 0f, 0f, 0.35f); // 紅色
-                case PlaceResultCode.E_REQUIRE_CREEP:   return new Color(1f, 1f, 0f, 0.35f); // 黃色
-                case PlaceResultCode.E_OUT_OF_BOUNDS:   return new Color(1f, 0f, 1f, 0.35f); // 品紅
-                case PlaceResultCode.E_INVALID_TYPE:    return new Color(0f, 1f, 1f, 0.35f); // 青色
-                default:                                return new Color(0.5f, 0.5f, 0.5f, 0.35f); // 灰色
-            }
-        }
 
         private Bounds CalcWorldBounds(GameObject go, bool preferCollider)
         {
@@ -324,6 +309,32 @@ namespace DeepAbyssHive.Dev
             e.z = 0f;
             e.y = Mathf.Round(e.y / stepDeg) * stepDeg;
             return Quaternion.Euler(e);
+        }
+
+        private Vector3 CalcHalfExtents()
+        {
+            if (!placePrefab) return Vector3.one * 0.5f;
+            
+            // 建立臨時物件來計算 bounds
+            var temp = Instantiate(placePrefab);
+            var bounds = CalcWorldBounds(temp, useColliderBoundsForBlocking);
+            Destroy(temp);
+            
+            return bounds.extents;
+        }
+
+        private static Color GetTintFromResult(Result<Bounds> r)
+        {
+            if (r == null) return Color.white;
+            if (r.ok) return new Color(0f, 1f, 0f, 0.35f); // 綠色
+            switch (r.code)
+            {
+                case PlaceResultCode.E_PLACE_COLLISION: return new Color(1f, 0f, 0f, 0.35f); // 紅色
+                case PlaceResultCode.E_REQUIRE_CREEP:   return new Color(1f, 1f, 0f, 0.35f); // 黃色
+                case PlaceResultCode.E_OUT_OF_BOUNDS:   return new Color(1f, 0f, 1f, 0.35f); // 品紅
+                case PlaceResultCode.E_INVALID_TYPE:    return new Color(0f, 1f, 1f, 0.35f); // 青色
+                default: return new Color(0.5f, 0.5f, 0.5f, 0.35f); // 灰色
+            }
         }
     }
 }
