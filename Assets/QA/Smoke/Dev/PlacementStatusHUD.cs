@@ -17,7 +17,7 @@ public class PlacementStatusHUD : MonoBehaviour
         if (last == null) return;
 
         // 根據結果選色並畫出 wire bounds（12 條邊）
-        var color = ColorFor(last.code, last.ok);
+        var color = PlacementUiUtil.ColorFor(last, false);
         DrawBoundsWire(last.data, color, LINE_DURATION);
     }
 
@@ -26,8 +26,8 @@ public class PlacementStatusHUD : MonoBehaviour
         var last = PlacementValidator.LastResult;
         var cfg = GameConfigProvider.Current;
 
-        string status = last == null ? "(no checks yet)" : $"{last.code} ok={last.ok} {last.message}";
-        Color guiColor = last == null ? Color.white : ColorFor(last.code, last.ok);
+        string status = PlacementUiUtil.TextFor(last);
+        Color guiColor = PlacementUiUtil.ColorFor(last, false);
 
         // 左上角狀態面板
         GUI.color = guiColor;
@@ -38,18 +38,7 @@ public class PlacementStatusHUD : MonoBehaviour
         GUI.color = Color.white;
     }
 
-    private static Color ColorFor(PlaceResultCode code, bool ok)
-    {
-        if (ok) return Color.green;
-        switch (code)
-        {
-            case PlaceResultCode.E_PLACE_COLLISION: return Color.red;
-            case PlaceResultCode.E_REQUIRE_CREEP:   return Color.yellow;
-            case PlaceResultCode.E_OUT_OF_BOUNDS:   return new Color(1f, 0f, 1f); // magenta
-            case PlaceResultCode.E_INVALID_TYPE:    return Color.cyan;
-            default:                                return Color.white;
-        }
-    }
+    // （顏色邏輯改由 PlacementUiUtil 統一管理）
 
     private static void DrawBoundsWire(Bounds b, Color c, float duration)
     {

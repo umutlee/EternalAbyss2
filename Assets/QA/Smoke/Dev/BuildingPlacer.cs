@@ -8,9 +8,6 @@ namespace DeepAbyssHive.Dev
 {
     public class BuildingPlacer : MonoBehaviour
     {
-        // 預覽顏色透明度（固定值，避免預覽不透明）
-        private const float PREVIEW_ALPHA = 0.35f;
-        
         // --- T07: 預覽/放置一致性快取 ---
         private Vector3 _lastPreviewCenter;
         private Quaternion _lastPreviewRotation;
@@ -114,8 +111,8 @@ namespace DeepAbyssHive.Dev
                 _lastPreviewBounds = worldBounds;
                 _lastPreviewResult = result;
 
-                // 依結果上色（OK=綠／Collision=紅／RequireCreep=黃／OutOfBounds=品紅／InvalidType=青）
-                SetPreviewTint(GetTintFromResult(result));
+                // 依結果上色（共用色表/透明度）
+                SetPreviewTint(PlacementUiUtil.ColorFor(result, true));
 
                 EnsurePreview();
                 previewInstance.transform.SetPositionAndRotation(center, rotation);
@@ -318,24 +315,6 @@ namespace DeepAbyssHive.Dev
             return bounds.extents;
         }
 
-        private static Color GetTintFromResult(Result<Bounds> r)
-        {
-            Color c;
-            if (r == null) c = Color.white;
-            else if (r.ok) c = Color.green;
-            else
-            {
-                switch (r.code)
-                {
-                    case PlaceResultCode.E_PLACE_COLLISION: c = Color.red; break;
-                    case PlaceResultCode.E_REQUIRE_CREEP:   c = Color.yellow; break;
-                    case PlaceResultCode.E_OUT_OF_BOUNDS:   c = new Color(1f, 0f, 1f); break; // magenta
-                    case PlaceResultCode.E_INVALID_TYPE:    c = Color.cyan; break;
-                    default:                                c = Color.white; break;
-                }
-            }
-            c.a = PREVIEW_ALPHA; // 統一預覽透明度
-            return c;
-        }
+        // （顏色邏輯改由 PlacementUiUtil 統一管理）
     }
 }
