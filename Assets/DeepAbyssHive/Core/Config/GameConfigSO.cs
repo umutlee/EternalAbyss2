@@ -27,6 +27,14 @@ namespace DeepAbyssHive.Core.Config
 
         [Tooltip("旋轉步進（度；0=關閉自由旋轉）。僅量化 Y 軸旋轉，並在預覽/放置均套用。")]
         public float rotationStepDegrees = 0.0f;
+
+        [Header("Dev / Testing")]
+        [Tooltip("Placement SMOKE 觸發鍵（None=停用）。")]
+        public KeyCode placementSmokeKey = KeyCode.F7;
+        [Tooltip("建築刪除主鍵（None=停用）。")]
+        public KeyCode buildingDeleteKey1 = KeyCode.Delete;
+        [Tooltip("建築刪除副鍵（None=停用）。")]
+        public KeyCode buildingDeleteKey2 = KeyCode.X;
     }
 
     /// <summary>
@@ -60,7 +68,7 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}");
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}");
         }
     }
 }

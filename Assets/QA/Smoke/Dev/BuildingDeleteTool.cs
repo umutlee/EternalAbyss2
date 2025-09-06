@@ -1,4 +1,5 @@
 using UnityEngine;
+using DeepAbyssHive.Core.Config;
 
 /// <summary>
 /// Dev 小工具：按下 Delete 或 X，射線選取 Building 層物件並刪除。
@@ -6,13 +7,18 @@ using UnityEngine;
 /// </summary>
 public class BuildingDeleteTool : MonoBehaviour
 {
+    // Inspector 後備（GameConfig 設為 None 時使用）
     public KeyCode deleteKey1 = KeyCode.Delete;
     public KeyCode deleteKey2 = KeyCode.X;
 
     void Update()
     {
-        if (!Input.GetKeyDown(deleteKey1) && !Input.GetKeyDown(deleteKey2))
-            return;
+        // 優先用 GameConfig；個別 None→各自落回 Inspector 後備；兩者皆 None→停用
+        var cfg = GameConfigProvider.Current;
+        var k1 = (cfg != null && cfg.buildingDeleteKey1 != KeyCode.None) ? cfg.buildingDeleteKey1 : deleteKey1;
+        var k2 = (cfg != null && cfg.buildingDeleteKey2 != KeyCode.None) ? cfg.buildingDeleteKey2 : deleteKey2;
+        bool pressed = (k1 != KeyCode.None && Input.GetKeyDown(k1)) || (k2 != KeyCode.None && Input.GetKeyDown(k2));
+        if (!pressed) return;
 
         var cam = Camera.main;
         if (cam == null) return;

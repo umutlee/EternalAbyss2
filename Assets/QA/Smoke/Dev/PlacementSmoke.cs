@@ -4,6 +4,7 @@ using DeepAbyssHive.Core.Config;
 
 public class PlacementSmoke : MonoBehaviour
 {
+    // Inspector 後備（GameConfig 設為 None 時使用）
     public KeyCode triggerKey = KeyCode.F7;
     public Vector3 testOrigin = new Vector3(0, 0.5f, 0);
     public Vector3 halfExtents = new Vector3(0.5f, 0.5f, 0.5f); // 1x1x1 測試建築
@@ -12,7 +13,10 @@ public class PlacementSmoke : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(triggerKey))
+        // 優先用 GameConfig；None→落回 Inspector 後備；兩者皆 None→停用
+        var cfg = GameConfigProvider.Current;
+        var key = (cfg != null && cfg.placementSmokeKey != KeyCode.None) ? cfg.placementSmokeKey : triggerKey;
+        if (key != KeyCode.None && Input.GetKeyDown(key))
         {
             RunSmoke();
         }
