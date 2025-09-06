@@ -18,10 +18,8 @@ public class BuildingDeleteTool : MonoBehaviour
         if (cam == null) return;
 
         var ray = cam.ScreenPointToRay(Input.mousePosition);
-        int buildingLayer = LayerMask.NameToLayer("Building");
-        if (buildingLayer < 0) { Debug.Log("[DEV HUD] BuildingDeleteTool: Building 層不存在"); return; }
-
-        int mask = 1 << buildingLayer;
+        int mask = DeepAbyssHive.Common.Placement.PlacementLayerUtil.GetBuildingOnlyMask();
+        if (mask == 0) { Debug.Log("[DEV HUD] BuildingDeleteTool: Building 層不存在"); return; }
         if (Physics.Raycast(ray, out var hit, 1000f, mask, QueryTriggerInteraction.Ignore))
         {
             var go = hit.collider ? hit.collider.gameObject : null;

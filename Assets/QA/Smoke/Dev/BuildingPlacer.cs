@@ -98,12 +98,8 @@ namespace DeepAbyssHive.Dev
                 rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
                 center.y = hit.point.y + previewHeight;
 
-                // 統一遮罩：排除 Terrain/IgnoreRaycast（維持原規則）
-                int terrainLayer = LayerMask.NameToLayer("Terrain");
-                int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
-                int includeMask = ~0;
-                if (terrainLayer != -1) includeMask &= ~(1 << terrainLayer);
-                if (ignoreRaycast != -1) includeMask &= ~(1 << ignoreRaycast);
+                // 統一遮罩：使用工具方法，避免各處手寫不一致
+                int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
 
                 // 建立 Bounds（以量化後中心/半徑）
                 var half = CalcHalfExtents();
@@ -193,11 +189,7 @@ namespace DeepAbyssHive.Dev
                 center = SnapXZ(worldPoint, cfg.snapSize);
                 rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
 
-                int terrainLayer = LayerMask.NameToLayer("Terrain");
-                int ignoreRaycast = LayerMask.NameToLayer("Ignore Raycast");
-                int includeMask = ~0;
-                if (terrainLayer != -1) includeMask &= ~(1 << terrainLayer);
-                if (ignoreRaycast != -1) includeMask &= ~(1 << ignoreRaycast);
+                int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
 
                 var half = CalcHalfExtents();
                 worldBounds = new Bounds(center, half * 2f);
