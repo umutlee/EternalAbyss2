@@ -8,7 +8,7 @@ public static class GameConfigMenu
 {
     private const string AssetPath = "Assets/Resources/Configs/GameConfig.asset";
 
-    [MenuItem("DeepAbyss/Configs/Create or Select GameConfig")]
+    [MenuItem("DeepAbyssHive/Configs/Create or Select GameConfig")]
     public static void CreateOrSelectGameConfig()
     {
         var asset = AssetDatabase.LoadAssetAtPath<GameConfigSO>(AssetPath);
