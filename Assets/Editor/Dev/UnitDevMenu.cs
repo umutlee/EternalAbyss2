@@ -6,9 +6,9 @@ using DeepAbyssHive.Units.Agents;
 
 public static class UnitDevMenu
 {
-    private const string PrefabPath = "Assets/QA/Smoke/Dev/Prefabs/UnitDev.prefab";
+    private const string PrefabPath = "Assets/Prefabs/UnitDev.prefab";
 
-    [MenuItem("DeepAbyss/Dev/Create or Select UnitDev Prefab")]
+    [MenuItem("DeepAbyss/Units/Create or Select UnitDev Prefab")]
     public static void CreateOrSelectUnitDev()
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
