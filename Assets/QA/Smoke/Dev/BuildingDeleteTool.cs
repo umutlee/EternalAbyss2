@@ -20,20 +20,36 @@ public class BuildingDeleteTool : MonoBehaviour
         bool pressed = (k1 != KeyCode.None && Input.GetKeyDown(k1)) || (k2 != KeyCode.None && Input.GetKeyDown(k2));
         if (!pressed) return;
 
-        var cam = Camera.main;
-        if (cam == null) return;
-
+        var cam = Camera.main; if (!cam) return;
         var ray = cam.ScreenPointToRay(Input.mousePosition);
-        int mask = DeepAbyssHive.Common.Placement.PlacementLayerUtil.GetBuildingOnlyMask();
-        if (mask == 0) { Debug.Log("[DEV HUD] BuildingDeleteTool: Building 層不存在"); return; }
-        if (Physics.Raycast(ray, out var hit, 1000f, mask, QueryTriggerInteraction.Ignore))
+        // 用全遮罩收集命中，再向上找 Building 層祖先；避免子物件 collider 不在 Building 層時打不到
+        var hits = Physics.RaycastAll(ray, 5000f, ~0, QueryTriggerInteraction.Ignore);
+        if (hits == null || hits.Length == 0) return;
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        int buildingLayer = LayerMask.NameToLayer("Building");
+        int ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
+        foreach (var h in hits)
         {
-            var go = hit.collider ? hit.collider.gameObject : null;
-            if (go != null)
-            {
-                Debug.Log($"[DEV] Delete {go.name}");
-                Destroy(go);
-            }
+            var target = FindBuildingRoot(h.collider.gameObject, buildingLayer);
+            if (target == null) continue;
+            if (ignoreLayer >= 0 && target.layer == ignoreLayer) continue;
+            if (target.name.StartsWith("[Preview]")) continue; // 不刪預覽體
+            Debug.Log($"[DEV] Delete {target.name}");
+            Destroy(target);
+            return;
         }
+    }
+
+    private static GameObject FindBuildingRoot(GameObject from, int buildingLayer)
+    {
+        if (buildingLayer < 0) return null;
+        var t = from.transform;
+        while (t != null)
+        {
+            if (t.gameObject.layer == buildingLayer) return t.gameObject;
+            t = t.parent;
+        }
+        return null;
     }
 }
