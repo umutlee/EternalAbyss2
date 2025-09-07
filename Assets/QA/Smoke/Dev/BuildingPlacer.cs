@@ -142,14 +142,15 @@ namespace DeepAbyssHive.Dev
 
             previewInstance = Instantiate(placePrefab);
             previewInstance.name = "[Preview] " + placePrefab.name;
-            // 以 prefab 原始縮放為基礎，再乘上倍率 placedScale（預設 1,1,1 = 保留原比例）
+            // 以 prefab 原始縮放為基礎，再乘上倍率（placedScale × spawnScale），與放置/驗證一致
             {
                 var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
-                previewInstance.transform.localScale = new Vector3(
-                    baseScale.x * placedScale.x,
-                    baseScale.y * placedScale.y,
-                    baseScale.z * placedScale.z
+                var s = new Vector3(
+                    baseScale.x * placedScale.x * spawnScale,
+                    baseScale.y * placedScale.y * spawnScale,
+                    baseScale.z * placedScale.z * spawnScale
                 );
+                previewInstance.transform.localScale = s;
             }
 
             // 關碰撞 + 套透明材質
@@ -178,7 +179,7 @@ namespace DeepAbyssHive.Dev
             Bounds worldBounds = _lastPreviewBounds;
             var cached = _lastPreviewResult;
 
-            // 若快取尚未建立（或外部呼叫 PlaceNow），才重算一次
+            // 若快取尚未建立（或外部呼叫 PlaceNow），才重算一次（與預覽一致的順序與 Y 偏移）
             if (cached == null)
             {
                 var cfg = GameConfigProvider.Current;
@@ -189,8 +190,9 @@ namespace DeepAbyssHive.Dev
                 int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
 
                 var half = CalcHalfExtents();
-                worldBounds = new Bounds(center, half * 2f);
-                cached = PlacementValidator.ValidateByConfig(center, half, rotation, includeMask, blockPadding);
+                // 與 Update() 預覽一致：驗證時將中心向下偏移 previewHeight，貼地檢查
+                worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                cached = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding);
             }
 
             if (!cached.ok)
@@ -309,6 +311,15 @@ namespace DeepAbyssHive.Dev
             
             // 建立臨時物件來計算 bounds
             var temp = Instantiate(placePrefab);
+            // 統一縮放：以 prefab 原始比例 × placedScale × spawnScale
+            {
+                var bs = temp.transform.localScale;
+                temp.transform.localScale = new Vector3(
+                    bs.x * placedScale.x * spawnScale,
+                    bs.y * placedScale.y * spawnScale,
+                    bs.z * placedScale.z * spawnScale
+                );
+            }
             var bounds = CalcWorldBounds(temp, useColliderBoundsForBlocking);
             Destroy(temp);
             
