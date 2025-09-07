@@ -8,7 +8,7 @@ public static class UnitDevMenu
 {
     private const string PrefabPath = "Assets/Prefabs/UnitDev.prefab";
 
-    [MenuItem("DeepAbyss/Units/Create or Select UnitDev Prefab")]
+    [MenuItem("DeepAbyssHive/Units/Create or Select UnitDev Prefab")]
     public static void CreateOrSelectUnitDev()
     {
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
