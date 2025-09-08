@@ -35,6 +35,12 @@ namespace DeepAbyssHive.Core.Config
         public KeyCode buildingDeleteKey1 = KeyCode.Delete;
         [Tooltip("建築刪除副鍵（None=停用）。")]
         public KeyCode buildingDeleteKey2 = KeyCode.X;
+        [Tooltip("DEV：生成單位熱鍵（None=停用）。")]
+        public KeyCode devUnitsSpawnKey = KeyCode.F9;
+        [Tooltip("DEV：單位測試熱鍵（指派目標；None=停用）。")]
+        public KeyCode devUnitsTestKey = KeyCode.F10;
+        [Tooltip("DEV：一次生成的單位數量。")]
+        public int devSpawnCount = 200;
     }
 
     /// <summary>
@@ -68,7 +74,7 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}");
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}");
         }
     }
 }
