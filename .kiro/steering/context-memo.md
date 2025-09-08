@@ -1,10 +1,3 @@
----
-description: Eternal Abyss 2 專案關鍵上下文記錄 - 新對話時的核心參考資料
-globs: ["Eternal Abyss 2/**"]
-alwaysApply: true
-tags: ["context", "memo", "project-state"]
----
-
 # Eternal Abyss 2 專案上下文記錄
 
 ## 技術規格
@@ -50,58 +43,328 @@ tags: ["context", "memo", "project-state"]
 - **建築阻擋**: Physics.CheckBox 檢測，智能 Building 層識別
 - **CanEnterFrom**: 三重門檻檢查 (冷卻/坡度/建築)
 
-### 建築放置系統 (BuildingPlacer)
+### 建築放置系統 (BuildingPlacer) ✅ M3 階段全面完成
 - **輸入**: Raycast 從 Scene/Main Camera
 - **圖層**: Terrain 層用於 Chunk，Building 層用於建築
-- **視覺**: 預覽綠/紅色 + 腳印 Gizmo
+- **視覺**: 預覽綠/紅色 + 腳印 Gizmo，統一色表管理
 - **互動**: 放置後自動選中/框取，保持 Prefab 原始縮放
 
-## 設計規範 (待實現)
+#### M3-T01~T03: 核心放置系統 ✅ 已完成
+- **PlacementValidator.cs**: 統一驗證系統，支援最小間距、格點對齊、有向碰撞
+- **BuildingPlacer.cs**: 實時預覽驗證、Grid Snap、旋轉支援、預覽/放置一致性
+- **PlacementStatusHUD.cs**: 狀態顯示和調試信息，統一 UI 工具
+- **GameConfigSO.cs**: 全面配置化參數 (minSpacing, snapSize, rotationStepDegrees, 熱鍵管理)
 
-### 1. 錯誤碼與放置結果系統
+#### M3-T04: SpatialIndex 最近鄰委派 ✅ 已完成
+- **NoNeighborWithinRadiusPredicate**: 可選的 SpatialIndex 最近鄰檢查
+- **向後兼容**: 無 SpatialIndex 時自動回退到 Physics.OverlapSphere
+- **性能優化**: 優先使用高效的空間索引，回退到可靠的物理檢測
+
+#### M3-T05: SMOKE 測試系統 ✅ 已完成
+- **PlacementSmoke.cs**: 配置化熱鍵觸發的自動化測試腳本
+- **測試案例**: A/B/C/D 四種案例 (間距/旋轉/刪除重建)
+- **回歸測試**: PASS/FAIL 輸出，適用於開發階段快速驗證
+
+#### M3-T06: 建築旋轉支援 ✅ 已完成
+- **有向碰撞檢測**: Physics.OverlapBox 支援 Quaternion rotation
+- **API 擴展**: ValidateByConfig(center, halfExtents, rotation, mask, extraMargin)
+- **向後兼容**: 保持舊版 ValidateByConfig(Bounds, mask, extraMargin) API
+
+#### M3-T07: 建築刪除工具 ✅ 已完成
+- **BuildingDeleteTool.cs**: 配置化熱鍵的射線選取刪除工具
+- **獨立設計**: 不依賴 Placer，可掛載在任意場景物件
+- **精確選取**: 使用射線檢測 Building 層物件
+
+#### M3-T08: 旋轉步進配置 ✅ 已完成
+- **rotationStepDegrees**: GameConfig 中的旋轉量化參數
+- **SnapRotationY**: 僅量化 Y 軸旋轉，避免建築意外傾斜
+- **統一量化**: 預覽和放置使用相同的 Grid Snap + Rotation Step
+
+#### M3-T09: 預覽/放置一致性 ✅ 已完成
+- **預覽快取系統**: 避免預覽和放置的微小差異
+- **統一驗證流程**: Update() 和 PlaceNow() 使用相同的量化和驗證邏輯
+- **性能優化**: 重用驗證結果，避免重複計算
+
+#### M3-T10: 遮罩與層一致性 ✅ 已完成
+- **PlacementLayerUtil.cs**: 統一管理圖層遮罩計算
+- **GetPlacementBlockMask()**: 放置驗證用遮罩，排除 Terrain/IgnoreRaycast
+- **GetBuildingOnlyMask()**: Building 層專用遮罩，用於刪除工具
+
+#### M3-T11: HUD 與訊息一致性 ✅ 已完成
+- **PlacementUiUtil.cs**: 統一管理顏色和訊息邏輯
+- **ColorFor()**: 統一顏色規則，支援預覽透明度控制
+- **TextFor()**: 統一 HUD 訊息格式，去除系統前綴
+
+#### M3-T12/T13: SMOKE 測試擴充 + Editor 工具 ✅ 已完成
+- **擴充測試**: 45°/90° 旋轉測試、刪除重建邏輯測試
+- **GameConfigMenu.cs**: Editor 菜單自動創建/選取 GameConfig
+- **完整驗證**: 四種測試案例確保系統穩定性
+
+#### M3-Final: Dev 熱鍵統一管理 ✅ 已完成
+- **集中配置**: placementSmokeKey, buildingDeleteKey1/2 統一在 GameConfig
+- **智能回退**: GameConfig None 時回退到 Inspector 設置
+- **避免衝突**: 統一管理所有 Dev 工具熱鍵
+- **BuildingDeleteTool.cs**: Delete/X 鍵射線選取刪除 Building 層物件
+- **獨立設計**: 不依賴 Placer，可掛載在任意場景物件
+- **開發輔助**: 適用於開發階段快速清理建築
+
+## M3 階段完成的設計規範
+
+### 1. 統一驗證系統 ✅ 已實現並完善
+- **PlacementValidator**: 統一的建築放置驗證邏輯，支援有向碰撞檢測
+- **驗證流程**: 邊界檢查 → Physics 碰撞 → SpatialIndex 並聯 → 最小間距 → 菌毯需求
+- **API 雙版本**: 舊版 AABB + 新版有向 (支援旋轉)，完全向後兼容
+- **委派系統**: SpatialIndex/菌毯/邊界/最近鄰的可選委派接口
+
+### 2. 配置化設計 ✅ 已實現並擴展
+- **GameConfigSO**: 統一配置參數管理，包含 Dev 工具熱鍵
+- **核心參數**: minSpacing, margin, snapSize, rotationStepDegrees
+- **開關控制**: useSpatialIndexForPlacement, requireCreep
+- **熱鍵管理**: placementSmokeKey, buildingDeleteKey1/2 集中配置
+- **實時日誌**: 配置載入時自動輸出所有參數
+
+### 3. 統一工具系統 ✅ 已實現
+- **PlacementLayerUtil**: 統一圖層遮罩管理，避免各處手寫不一致
+- **PlacementUiUtil**: 統一顏色和訊息管理，確保 UI 一致性
+- **Editor 工具**: GameConfigMenu 自動創建/選取配置資產
+
+### 4. 開發工具完備 ✅ 已實現並擴展
+- **PlacementSmoke**: 配置化熱鍵自動化測試，四種測試案例
+- **BuildingDeleteTool**: 配置化熱鍵快速刪除建築
+- **PlacementStatusHUD**: 實時狀態顯示和調試信息，統一 UI
+- **階段性備份**: 每個任務完成後 git 備份 + Neo4j 記錄
+
+### 5. 熱鍵管理最佳實踐 ✅ 已建立
+- **集中配置**: 所有遊戲功能操作按鍵統一在 GameConfig.asset 管理
+- **智能回退**: GameConfig 設為 None 時自動回退到 Inspector 設置
+- **避免衝突**: 統一管理避免不同組件使用重複按鍵
+- **向後兼容**: 保持現有 Inspector 設置不受影響
+
+## M3 階段已實現的設計規範
+
+### 1. 錯誤碼與放置結果系統 ✅ 已實現
 ```csharp
-// PlaceResultCode 枚舉
+// PlaceResultCode 枚舉 (已實現)
 enum PlaceResultCode {
     OK,                    // 放置成功
-    E_PLACE_COLLISION,     // 與其他物件重疊
+    E_PLACE_COLLISION,     // 與其他物件重疊 (包含最小間距違反)
     E_OUT_OF_BOUNDS,       // 超出可用區域
     E_REQUIRE_CREEP,       // 需要菌毯但條件不符
     E_INVALID_TYPE         // Prefab/類型不合法
 }
 
-// Result<T> 統一回傳容器
+// Result<T> 統一回傳容器 (已實現)
 struct Result<T> {
     bool ok;               // 快速成功判斷
     PlaceResultCode code;  // 詳細錯誤碼
-    T data;               // 回傳數據 (Bounds/PlacedHandle)
+    T data;               // 回傳數據 (Bounds)
     string message;       // 人類可讀錯誤訊息
 }
 ```
-**目的**: 統一所有放置相關 API 的回傳格式，支援建築/單位/裝飾物
+**狀態**: 已實現並在 M3 中廣泛使用，支援最小間距驗證
 
-### 2. SpatialIndex 並聯校驗系統
+### 2. SpatialIndex 並聯校驗系統 ✅ 已實現
 ```csharp
-// GameConfig 開關
+// GameConfig 開關 (已實現)
 bool useSpatialIndexForPlacement;
 
-// 雙重驗證邏輯
+// 雙重驗證邏輯 (已實現)
 if (useSpatialIndexForPlacement) {
     // 1. Unity Physics 檢查
     // 2. SpatialIndex.QueryBounds 檢查
     // 兩者都通過才允許放置
 }
 ```
-**目的**: 結合 Unity Physics (可靠) 與 SpatialIndex (高效)，開關式漸進導入
+**狀態**: 已實現委派系統，支援可選的 SpatialIndex 並聯校驗
 
-## 待辦事項
-- SpatialIndex 放置校驗整合
-- 菌毯收縮/淨化機制
-- LOD 遲滯閾值優化
-- 錯誤碼/Result<T> 系統實現
-- 參數外放與模板化
+### 3. 委派接口系統 ✅ 已實現
+```csharp
+// 已實現的委派接口
+public static Func<Bounds, LayerMask, float, bool> SpatialIndexPredicate;
+public static Func<Vector3, float, LayerMask, bool> NoNeighborWithinRadiusPredicate;
+public static Func<Bounds, bool> RequireCreepPredicate;
+public static Func<Bounds, bool> OutOfBoundsPredicate;
+```
+**狀態**: 完整的委派系統，支援外部系統接入驗證邏輯
+
+## M3 階段完成總結 ✅ 全面完成
+✅ **建築放置系統**: 最小間距、格點對齊、旋轉支援、刪除工具、預覽一致性  
+✅ **SpatialIndex 整合**: 委派系統、最近鄰檢查、向後兼容  
+✅ **統一工具系統**: 遮罩管理、UI 工具、顏色訊息統一  
+✅ **配置化設計**: GameConfig 統一參數管理、熱鍵集中配置  
+✅ **開發工具**: SMOKE 測試擴充、刪除工具、狀態 HUD、Editor 菜單  
+✅ **API 擴展**: 有向碰撞檢測、雙版本 API、完全向後兼容  
+✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
+✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
+
+## M2 階段完成總結
+✅ **菌毯系統**: Frontier 擴張、門檻系統、冷卻機制  
+✅ **地形生成**: Perlin 噪聲、Mesh/Collider 生成  
+✅ **開發工具**: CreepBrushAndRunner、EditorFlyCamera  
+
+## M4 階段：單位/路徑最小整合 (2025-09-06 開始)
+
+### 目標與原則
+- **目標**: 地面單位能從 A 走到 B，≈200 隻同時移動仍流暢
+- **原則**: 最小可行修補，1–3 檔、≤200 行、零編譯錯、Smoke 綠燈
+- **選型**: 輕量「格網 A*」（與 Creep Grid/Chunk 對齊）
+- **整合**: Creep Grid 移速加成、Building 層動態阻擋、Terrain 坡度/高差門檻
+
+### M4 任務拆解
+
+#### M4-T01: Nav Grid 介面與取樣器 ✅ 已完成
+- **IPathGrid**: 取樣可走/成本/鄰接，對齊 creep grid 尺寸
+- **GridSampler**: IsWalkable(x,y) 綜合坡度/高差/Building 層/地圖邊界
+- **Cost(x,y)**: 基礎成本 + off-creep 罰值（讓單位偏好走 creep）
+- **來源**: CreepManager、TerrainManager、Physics（Building）
+- **驗收**: DEV HUD 取樣 100×100 區塊，統計 walkable% 與平均 cost
+
+#### M4-T02: A* 單檔輕量實作 ✅ 已完成
+- **檔案**: DeepAbyssHive/Units/Pathfinding/GridAStar.cs
+- **功能**: 8 向或 4 向連通、開放表（小根堆）＋封閉表（位元陣列）
+- **Heuristic**: Manhattan（4向）或 Octile（8向）
+- **安全閥**: 節點展開/路徑長度上限，避免最壞情況卡住
+- **驗收**: 單次求路 < 1ms（PC），失敗時回 Result<List<Vector3>>
+
+#### M4-T03: UnitAgent 與 Path 請求管線 ✅ 已完成
+- **UnitAgent.cs**: SetDestination(Vector3)、沿路徑移動、面向控制、到站檢測
+- **UnitPathQueue.cs**: 靜態佇列系統，每幀處理 N 筆（預設 32）
+- **自動啟動**: RuntimeInitializeOnLoadMethod 掛載 Runner 到 Managers
+- **內建 Grid**: 預設 PathGridSampler 供測試，支援外部 GridProvider 替換
+
+#### M4-T04: Dev Spawner & 指令（200 隻壓測） ✅ 待開始
+- **UnitDevSpawner.cs**: GameConfig 熱鍵（預設 F9）生成 N 隻
+- **右鍵指定**: 目標點或第二個熱鍵
+- **遮罩規則**: 使用 PlacementLayerUtil 避免點到錯層
+- **驗收**: 生成 200 隻、跑 10 秒不卡頓，SMOKE 印出 FPS/求路數/失敗率
+
+#### M4-T05: Creep 交互（移速加成） ✅ 待開始
+- **取樣頻率**: UnitAgent 每 0.25s 取樣當前格
+- **速度調整**: on-creep → speed *= creepSpeedMul，off-creep → speed *= offCreepSpeedMul
+- **GameConfig**: creepSpeedMul（1.25）、offCreepSpeedMul（0.85）外放
+- **驗收**: 走進菌毯路段時明顯提速，Console 印狀態切換
+
+#### M4-T06: 障礙動態更新（建築放置/刪除） ✅ 待開始
+- **通知機制**: BuildingPlacer 成功放置/刪除後向 UnitManager 發 NotifyObstacleChanged(Bounds)
+- **Lazy 更新**: GridSampler 標記區塊需重取樣，不整圖重建
+- **驗收**: 建築生成/刪除後，單位能繞行，不會穿越新障礙
+
+#### M4-T07: SMOKE 套件（Units） ✅ 待開始
+- **UnitsSmoke.cs**: 熱鍵（預設 F10）生成 200 隻，隨機起訖 5 組
+- **測試流程**: 跑路 8 秒，輸出 req/s、path/ms、avgLen、fail%
+- **綠燈標準**: fail < 2%，平均求路 < 1.5ms（PC）
+- **驗收**: 一鍵測出穩定數據
+
+### 落地順序
+1. **T01+T02**: Grid + A* → Console 單測可跑通 ✅ 已完成
+2. **T03**: Agent/Manager → 單位可以走
+3. **T04**: Spawner → 200 隻壓測
+4. **T05**: Creep 速度加成 → 體感差異明顯
+5. **T06**: 建築動態障礙 → 與 M3 打通
+6. **T07**: SMOKE-Units → 綠燈標準固化
+
+### 影響面與依賴
+- **不改**: 既有 BOOT/SMOKE 日誌
+- **依賴**: CreepManager 查詢、CreepRules 門檻、PlacementLayerUtil 遮罩
+- **新增**: Dev/Smoke 腳本都在 QA/Smoke/Dev 目錄
+- **GameConfig 外放**: pathRequestsPerFrame、creepSpeedMul、offCreepSpeedMul、devSpawnCount、devUnitsKey/devUnitsTestKey
+
+## 熱鍵管理最佳實踐 (M3 建立)
+**重要原則**: 以後所有遊戲功能操作按鍵都應該使用可自定義的做法，並集中到 GameConfig.asset 管理
+- **集中配置**: 避免各組件分散定義按鍵造成衝突
+- **智能回退**: GameConfig 設為 None 時回退到 Inspector 設置
+- **向後兼容**: 保持現有設置不受影響
+- **統一管理**: 新功能按鍵都應遵循此模式
 
 ## 開發工具位置
 - **QA 工具**: Assets/QA/Smoke/Dev/ (不要創建新的 QA/Dev 目錄)
 - **配置文件**: Assets/Resources/Configs/
 - **規則文件**: .codebuddy/.rules/
 
+## M3 階段新增的關鍵文件
+- **PlacementValidator.cs**: 統一驗證系統 (支援有向碰撞)
+- **PlacementSmoke.cs**: F7 自動化測試腳本
+- **BuildingDeleteTool.cs**: Delete/X 建築刪除工具
+- **PlacementStatusHUD.cs**: 實時狀態顯示 HUD
+- **GameConfigSO.cs**: 擴展配置參數 (minSpacing, snapSize, rotationStepDegrees)
+
+## 階段性備份政策 ✅ 已建立
+- **備份時機**: 每完成一個 Milestone 階段 (M3-T01, M3-T02 等)
+- **操作流程**: git commit + push + Neo4j 記錄
+- **回滾保證**: 每個階段都標記為安全回滾點
+- **追蹤機制**: 記錄為 ProjectMilestone 便於管理
+
+---
+
+## 📌 附錄：2025-09-06 更新（M3 最終化＋M4 起跑）
+
+### A) M3 完成清單（以 Neo4j / git 為準）
+- ✅ **M3-T04** SpatialIndex 最近鄰委派支援（commit: 2145acf）
+- ✅ **M3-T05** Placement SMOKE 腳本（commit: 35d9f52）
+- ✅ **M3-T06** 建築旋轉支援（有向 OverlapBox）（commit: bef0651）
+- ✅ **M3-T07** 建築刪除工具（可配置熱鍵）（commit: bef0651）
+- ✅ **M3-T08** 旋轉步進外放 `GameConfig.rotationStepDegrees`（commit: ac542ad）
+- ✅ **M3-T09** 預覽/放置一致性：重用 snapped 中心/旋轉/Bounds/驗證結果（commit: ＊見 git）
+- ✅ **M3-T10** SMOKE 擴充：旋轉與刪除重建案例（Case C/D）（commit: ＊見 git）
+- ✅ **M3-T11** Editor 菜單：**DeepAbyss → Configs → Create or Select GameConfig**（commit: ＊見 git）
+
+> 進場期望 Console：  
+> `[BOOT] ...`、`[DEV HUD] Game: ... snapSize=.., rotStep=.., smokeKey=.., delKey1=.., delKey2=..`、`[SMOKE] ... PASS`
+
+---
+
+### B) 放置驗證「行為契約」總結（以程式為準）
+- **Result 型別**：`Result<T> { bool ok; PlaceResultCode code; T data?; string message? }`
+- **錯誤碼**：`OK / E_PLACE_COLLISION / E_OUT_OF_BOUNDS / E_REQUIRE_CREEP / E_INVALID_TYPE`
+- **統一入口**：`PlacementValidator.ValidateByConfig(center, halfExtents, rotation, blockMask, extraMargin)`
+  - Physics：**有向** `OverlapBox`（rotation 生效）
+  - SpatialIndex 並聯（開關 `GameConfig.useSpatialIndexForPlacement`）→ 任一失敗即 `E_PLACE_COLLISION`
+  - MinSpacing：優先 `NoNeighborWithinRadiusPredicate(center, radius, mask)`；無委派時回退 `OverlapSphere`
+  - Creep 要求：`RequireCreepPredicate(bounds)` 未通過 → `E_REQUIRE_CREEP`
+  - 越界：`OutOfBoundsPredicate(bounds)` 為真 → `E_OUT_OF_BOUNDS`
+  - **HUD 鉤子**：`PlacementValidator.LastResult` 供 `PlacementStatusHUD` 即時顯示
+- **UI 一致性**：`PlacementUiUtil.ColorFor(result, forPreview)`（Preview 固定 α=0.35）、`PlacementUiUtil.TextFor(result)`
+- **遮罩規則**：`PlacementLayerUtil.GetPlacementBlockMask()`（排除 `Terrain`/`Ignore Raycast`）；刪除工具用 `GetBuildingOnlyMask()`
+- **預覽/放置一致性**：順序必為  
+  `Snap(center) → SnapRotation → Bounds → ValidateByConfig(有向) → Tint`；`PlaceNow()` **重用**預覽快取結果
+
+---
+
+### C) Dev 熱鍵集中（GameConfig）
+- `placementSmokeKey`（預設 F7）／`buildingDeleteKey1`（Delete）／`buildingDeleteKey2`（X）  
+  > 任一設為 `None` → 回退對應元件的 Inspector 後備鍵。
+
+---
+
+### D) SMOKE（Placement）規格（F7）
+- **Case A**：`d < minSpacing` → `E_PLACE_COLLISION`（PASS）
+- **Case B**：`d > minSpacing` → `OK`（PASS）
+- **Case C**：旋轉 45°/90°，邊界距離 → `OK`（PASS）
+- **Case D**：刪除錨點後同點重試 → 非 `E_PLACE_COLLISION`（PASS）
+
+---
+
+### E) Editor 菜單
+- **DeepAbyss → Configs → Create or Select GameConfig**  
+  若無 `Assets/Resources/Configs/GameConfig.asset` → 自動建立並選取。
+
+---
+
+### F) M4：單位/路徑最小整合（當前里程碑）
+**目標**：地面單位可從 A 走到 B，≈200 隻同時移動仍流暢；與 Creep/Building/Terrain 門檻協作。
+
+**任務拆解**
+1. **T01 Nav Grid 介面與取樣器**（`IPathGrid` + `PathGridSampler`）✅ 已完成  
+   - Walkable：地面命中、坡度 ≤ `maxSlopeDegrees`、鄰近高差 ≤ `maxStepHeight`、無 Building 碰撞  
+   - Cost：base=1；在 Creep 上乘 `creepCostMul`（預設 0.85）
+2. **T02 輕量 Grid A\***（4/8 向，安全閥；Octile/Manhattan）✅ 已完成  
+3. **T03 UnitAgent / UnitManager 管線**（請求佇列，每幀 N 筆，外放 `pathRequestsPerFrame`）✅ 已完成  
+4. **T04 Dev Spawner & 指令**（集中熱鍵；預設 200 隻壓測）  
+5. **T05 Creep 交互**（移速加成 on/off creep）  
+6. **T06 障礙動態更新**（建築放置/刪除 → 路網局部無效化）  
+7. **T07 Units SMOKE**（輸出 req/s、avg ms、fail%）
+
+**驗收標準**
+- 單次求路 < 1.5ms（PC）；fail < 2%  
+- 生成 200 隻，持續 10 秒不卡頓；SMOKE 綠燈  
+- 與 M3 放置規則協作：新建築 → 可繞行；刪除 → 路徑恢復
