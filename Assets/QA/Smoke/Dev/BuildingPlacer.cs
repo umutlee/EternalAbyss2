@@ -142,6 +142,10 @@ namespace DeepAbyssHive.Dev
 
             previewInstance = Instantiate(placePrefab);
             previewInstance.name = "[Preview] " + placePrefab.name;
+
+            // 預覽體一律放到 Ignore Raycast（整樹），避免被 Ray/Physics 命中
+            int ignore = LayerMask.NameToLayer("Ignore Raycast");
+            if (ignore >= 0) SetLayerRecursively(previewInstance, ignore);
             // 以 prefab 原始縮放為基礎，再乘上倍率（placedScale × spawnScale），與放置/驗證一致
             {
                 var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
@@ -214,6 +218,11 @@ namespace DeepAbyssHive.Dev
             }
             // 放大/縮小新放置的物件，便於辨識（1 = 不變）
             placed.transform.localScale *= spawnScale;
+
+            // 成品一律放到 Building 層（整樹），使刪除/碰撞/查詢規則一致
+            int building = LayerMask.NameToLayer("Building");
+            if (building >= 0) SetLayerRecursively(placed, building);
+            else Debug.LogWarning("[Placement] 'Building' layer not found — delete tool may not hit.");
 
             // —— 最小修補：用放置物的實際高度把它「頂到」地表上，避免埋進去 —— 
             // 取 Collider 或 Renderer bounds（以 Collider 為優先）
@@ -327,5 +336,13 @@ namespace DeepAbyssHive.Dev
         }
 
         // （顏色邏輯改由 PlacementUiUtil 統一管理）
+
+        // 將整棵樹設為指定層
+        private static void SetLayerRecursively(GameObject root, int layer)
+        {
+            if (!root) return;
+            var trs = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < trs.Length; i++) trs[i].gameObject.layer = layer;
+        }
     }
 }
