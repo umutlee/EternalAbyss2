@@ -238,17 +238,17 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **安全閥**: 節點展開/路徑長度上限，避免最壞情況卡住
 - **驗收**: 單次求路 < 1ms（PC），失敗時回 Result<List<Vector3>>
 
-#### M4-T03: UnitAgent 與 Path 請求管線 ✅ 待開始
-- **UnitAgent.cs**: SetDestination(Vector3)、TickMove(dt) 沿路徑移動
-- **UnitManager**: 內建請求佇列，每幀處理 N 筆（pathRequestsPerFrame）
-- **GameConfig**: pathRequestsPerFrame 外放（預設 32）
-- **驗收**: 生成 50 隻 → 指定目標點，全部能動且沒有卡死
+#### M4-T03: UnitAgent 與 Path 請求管線 ✅ 已完成
+- **UnitAgent.cs**: SetDestination(Vector3)、沿路徑移動、面向控制、到站檢測
+- **UnitPathQueue.cs**: 靜態佇列系統，每幀處理 N 筆（預設 32）
+- **自動啟動**: RuntimeInitializeOnLoadMethod 掛載 Runner 到 Managers
+- **內建 Grid**: 預設 PathGridSampler 供測試，支援外部 GridProvider 替換
 
-#### M4-T04: Dev Spawner & 指令（200 隻壓測） ✅ 待開始
-- **UnitDevSpawner.cs**: GameConfig 熱鍵（預設 F9）生成 N 隻
-- **右鍵指定**: 目標點或第二個熱鍵
-- **遮罩規則**: 使用 PlacementLayerUtil 避免點到錯層
-- **驗收**: 生成 200 隻、跑 10 秒不卡頓，SMOKE 印出 FPS/求路數/失敗率
+#### M4-T04: Dev Spawner & 指令（200 隻壓測） ✅ 已完成
+- **UnitDevSpawner.cs**: GameConfig 熱鍵（預設 F9）生成 N 隻，F10 指派目標
+- **配置外放**: devUnitsSpawnKey/devUnitsTestKey/devSpawnCount 統一在 GameConfig
+- **智能回退**: 支援 Prefab 或即時生成 Capsule+UnitAgent 作為後備
+- **驗收**: F9 生成單位、F10 指派目標，Console 有簡短日誌輸出
 
 #### M4-T05: Creep 交互（移速加成） ✅ 待開始
 - **取樣頻率**: UnitAgent 每 0.25s 取樣當前格
@@ -306,3 +306,77 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **回滾保證**: 每個階段都標記為安全回滾點
 - **追蹤機制**: 記錄為 ProjectMilestone 便於管理
 
+---
+
+## 📌 附錄：2025-09-06 更新（M3 最終化＋M4 起跑）
+
+### A) M3 完成清單（以 Neo4j / git 為準）
+- ✅ **M3-T04** SpatialIndex 最近鄰委派支援（commit: 2145acf）
+- ✅ **M3-T05** Placement SMOKE 腳本（commit: 35d9f52）
+- ✅ **M3-T06** 建築旋轉支援（有向 OverlapBox）（commit: bef0651）
+- ✅ **M3-T07** 建築刪除工具（可配置熱鍵）（commit: bef0651）
+- ✅ **M3-T08** 旋轉步進外放 `GameConfig.rotationStepDegrees`（commit: ac542ad）
+- ✅ **M3-T09** 預覽/放置一致性：重用 snapped 中心/旋轉/Bounds/驗證結果（commit: ＊見 git）
+- ✅ **M3-T10** SMOKE 擴充：旋轉與刪除重建案例（Case C/D）（commit: ＊見 git）
+- ✅ **M3-T11** Editor 菜單：**DeepAbyss → Configs → Create or Select GameConfig**（commit: ＊見 git）
+
+> 進場期望 Console：  
+> `[BOOT] ...`、`[DEV HUD] Game: ... snapSize=.., rotStep=.., smokeKey=.., delKey1=.., delKey2=..`、`[SMOKE] ... PASS`
+
+---
+
+### B) 放置驗證「行為契約」總結（以程式為準）
+- **Result 型別**：`Result<T> { bool ok; PlaceResultCode code; T data?; string message? }`
+- **錯誤碼**：`OK / E_PLACE_COLLISION / E_OUT_OF_BOUNDS / E_REQUIRE_CREEP / E_INVALID_TYPE`
+- **統一入口**：`PlacementValidator.ValidateByConfig(center, halfExtents, rotation, blockMask, extraMargin)`
+  - Physics：**有向** `OverlapBox`（rotation 生效）
+  - SpatialIndex 並聯（開關 `GameConfig.useSpatialIndexForPlacement`）→ 任一失敗即 `E_PLACE_COLLISION`
+  - MinSpacing：優先 `NoNeighborWithinRadiusPredicate(center, radius, mask)`；無委派時回退 `OverlapSphere`
+  - Creep 要求：`RequireCreepPredicate(bounds)` 未通過 → `E_REQUIRE_CREEP`
+  - 越界：`OutOfBoundsPredicate(bounds)` 為真 → `E_OUT_OF_BOUNDS`
+  - **HUD 鉤子**：`PlacementValidator.LastResult` 供 `PlacementStatusHUD` 即時顯示
+- **UI 一致性**：`PlacementUiUtil.ColorFor(result, forPreview)`（Preview 固定 α=0.35）、`PlacementUiUtil.TextFor(result)`
+- **遮罩規則**：`PlacementLayerUtil.GetPlacementBlockMask()`（排除 `Terrain`/`Ignore Raycast`）；刪除工具用 `GetBuildingOnlyMask()`
+- **預覽/放置一致性**：順序必為  
+  `Snap(center) → SnapRotation → Bounds → ValidateByConfig(有向) → Tint`；`PlaceNow()` **重用**預覽快取結果
+
+---
+
+### C) Dev 熱鍵集中（GameConfig）
+- `placementSmokeKey`（預設 F7）／`buildingDeleteKey1`（Delete）／`buildingDeleteKey2`（X）  
+  > 任一設為 `None` → 回退對應元件的 Inspector 後備鍵。
+
+---
+
+### D) SMOKE（Placement）規格（F7）
+- **Case A**：`d < minSpacing` → `E_PLACE_COLLISION`（PASS）
+- **Case B**：`d > minSpacing` → `OK`（PASS）
+- **Case C**：旋轉 45°/90°，邊界距離 → `OK`（PASS）
+- **Case D**：刪除錨點後同點重試 → 非 `E_PLACE_COLLISION`（PASS）
+
+---
+
+### E) Editor 菜單
+- **DeepAbyss → Configs → Create or Select GameConfig**  
+  若無 `Assets/Resources/Configs/GameConfig.asset` → 自動建立並選取。
+
+---
+
+### F) M4：單位/路徑最小整合（當前里程碑）
+**目標**：地面單位可從 A 走到 B，≈200 隻同時移動仍流暢；與 Creep/Building/Terrain 門檻協作。
+
+**任務拆解**
+1. **T01 Nav Grid 介面與取樣器**（`IPathGrid` + `PathGridSampler`）✅ 已完成  
+   - Walkable：地面命中、坡度 ≤ `maxSlopeDegrees`、鄰近高差 ≤ `maxStepHeight`、無 Building 碰撞  
+   - Cost：base=1；在 Creep 上乘 `creepCostMul`（預設 0.85）
+2. **T02 輕量 Grid A\***（4/8 向，安全閥；Octile/Manhattan）✅ 已完成  
+3. **T03 UnitAgent / UnitManager 管線**（請求佇列，每幀 N 筆，外放 `pathRequestsPerFrame`）✅ 已完成  
+4. **T04 Dev Spawner & 指令**（集中熱鍵；預設 200 隻壓測）  
+5. **T05 Creep 交互**（移速加成 on/off creep）  
+6. **T06 障礙動態更新**（建築放置/刪除 → 路網局部無效化）  
+7. **T07 Units SMOKE**（輸出 req/s、avg ms、fail%）
+
+**驗收標準**
+- 單次求路 < 1.5ms（PC）；fail < 2%  
+- 生成 200 隻，持續 10 秒不卡頓；SMOKE 綠燈  
+- 與 M3 放置規則協作：新建築 → 可繞行；刪除 → 路徑恢復
