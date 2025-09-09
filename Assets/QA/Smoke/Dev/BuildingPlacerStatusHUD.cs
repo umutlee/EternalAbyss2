@@ -210,6 +210,13 @@ namespace QA.Smoke.Dev
             }
         }
 
+        private Rect _rect;
+
+        void Start()
+        {
+            _rect = HudDragUtil.GetRect("HUD.BuildPlacer", new Rect(10, 95, 720, 100));
+        }
+
         void OnGUI()
         {
             var cam = Camera.main;
@@ -261,12 +268,17 @@ namespace QA.Smoke.Dev
             if (ignoreRaycast != -1) blockMask &= ~(1 << ignoreRaycast);
             bool blocked = Physics.OverlapBox(center, half, Quaternion.identity, blockMask, QueryTriggerInteraction.Ignore).Length > 0;
 
-            // 畫 UI：OK/Blocked + footprint 尺寸
+            // 可拖曳狀態面板
             string sizeTxt = $"[{(blocked ? "BLOCKED" : "OK")}] { (half*2f).x:F2} × { (half*2f).z:F2} × { (half*2f).y:F2}";
             var col = blocked ? blockedColor : okColor;
-            var old = GUI.color; GUI.color = col;
-            GUI.Label(new Rect(mp.x + labelOffset.x, Screen.height - mp.y + labelOffset.y, 280, 24), sizeTxt);
-            GUI.color = old;
+            GUI.color = col;
+            _rect = HudDragUtil.DraggableWindow("HUD.BuildPlacer", _rect, "Building Placer", () =>
+            {
+                GUILayout.Label(sizeTxt);
+                GUILayout.Label($"Padding: {blockPadding:F3}");
+                GUILayout.Label($"Mode: {(useColliderBoundsForBlocking ? "Collider" : "Renderer")}");
+            });
+            GUI.color = Color.white;
 
             // —— 新增：染色 preview 與世界框線 —— 
             var preview = GetPreviewGO();

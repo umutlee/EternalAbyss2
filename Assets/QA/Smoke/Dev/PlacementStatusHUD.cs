@@ -1,6 +1,7 @@
 using UnityEngine;
 using DeepAbyssHive.Common.Placement; // Result<> / PlaceResultCode
 using DeepAbyssHive.Core.Config;      // 讀取當前 GameConfig（僅顯示用）
+using QA.Smoke.Dev;
 
 /// <summary>
 /// Dev 專用：顯示放置狀態與彩色 wire bounds（不入侵 Placer）。
@@ -10,6 +11,12 @@ public class PlacementStatusHUD : MonoBehaviour
 {
     // 畫線持續時間（秒）；0 代表只畫當幀
     private const float LINE_DURATION = 0f;
+    private Rect _rect;
+
+    private void Start()
+    {
+        _rect = HudDragUtil.GetRect("HUD.PlaceStatus", new Rect(10, 70, 720, 120));
+    }
 
     private void Update()
     {
@@ -29,12 +36,15 @@ public class PlacementStatusHUD : MonoBehaviour
         string status = PlacementUiUtil.TextFor(last);
         Color guiColor = PlacementUiUtil.ColorFor(last, false);
 
-        // 左上角狀態面板
+        // 可拖曳狀態面板
         GUI.color = guiColor;
-        GUI.Box(new Rect(10, 90, 560, 85), "");
-        GUI.Label(new Rect(20, 100, 540, 20), $"[PLACE] {status}");
-        GUI.Label(new Rect(20, 120, 540, 20), $"cfg: useSI={cfg.useSpatialIndexForPlacement} requireCreep={cfg.requireCreep} margin={cfg.margin:0.###} minSpacing={cfg.minSpacing:0.###}");
-        GUI.Label(new Rect(20, 140, 540, 20), $"snapSize={cfg.snapSize:0.###} | Mode: Preview");
+        _rect = HudDragUtil.DraggableWindow("HUD.PlaceStatus", _rect, "Placement Status", () =>
+        {
+            GUILayout.Label($"Status: {status}");
+            GUILayout.Label($"useSI={cfg.useSpatialIndexForPlacement} requireCreep={cfg.requireCreep}");
+            GUILayout.Label($"margin={cfg.margin:0.###} minSpacing={cfg.minSpacing:0.###}");
+            GUILayout.Label($"snapSize={cfg.snapSize:0.###} | Mode: Preview");
+        });
         GUI.color = Color.white;
     }
 
