@@ -26,6 +26,10 @@ public class CreepLinePainter : MonoBehaviour
     {
         int terrain = LayerMask.NameToLayer("Terrain");
         rayMask = (terrain >= 0) ? (1 << terrain) : ~0;
+        
+        // 設置合理的預設值
+        if (radius <= 0f) radius = 1.0f;
+        if (stepRatio <= 0f) stepRatio = 0.6f;
     }
 
     void Update()
@@ -44,21 +48,32 @@ public class CreepLinePainter : MonoBehaviour
 
     private void PaintLine(Vector3 a, Vector3 b)
     {
-        var cm = FindObjectOfType<CreepManager>();
-        if (!cm) { Debug.LogWarning("[CreepLinePainter] CreepManager not found."); return; }
+        var cm = CreepManager.GetActive();
+        if (!cm) 
+        { 
+            Debug.LogWarning("[CreepLinePainter] CreepManager not found or not active."); 
+            return; 
+        }
 
         float dist = Vector3.Distance(a, b);
-        if (dist < 0.001f) { cm.SeedWorld(a); return; }
+        if (dist < 0.001f) 
+        { 
+            cm.SeedWorld(a); 
+            Debug.Log($"[DEV] CreepLinePainter: single seed at {a}");
+            return; 
+        }
 
         float step = Mathf.Max(0.05f, radius * Mathf.Clamp(stepRatio, 0.3f, 0.8f));
         int n = Mathf.CeilToInt(dist / step);
+        
         for (int i = 0; i <= n; i++)
         {
             float t = (n == 0) ? 0f : (i / (float)n);
             Vector3 p = Vector3.Lerp(a, b, t);
             cm.SeedWorld(p);
         }
-        Debug.Log($"[DEV] CreepLinePainter: painted {n+1} seeds, radius={radius:0.##}");
+        
+        Debug.Log($"[DEV] CreepLinePainter: painted {n+1} seeds from {a} to {b}, radius={radius:0.##}, step={step:0.##}");
     }
 
     private bool TryRayToPoint(out RaycastHit hit)
