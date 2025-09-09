@@ -12,7 +12,7 @@ public class UnitCreepBinder : MonoBehaviour
     {
         var cm = FindObjectOfType<CreepManager>();
         if (!cm) { Debug.LogWarning("[UnitCreepBinder] CreepManager not found."); return; }
-        UnitAgent.OnCreepPredicate = (pos) => cm.IsSetWorld(pos);
+        UnitAgent.OnCreepPredicate = (pos) => cm.HasCreepAt(pos);
         Debug.Log("[UnitCreepBinder] Bound UnitAgent.OnCreepPredicate -> CreepManager.IsSetWorld()");
     }
 
