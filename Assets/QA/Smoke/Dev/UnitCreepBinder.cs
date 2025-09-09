@@ -8,12 +8,25 @@ using DeepAbyssHive.Units.Agents;
 /// </summary>
 public class UnitCreepBinder : MonoBehaviour
 {
+    private bool _bound;
+    
     void OnEnable()
     {
         var cm = FindObjectOfType<CreepManager>();
-        if (!cm) { Debug.LogWarning("[UnitCreepBinder] CreepManager not found."); return; }
+        if (!cm) { Debug.LogWarning("[UnitCreepBinder] CreepManager not found (will retry once)."); _bound = false; return; }
         UnitAgent.OnCreepPredicate = (pos) => cm.HasCreepAt(pos);
+        _bound = true;
         Debug.Log("[UnitCreepBinder] Bound UnitAgent.OnCreepPredicate -> CreepManager.IsSetWorld()");
+    }
+
+    void Update()
+    {
+        if (_bound || UnitAgent.OnCreepPredicate != null) return;
+        var cm = FindObjectOfType<CreepManager>();
+        if (!cm) return;
+        UnitAgent.OnCreepPredicate = (pos) => cm.HasCreepAt(pos);
+        _bound = true;
+        Debug.Log("[UnitCreepBinder] Rebound predicate (late init)");
     }
 
     void OnDisable()
