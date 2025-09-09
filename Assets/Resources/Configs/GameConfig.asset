@@ -13,7 +13,17 @@ MonoBehaviour:
   m_Name: GameConfig
   m_EditorClassIdentifier: 
   useSpatialIndexForPlacement: 0
-  minSpacing: 2
+  minSpacing: 1
   margin: 0
   requireCreep: 0
   snapSize: 1
+  rotationStepDegrees: 0
+  placementSmokeKey: 288
+  buildingDeleteKey1: 127
+  buildingDeleteKey2: 289
+  devUnitsSpawnKey: 290
+  devUnitsTestKey: 291
+  devSpawnCount: 200
+  creepSpeedMul: 1.25
+  offCreepSpeedMul: 1
+  creepSampleInterval: 0.25
