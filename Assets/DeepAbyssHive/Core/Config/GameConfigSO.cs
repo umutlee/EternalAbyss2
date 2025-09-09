@@ -41,6 +41,14 @@ namespace DeepAbyssHive.Core.Config
         public KeyCode devUnitsTestKey = KeyCode.F10;
         [Tooltip("DEV：一次生成的單位數量。")]
         public int devSpawnCount = 200;
+
+        [Header("Units × Creep")]
+        [Tooltip("在 Creep 上的速度倍率（1 = 不變）。")]
+        public float creepSpeedMul = 1.25f;
+        [Tooltip("不在 Creep 上的速度倍率（1 = 不變）。")]
+        public float offCreepSpeedMul = 1.0f;
+        [Tooltip("UnitAgent 取樣是否在 Creep 上的週期（秒）。")]
+        public float creepSampleInterval = 0.25f;
     }
 
     /// <summary>
@@ -74,7 +82,7 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}");
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s");
         }
     }
 }
