@@ -9,6 +9,12 @@ using DeepAbyssHive.Common.Placement;
 public class PlacementDebugHUD : MonoBehaviour
 {
     private string _lastLog;
+    private Rect _rect;
+
+    private void Start()
+    {
+        _rect = HudDragUtil.GetRect("HUD.PlacementDebug", new Rect(10, 200, 580, 90));
+    }
 
     private void OnGUI()
     {
@@ -19,19 +25,23 @@ public class PlacementDebugHUD : MonoBehaviour
         var last = PlacementValidator.LastResult;
         string lastText = last == null ? "(no checks yet)" : $"{last.code} ok={last.ok}";
 
-        string text = $"[HUD] Placement cfg: useSI={cfg.useSpatialIndexForPlacement} requireCreep={cfg.requireCreep} margin={cfg.margin:0.###} minSpacing={cfg.minSpacing:0.###}\n" +
-                      $"[HUD] Hooks: SpatialIndex={(hasSI ? "OK" : "NONE")}  Creep={(hasCreep ? "OK" : "NONE")}\n" +
-                      $"[HUD] Last: {lastText}";
+        string configText = $"Placement cfg: useSI={cfg.useSpatialIndexForPlacement} requireCreep={cfg.requireCreep} margin={cfg.margin:0.###} minSpacing={cfg.minSpacing:0.###}";
+        string hooksText = $"Hooks: SpatialIndex={(hasSI ? "OK" : "NONE")}  Creep={(hasCreep ? "OK" : "NONE")}";
+        string lastResultText = $"Last: {lastText}";
 
-        // 左上角小面板
-        GUI.Box(new Rect(10, 10, 560, 70), "");
-        GUI.Label(new Rect(20, 20, 540, 50), text);
+        _rect = HudDragUtil.DraggableWindow("HUD.PlacementDebug", _rect, "Placement Debug", () =>
+        {
+            GUILayout.Label(configText);
+            GUILayout.Label(hooksText);
+            GUILayout.Label(lastResultText);
+        });
 
         // 變更時也打一條 Console，方便過帳
-        if (text != _lastLog)
+        string fullText = $"[HUD] {configText}\n[HUD] {hooksText}\n[HUD] {lastResultText}";
+        if (fullText != _lastLog)
         {
-            _lastLog = text;
-            Debug.Log(text);
+            _lastLog = fullText;
+            Debug.Log(fullText);
         }
     }
 }

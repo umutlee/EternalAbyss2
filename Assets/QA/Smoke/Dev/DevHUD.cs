@@ -6,9 +6,11 @@ public class DevHUD : MonoBehaviour
 {
     private CreepManager _creep;
     private string _status = "Init...";
+    private Rect _rect;
 
     void Start()
     {
+        _rect = HudDragUtil.GetRect("HUD.DevHUD", new Rect(10, 10, 480, 120));
         _creep = FindAnyObjectByType<CreepManager>(FindObjectsInactive.Include);
         _status = _creep ? "CreepManager: OK" : "CreepManager: MISSING";
         Debug.Log($"[DEV HUD] {_status}");
@@ -17,12 +19,15 @@ public class DevHUD : MonoBehaviour
     void OnGUI()
     {
         var style = new GUIStyle(GUI.skin.label) { fontSize = 14 };
-        GUILayout.BeginArea(new Rect(10,10,480,200), GUI.skin.box);
-        GUILayout.Label("<b>Dev Playground HUD</b>", new GUIStyle(style){ richText = true, fontSize = 16});
-        GUILayout.Space(4);
-        GUILayout.Label(_status, style);
-        GUILayout.Label("F1: Re-log manager status | F9: Run Smoke | R: Reload scene", style);
-        GUILayout.EndArea();
+        var titleStyle = new GUIStyle(style) { richText = true, fontSize = 16 };
+        
+        _rect = HudDragUtil.DraggableWindow("HUD.DevHUD", _rect, "Dev Playground HUD", () =>
+        {
+            GUILayout.Label("<b>Dev Playground HUD</b>", titleStyle);
+            GUILayout.Space(4);
+            GUILayout.Label(_status, style);
+            GUILayout.Label("F1: Re-log manager status | F9: Run Smoke | R: Reload scene", style);
+        });
     }
 
     void Update()
