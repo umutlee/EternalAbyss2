@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Units.Pathfinding;
 using DeepAbyssHive.Core.Config;
-using DeepAbyssHive.Common.Placement; // 取 Building 層遮罩用
+using DeepAbyssHive.Common.Placement; // +事件：ObstaclesChanged
 
 namespace DeepAbyssHive.Units.Agents
 {
@@ -38,6 +38,19 @@ namespace DeepAbyssHive.Units.Agents
         public float obstacleProbeExtra = 0.5f;
         private float _dynCheckTimer;
         private float _lastRepathAt;
+
+        private const float _eventInflate = 0.5f; // 事件影響半徑的小擴張，避免邊界漏檢
+
+        void OnEnable()
+        {
+            // 事件：建築增刪 → 立即嘗試局部 re-path（搭配 T06 冷卻避免抖動）
+            PlacementRuntimeEvents.ObstaclesChanged += OnObstaclesChanged;
+        }
+
+        void OnDisable()
+        {
+            PlacementRuntimeEvents.ObstaclesChanged -= OnObstaclesChanged;
+        }
 
         public void SetDestination(Vector3 worldTarget)
         {
@@ -151,6 +164,40 @@ namespace DeepAbyssHive.Units.Agents
                     _speedFactor = _isOnCreep ? onMul : offMul;
                 }
             }
+        }
+
+        /// <summary>
+        /// [M4-T07] 建築變更事件處理：若「當前→最終目標」線段與事件圓相交，立即 re-path。
+        /// </summary>
+        private void OnObstaclesChanged(Vector3 center, float radius)
+        {
+            if (_path == null || _path.Count == 0) return;
+            if (Time.time < _lastRepathAt + dynamicRepathCooldown) return; // 與 T06 共用冷卻
+
+            Vector3 a = transform.position;
+            Vector3 b = _path[_path.Count - 1]; // 以最終目標估計路徑線段
+            float d = DistPointToSegmentXZ(center, a, b);
+            if (d <= (radius + _eventInflate))
+            {
+                UnitPathQueue.Enqueue(a, b, OnPath);
+                _lastRepathAt = Time.time;
+                Debug.Log($"[DEV] UnitAgent: event re-path (d={d:0.##} ≤ r={radius:0.##})");
+            }
+        }
+
+        // 計算點到線段（XZ 平面）的距離
+        private static float DistPointToSegmentXZ(Vector3 p, Vector3 a, Vector3 b)
+        {
+            Vector2 P = new Vector2(p.x, p.z);
+            Vector2 A = new Vector2(a.x, a.z);
+            Vector2 B = new Vector2(b.x, b.z);
+            Vector2 AB = B - A;
+            float len2 = AB.sqrMagnitude;
+            if (len2 < 1e-6f) return (P - A).magnitude;
+            float t = Vector2.Dot(P - A, AB) / len2;
+            t = Mathf.Clamp01(t);
+            Vector2 proj = A + AB * t;
+            return (P - proj).magnitude;
         }
     }
 }
