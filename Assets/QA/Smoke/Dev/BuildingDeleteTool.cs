@@ -17,7 +17,7 @@ public class BuildingDeleteTool : MonoBehaviour
         var cfg = GameConfigProvider.Current;
         var k1 = (cfg != null && cfg.buildingDeleteKey1 != KeyCode.None) ? cfg.buildingDeleteKey1 : deleteKey1;
         var k2 = (cfg != null && cfg.buildingDeleteKey2 != KeyCode.None) ? cfg.buildingDeleteKey2 : deleteKey2;
-        bool pressed = (k1 != KeyCode.None && Input.GetKeyDown(k1)) || (k2 != KeyCode.None && Input.GetKeyDown(k2));
+        bool pressed = KeyDownCompat(k1) || KeyDownCompat(k2);
         if (!pressed) return;
 
         var cam = Camera.main; if (!cam) return;
@@ -51,5 +51,16 @@ public class BuildingDeleteTool : MonoBehaviour
             t = t.parent;
         }
         return null;
+    }
+
+    // mac/Editor 相容：若指定 Delete，也接受 Backspace；避免 Editor 攔截 Delete。
+    private static bool KeyDownCompat(KeyCode key)
+    {
+        if (key == KeyCode.None) return false;
+        if (Input.GetKeyDown(key)) return true;
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+        if (key == KeyCode.Delete && Input.GetKeyDown(KeyCode.Backspace)) return true;
+#endif
+        return false;
     }
 }
