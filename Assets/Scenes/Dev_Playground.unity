@@ -499,6 +499,7 @@ GameObject:
   - component: {fileID: 1260670774}
   - component: {fileID: 1260670776}
   - component: {fileID: 1260670775}
+  - component: {fileID: 1260670777}
   m_Layer: 0
   m_Name: Dev Helper
   m_TagString: Untagged
@@ -688,6 +689,26 @@ MonoBehaviour:
   radius: 1
   stepRatio: 0.6
   drawGizmos: 1
+--- !u!114 &1260670777
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260670764}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d8c01c332dd74489a6400d40b5fb82e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  unitPrefab: {fileID: 6819109902840637891, guid: ced87d349d61947d582856388715d436,
+    type: 3}
+  fallbackSpawnCount: 20
+  spawnScatterRadius: 2
+  spawnKeyFallback: 290
+  spawnKeyAltFallback: 287
+  testKeyFallback: 291
+  fallbackToPlaneY0: 1
 --- !u!1 &1337030030
 GameObject:
   m_ObjectHideFlags: 0

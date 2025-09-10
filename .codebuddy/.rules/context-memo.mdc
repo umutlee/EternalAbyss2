@@ -250,16 +250,19 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **智能回退**: 支援 Prefab 或即時生成 Capsule+UnitAgent 作為後備
 - **驗收**: F9 生成單位、F10 指派目標，Console 有簡短日誌輸出
 
-#### M4-T05: Creep 交互（移速加成） ✅ 待開始
-- **取樣頻率**: UnitAgent 每 0.25s 取樣當前格
-- **速度調整**: on-creep → speed *= creepSpeedMul，off-creep → speed *= offCreepSpeedMul
-- **GameConfig**: creepSpeedMul（1.25）、offCreepSpeedMul（0.85）外放
+#### M4-T05: Creep 交互（移速加成） ✅ 已完成
+- **取樣頻率**: UnitAgent 每 0.25s 取樣當前格 (可配置 creepSampleInterval)
+- **速度調整**: on-creep → speed *= creepSpeedMul (1.25)，off-creep → speed *= offCreepSpeedMul (1.0)
+- **GameConfig**: creepSpeedMul/offCreepSpeedMul/creepSampleInterval 已外放
+- **實現**: SampleCreepIfDue() 方法 + OnCreepPredicate 委派接口
 - **驗收**: 走進菌毯路段時明顯提速，Console 印狀態切換
 
-#### M4-T06: 障礙動態更新（建築放置/刪除） ✅ 待開始
-- **通知機制**: BuildingPlacer 成功放置/刪除後向 UnitManager 發 NotifyObstacleChanged(Bounds)
-- **Lazy 更新**: GridSampler 標記區塊需重取樣，不整圖重建
-- **驗收**: 建築生成/刪除後，單位能繞行，不會穿越新障礙
+#### M4-T06: 障礙動態更新（建築放置/刪除） ✅ 已完成
+- **UnitAgent 動態檢測**: 週期性 SphereCast 沿「當前→下一 waypoint」探測 Building 層
+- **自動重路**: 命中障礙時對「當前位置→最終目標」重新排路，避免卡住
+- **冷卻機制**: dynamicRepathCooldown 防止連續重路抖動
+- **配置參數**: dynamicCheckInterval/dynamicRepathCooldown/obstacleProbeRadius/obstacleProbeExtra
+- **驗收**: 建築生成/刪除後，單位能自動繞行，不會穿越新障礙
 
 #### M4-T07: SMOKE 套件（Units） ✅ 待開始
 - **UnitsSmoke.cs**: 熱鍵（預設 F10）生成 200 隻，隨機起訖 5 組
@@ -271,8 +274,8 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 1. **T01+T02**: Grid + A* → Console 單測可跑通
 2. **T03**: Agent/Manager → 單位可以走
 3. **T04**: Spawner → 200 隻壓測
-4. **T05**: Creep 速度加成 → 體感差異明顯
-5. **T06**: 建築動態障礙 → 與 M3 打通
+4. **T05**: Creep 速度加成 → 體感差異明顯 ✅ 已完成
+5. **T06**: 建築動態障礙 → 與 M3 打通 ✅ 已完成
 6. **T07**: SMOKE-Units → 綠燈標準固化
 
 ### 影響面與依賴
@@ -373,7 +376,7 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 3. **T03 UnitAgent / UnitManager 管線**（請求佇列，每幀 N 筆，外放 `pathRequestsPerFrame`）✅ 已完成  
 4. **T04 Dev Spawner & 指令**（集中熱鍵；預設 200 隻壓測）  
 5. **T05 Creep 交互**（移速加成 on/off creep）  
-6. **T06 障礙動態更新**（建築放置/刪除 → 路網局部無效化）  
+6. **T06 障礙動態更新**（建築放置/刪除 → 路網局部無效化）✅ 已完成  
 7. **T07 Units SMOKE**（輸出 req/s、avg ms、fail%）
 
 **驗收標準**

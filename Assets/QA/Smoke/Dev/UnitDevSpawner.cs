@@ -19,24 +19,51 @@ public class UnitDevSpawner : MonoBehaviour
     [Tooltip("生成時的隨機散佈半徑。")]
     public float spawnScatterRadius = 2f;
 
-    // Inspector 後備熱鍵（Config 設為 None 時採用）
-    public KeyCode spawnKeyFallback = KeyCode.F9;
+    // [EA-M4-T04|2025-09-10] 主/備用鍵與後備落點；不動 GameConfig 也能用
+    public KeyCode spawnKeyFallback = KeyCode.F9;   // 主鍵（GameConfig 為 None 才用）
+    public KeyCode spawnKeyAltFallback = KeyCode.F6; // 備用鍵：避免某些系統攔截 F9
     public KeyCode testKeyFallback = KeyCode.F10;
+    [Tooltip("滑鼠 Raycast 未命中時，改以螢幕中心對 y=0 平面落點生成。")]
+    public bool fallbackToPlaneY0 = true;
+
+    void OnEnable()
+    {
+        // 啟用時列印實際採用的鍵，便於驗收（在 Console 找這行）
+        var cfg = GameConfigProvider.Current;
+        var kSpawn = (cfg && cfg.devUnitsSpawnKey != KeyCode.None) ? cfg.devUnitsSpawnKey : spawnKeyFallback;
+        var kAlt   = spawnKeyAltFallback;
+        var kTest  = (cfg && cfg.devUnitsTestKey  != KeyCode.None) ? cfg.devUnitsTestKey  : testKeyFallback;
+        Debug.Log($"[DEV] UnitDevSpawner: spawnKey={kSpawn} alt={kAlt} testKey={kTest} scatter={spawnScatterRadius}");
+    }
 
     void Update()
     {
         var cfg = GameConfigProvider.Current;
 
         // 讀取集中熱鍵；None 退回 Inspector 後備
-        var spawnKey = (cfg != null && cfg.devUnitsSpawnKey != KeyCode.None) ? cfg.devUnitsSpawnKey : spawnKeyFallback;
+        var spawnKey = (cfg && cfg.devUnitsSpawnKey != KeyCode.None) ? cfg.devUnitsSpawnKey : spawnKeyFallback;
         var testKey  = (cfg != null && cfg.devUnitsTestKey  != KeyCode.None) ? cfg.devUnitsTestKey  : testKeyFallback;
+        var altKey   = spawnKeyAltFallback; // 不依賴 GameConfig，確保總有一顆可用
 
-        if (spawnKey != KeyCode.None && Input.GetKeyDown(spawnKey))
+        // 同時接受主鍵或備用鍵
+        if ((spawnKey != KeyCode.None && Input.GetKeyDown(spawnKey)) ||
+            (altKey   != KeyCode.None && Input.GetKeyDown(altKey)))
         {
             if (TryRayToTerrain(out var hit))
             {
                 int count = (cfg != null && cfg.devSpawnCount > 0) ? cfg.devSpawnCount : Mathf.Max(1, fallbackSpawnCount);
                 SpawnUnitsAt(hit.point, count);
+                Debug.Log($"[DEV] Units: spawn key → {count} @ Terrain hit {hit.point}");
+            }
+            else if (fallbackToPlaneY0 && TryRayToPlaneY0(out var p))
+            {
+                int count = (cfg != null && cfg.devSpawnCount > 0) ? cfg.devSpawnCount : Mathf.Max(1, fallbackSpawnCount);
+                SpawnUnitsAt(p, count);
+                Debug.LogWarning($"[DEV] Units: Terrain ray MISS; fallback y=0 → {count} @ {p}");
+            }
+            else
+            {
+                Debug.LogWarning("[DEV] Units: spawn key pressed but Raycast missed (no fallback). 檢查地表 Collider/Layers。");
             }
         }
 
@@ -51,15 +78,27 @@ public class UnitDevSpawner : MonoBehaviour
         }
     }
 
+    // 優先 Terrain 層；若沒有該層，退回全遮罩，容錯更高
     private bool TryRayToTerrain(out RaycastHit hit)
     {
-        var cam = Camera.main;   
+        var cam = Camera.main; 
         if (!cam) { hit = default; return false; }
         var ray = cam.ScreenPointToRay(Input.mousePosition);
 
         int terrain = LayerMask.NameToLayer("Terrain");
         int mask = (terrain >= 0) ? (1 << terrain) : ~0; // 無 Terrain 層時退回全遮罩
         return Physics.Raycast(ray, out hit, 5000f, mask, QueryTriggerInteraction.Ignore);
+    }
+
+    // 滑鼠沒有命中任何 Collider 時，取螢幕中心對 y=0 平面作為後備落點（常見於純平地測試場）
+    private bool TryRayToPlaneY0(out Vector3 point)
+    {
+        var cam = Camera.main;
+        if (!cam) { point = default; return false; }
+        var ray = cam.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0));
+        var plane = new Plane(Vector3.up, Vector3.zero); // y=0
+        if (plane.Raycast(ray, out float enter)) { point = ray.GetPoint(enter); return true; }
+        point = default; return false;
     }
 
     private void SpawnUnitsAt(Vector3 center, int count)

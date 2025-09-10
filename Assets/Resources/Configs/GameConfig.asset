@@ -21,9 +21,9 @@ MonoBehaviour:
   placementSmokeKey: 288
   buildingDeleteKey1: 127
   buildingDeleteKey2: 289
-  devUnitsSpawnKey: 290
+  devUnitsSpawnKey: 287
   devUnitsTestKey: 291
-  devSpawnCount: 200
+  devSpawnCount: 20
   creepSpeedMul: 1.25
   offCreepSpeedMul: 1
   creepSampleInterval: 0.25

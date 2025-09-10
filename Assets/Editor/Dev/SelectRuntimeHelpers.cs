@@ -8,7 +8,7 @@ using System.Linq;
 /// </summary>
 public static class SelectRuntimeHelpers
 {
-    [MenuItem("DeepAbyss/Dev/Select Managers (DontDestroyOnLoad) %#m")]
+    [MenuItem("DeepAbyssHive/Dev/Select Managers (DontDestroyOnLoad) %#m")]
     public static void SelectManagers()
     {
         var go = FindByName("Managers");
@@ -18,7 +18,7 @@ public static class SelectRuntimeHelpers
         Debug.Log($"[Editor] Selected: {GetPath(go)}");
     }
 
-    [MenuItem("DeepAbyss/Dev/Select Placement Outline")]
+    [MenuItem("DeepAbyssHive/Dev/Select Placement Outline")]
     public static void SelectPlacementOutline()
     {
         var go = Resources.FindObjectsOfTypeAll<GameObject>().FirstOrDefault(g => g && g.name.StartsWith("~PlacementOutline"));
