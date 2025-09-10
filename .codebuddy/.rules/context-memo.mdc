@@ -296,12 +296,18 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **配置文件**: Assets/Resources/Configs/
 - **規則文件**: .codebuddy/.rules/
 
+## DEV 工具強化 (2025-09-10)
+- **RmbLockGuard.cs**: 強化版游標鎖定守門員，無條件守門 + Update/LateUpdate 雙重解鎖
+- **UnitDevSpawner.cs**: 增強版單位生成器，F6 備用鍵 + y=0 平面回退 + 詳細日誌
+- **FocusGameOnPlay.cs**: Editor 工具，Play 模式時自動聚焦 Game 視窗
+- **SelectRuntimeHelpers.cs**: 統一菜單命名為 DeepAbyssHive，可選取 DontDestroyOnLoad 內的 Managers
+
 ## M3 階段新增的關鍵文件
 - **PlacementValidator.cs**: 統一驗證系統 (支援有向碰撞)
 - **PlacementSmoke.cs**: F7 自動化測試腳本
 - **BuildingDeleteTool.cs**: Delete/X 建築刪除工具
 - **PlacementStatusHUD.cs**: 實時狀態顯示 HUD
-- **GameConfigSO.cs**: 擴展配置參數 (minSpacing, snapSize, rotationStepDegrees)
+- **GameConfigSO.cs**: 擴展配置參數 (minSpacing, snapSize, rotationStepDegrees, rmbLocksCursor)
 
 ## 階段性備份政策 ✅ 已建立
 - **備份時機**: 每完成一個 Milestone 階段 (M3-T01, M3-T02 等)
