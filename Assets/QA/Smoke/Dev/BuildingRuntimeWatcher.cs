@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Common.Placement;
+using DeepAbyssHive.Core.Config; // 讀 GameConfig（外放掃描參數）
 
 /// <summary>
 /// [EA-M4-T07|2025-09-10] DEV：監看 Building 層物件增/刪，並發出 ObstaclesChanged 事件。
@@ -10,17 +11,22 @@ using DeepAbyssHive.Common.Placement;
 public class BuildingRuntimeWatcher : MonoBehaviour
 {
     [Tooltip("掃描週期（秒）。")]
-    public float interval = 0.25f;
+    public float interval = 0.25f;   // Inspector 預設；GameConfig>0 時覆蓋
     [Tooltip("半徑外擴保險值（世界單位）。")]
-    public float padRadius = 0.5f;
+    public float padRadius = 0.5f;   // Inspector 預設；GameConfig>=0 時覆蓋
 
     private float _timer;
     private readonly Dictionary<int, (Vector3 center, float radius)> _known = new();
 
     void Update()
     {
+        // 讀 GameConfig（外放）
+        var cfg = GameConfigProvider.Current;
+        float cfgInterval = (cfg && cfg.buildingWatcherInterval > 0f) ? cfg.buildingWatcherInterval : interval;
+        float cfgPad      = (cfg && cfg.buildingWatcherPadRadius >= 0f) ? cfg.buildingWatcherPadRadius : padRadius;
+
         _timer += Time.unscaledDeltaTime;
-        if (_timer < interval) return;
+        if (_timer < cfgInterval) return;
         _timer = 0f;
 
         int buildingLayer = LayerMask.NameToLayer("Building");
@@ -43,7 +49,7 @@ public class BuildingRuntimeWatcher : MonoBehaviour
             if (_known.ContainsKey(id)) continue;
             var go = EditorUtilityHelper.TryFindObjectByInstanceID(id);
             var (c, r) = ComputeBounds2D(go);
-            r += padRadius;
+            r += cfgPad;
             _known[id] = (c, r);
             PlacementRuntimeEvents.RaiseObstaclesChanged(c, r);
             Debug.Log($"[DEV] BuildingWatcher: + {go.name} r~{r:0.##}");

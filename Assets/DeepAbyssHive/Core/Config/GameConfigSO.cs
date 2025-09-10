@@ -46,6 +46,24 @@ namespace DeepAbyssHive.Core.Config
         [Tooltip("右鍵是否鎖定游標（mouselook）。預設關閉以避免與建造/點地互動衝突。")]
         public bool rmbLocksCursor = false;
 
+        // -------- Units / Dynamic obstacle guard (外放) --------
+        [Header("Units / Dynamic Obstacle Guard")]
+        [Tooltip("單位每隔幾秒檢測一次前方是否被 Building 層阻擋（<=0 表示使用元件預設）。")]
+        public float unitDynCheckInterval = 0.5f;
+        [Tooltip("連續 re-path 的冷卻（秒；<=0 表示使用元件預設）。")]
+        public float unitDynRepathCooldown = 1.0f;
+        [Tooltip("SphereCast 半徑（<=0 表示使用元件預設）。")]
+        public float unitObstacleProbeRadius = 0.35f;
+        [Tooltip("探測距離額外裕度（<0 表示使用元件預設）。")]
+        public float unitObstacleProbeExtra = 0.5f;
+
+        // -------- Building Watcher（外放）--------
+        [Header("Runtime Watchers")]
+        [Tooltip("Building 監看器掃描週期（秒；<=0 表示使用元件預設）。")]
+        public float buildingWatcherInterval = 0.25f;
+        [Tooltip("對建築 bounds 半徑的外擴量（<0 表示使用元件預設）。")]
+        public float buildingWatcherPadRadius = 0.5f;
+
         [Header("Units × Creep")]
         [Tooltip("在 Creep 上的速度倍率（1 = 不變）。")]
         public float creepSpeedMul = 1.25f;
@@ -86,7 +104,8 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}");
+            // 顯示新增外放參數，便於驗收與查錯
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}");
         }
     }
 }

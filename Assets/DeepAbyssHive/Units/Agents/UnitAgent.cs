@@ -103,12 +103,19 @@ namespace DeepAbyssHive.Units.Agents
         /// </summary>
         private void DynamicObstacleGuard()
         {
+            // 讀 GameConfig（有值則覆蓋 Inspector；否則用 Inspector 值）
+            var cfg = GameConfigProvider.Current;
+            float cfgInterval = (cfg && cfg.unitDynCheckInterval > 0f) ? cfg.unitDynCheckInterval : dynamicCheckInterval;
+            float cfgCooldown = (cfg && cfg.unitDynRepathCooldown > 0f) ? cfg.unitDynRepathCooldown : dynamicRepathCooldown;
+            float probeR      = (cfg && cfg.unitObstacleProbeRadius > 0f) ? cfg.unitObstacleProbeRadius : obstacleProbeRadius;
+            float probeExtra  = (cfg && cfg.unitObstacleProbeExtra >= 0f) ? cfg.unitObstacleProbeExtra : obstacleProbeExtra;
+
             _dynCheckTimer += Time.deltaTime;
-            if (_dynCheckTimer < dynamicCheckInterval) return;
+            if (_dynCheckTimer < cfgInterval) return;
             _dynCheckTimer = 0f;
 
             if (_path == null || _idx >= _path.Count) return;
-            if (Time.time < _lastRepathAt + dynamicRepathCooldown) return;
+            if (Time.time < _lastRepathAt + cfgCooldown) return;
 
             // 取得下一個導航點（或末點）；計算水平方向
             Vector3 from = transform.position;
@@ -125,8 +132,8 @@ namespace DeepAbyssHive.Units.Agents
 
             // 從胸口高度探測，避免地面誤檢；給一點超出距離，避免貼邊漏檢
             Vector3 origin = from + Vector3.up * 0.5f;
-            float castDist = dist + Mathf.Max(0f, obstacleProbeExtra);
-            if (Physics.SphereCast(origin, obstacleProbeRadius, dir, out var hit, castDist, mask, QueryTriggerInteraction.Ignore))
+            float castDist = dist + Mathf.Max(0f, probeExtra);
+            if (Physics.SphereCast(origin, probeR, dir, out var hit, castDist, mask, QueryTriggerInteraction.Ignore))
             {
                 // 命中：對「當前→最終目標」重新排路
                 Vector3 goal = _path[_path.Count - 1];
