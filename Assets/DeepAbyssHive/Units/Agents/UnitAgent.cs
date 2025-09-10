@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Units.Pathfinding;
 using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Common.Placement; // 取 Building 層遮罩用
 
 namespace DeepAbyssHive.Units.Agents
 {
@@ -18,12 +19,25 @@ namespace DeepAbyssHive.Units.Agents
 
         private List<Vector3> _path;
         private int _idx;
-
+        // [EA-M4-T05|2025-09-09] 單位×菌毯取樣（已有）
         // --- Creep sampling ---
         public static System.Func<Vector3, bool> OnCreepPredicate; // 由外部（Creep 系統）指派，未指派=不啟用
         private bool _isOnCreep;
         private float _speedFactor = 1f;
         private float _creepSampleTimer;
+
+        // [EA-M4-T06|2025-09-10] 動態障礙守門：定期檢測前方是否被 Building 層阻擋，必要時 re-path
+        [Header("Dynamic Obstacle Guard")]
+        [Tooltip("檢測頻率（秒）。建議 0.3~1.0。")]
+        public float dynamicCheckInterval = 0.5f;
+        [Tooltip("連續 re-path 的冷卻（秒），避免抖動。")]
+        public float dynamicRepathCooldown = 1.0f;
+        [Tooltip("SphereCast 半徑（世界單位）。大於單位半徑少許即可。")]
+        public float obstacleProbeRadius = 0.35f;
+        [Tooltip("探測距離額外裕度（避免貼邊漏檢）。")]
+        public float obstacleProbeExtra = 0.5f;
+        private float _dynCheckTimer;
+        private float _lastRepathAt;
 
         public void SetDestination(Vector3 worldTarget)
         {
@@ -46,6 +60,8 @@ namespace DeepAbyssHive.Units.Agents
         void Update()
         {
             SampleCreepIfDue();
+            DynamicObstacleGuard(); // 先守門（如需 re-path），再走路
+
             if (_path == null || _idx >= _path.Count) return;
 
             var p = _path[_idx];
@@ -66,6 +82,45 @@ namespace DeepAbyssHive.Units.Agents
             }
             // 前進
             transform.position += transform.forward * (moveSpeed * _speedFactor * Time.deltaTime);
+        }
+
+        /// <summary>
+        /// [M4-T06] 週期性以 SphereCast 沿「當前→下一 waypoint」檢測 Building 層。
+        /// 命中則對「當前→最終目標」重新排路。避免新建築/刪除造成的卡路。
+        /// </summary>
+        private void DynamicObstacleGuard()
+        {
+            _dynCheckTimer += Time.deltaTime;
+            if (_dynCheckTimer < dynamicCheckInterval) return;
+            _dynCheckTimer = 0f;
+
+            if (_path == null || _idx >= _path.Count) return;
+            if (Time.time < _lastRepathAt + dynamicRepathCooldown) return;
+
+            // 取得下一個導航點（或末點）；計算水平方向
+            Vector3 from = transform.position;
+            int nextIdx = Mathf.Min(_idx + 1, _path.Count - 1);
+            Vector3 to = _path[nextIdx];
+            Vector3 dir = to - from; dir.y = 0f;
+            float dist = dir.magnitude;
+            if (dist < 0.2f) return; // 太近不檢
+            dir /= dist;
+
+            // 僅檢 Building 層；若專案未建層，GetBuildingOnlyMask 會回 0 → 直接跳過
+            int mask = PlacementLayerUtil.GetBuildingOnlyMask();
+            if (mask == 0) return;
+
+            // 從胸口高度探測，避免地面誤檢；給一點超出距離，避免貼邊漏檢
+            Vector3 origin = from + Vector3.up * 0.5f;
+            float castDist = dist + Mathf.Max(0f, obstacleProbeExtra);
+            if (Physics.SphereCast(origin, obstacleProbeRadius, dir, out var hit, castDist, mask, QueryTriggerInteraction.Ignore))
+            {
+                // 命中：對「當前→最終目標」重新排路
+                Vector3 goal = _path[_path.Count - 1];
+                UnitPathQueue.Enqueue(from, goal, OnPath);
+                _lastRepathAt = Time.time;
+                Debug.Log($"[DEV] UnitAgent: dynamic re-path (hit {hit.collider.name})");
+            }
         }
 
         private void SampleCreepIfDue()
