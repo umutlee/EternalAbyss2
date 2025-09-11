@@ -35,12 +35,16 @@ namespace DeepAbyssHive.Core.Config
         public KeyCode buildingDeleteKey1 = KeyCode.Delete;
         [Tooltip("建築刪除副鍵（None=停用）。")]
         public KeyCode buildingDeleteKey2 = KeyCode.X;
+        [Tooltip("DEV：建築放置器切換鍵（None=停用）。")]
+        public KeyCode buildPlacerToggleKey = KeyCode.B;
         [Tooltip("DEV：生成單位熱鍵（None=停用）。")]
         public KeyCode devUnitsSpawnKey = KeyCode.F9;
         [Tooltip("DEV：單位測試熱鍵（指派目標；None=停用）。")]
         public KeyCode devUnitsTestKey = KeyCode.F10;
         [Tooltip("DEV：一次生成的單位數量。")]
         public int devSpawnCount = 200;
+        [Tooltip("DEV：啟用詳細日誌輸出（影響各系統的 Debug.Log 詳細程度）。")]
+        public bool devVerboseLogs = false;
 
         [Header("Input / Cursor")]
         [Tooltip("右鍵是否鎖定游標（mouselook）。預設關閉以避免與建造/點地互動衝突。")]
@@ -111,8 +115,8 @@ namespace DeepAbyssHive.Core.Config
         private static void LogConfigOnLoad()
         {
             var cfg = Current;
-            // 顯示新增外放參數，便於驗收與查錯（含 Health Logger 開關/間隔）
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s");
+            // 顯示新增外放參數，便於驗收與查錯（含 M4-T09 新增的 buildPlacerToggleKey/devVerboseLogs）
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, placerToggle={cfg.buildPlacerToggleKey}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, verboseLogs={cfg.devVerboseLogs}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s");
         }
     }
 }
