@@ -15,7 +15,7 @@ namespace DeepAbyssHive.Units.Pathfinding
         private struct Job
         {
             public Vector3 from, to;
-            public Action<List<Vector3>> cb;
+            public Action<List<Vector3>, bool> cb;
         }
 
         private static readonly Queue<Job> _q = new Queue<Job>(256);
@@ -24,7 +24,7 @@ namespace DeepAbyssHive.Units.Pathfinding
         /// <summary>
         /// 入列一個算路工作；將在未來數幀內依配額啟動真正的 UnitPathQueue.Enqueue。
         /// </summary>
-        public static void Enqueue(Vector3 from, Vector3 to, Action<List<Vector3>> onPathReady)
+        public static void Enqueue(Vector3 from, Vector3 to, Action<List<Vector3>, bool> onPathReady)
         {
             _q.Enqueue(new Job { from = from, to = to, cb = onPathReady });
             EnsureRunner();
