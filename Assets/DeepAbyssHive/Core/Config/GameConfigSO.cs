@@ -75,6 +75,11 @@ namespace DeepAbyssHive.Core.Config
         [Tooltip("健康監測輸出間隔（秒）。")]
         public float healthLogInterval = 10f;
 
+        // -------- Pathfinding / Budget（外放）--------
+        [Header("Pathfinding / Budget")]
+        [Tooltip("每幀最多啟動的算路任務數（<=0 表示使用預設值 8）。")]
+        public int pathJobsPerFrame = 8;
+
         [Header("Units × Creep")]
         [Tooltip("在 Creep 上的速度倍率（1 = 不變）。")]
         public float creepSpeedMul = 1.25f;
@@ -122,7 +127,7 @@ namespace DeepAbyssHive.Core.Config
         {
             var cfg = Current;
             // 顯示新增外放參數，便於驗收與查錯（含 M4-T09 新增的 buildPlacerToggleKey/devVerboseLogs）
-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, placerToggle={cfg.buildPlacerToggleKey}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, verboseLogs={cfg.devVerboseLogs}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s");
+            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, placerToggle={cfg.buildPlacerToggleKey}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, verboseLogs={cfg.devVerboseLogs}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s, pathJobs={cfg.pathJobsPerFrame}");
         }
     }
 }
