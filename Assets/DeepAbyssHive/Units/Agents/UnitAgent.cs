@@ -38,8 +38,23 @@ namespace DeepAbyssHive.Units.Agents
         public float obstacleProbeExtra = 0.5f;
         private float _dynCheckTimer;
         private float _lastRepathAt;
+        // [EA-M4-T10|2025-09-11] DEV 日誌節流
+        private float _lastVerboseLogAt;
 
         private const float _eventInflate = 0.5f; // 事件影響半徑的小擴張，避免邊界漏檢
+
+        /// <summary>
+        /// 僅在 GameConfig.devVerboseLogs=true 時輸出，且每 1 秒最多一次，避免 Editor 下過量日誌造成卡頓。
+        /// </summary>
+        private void DevLog(string message)
+        {
+            var cfg = GameConfigProvider.Current;
+            if (cfg == null || !cfg.devVerboseLogs) return;
+            float now = Time.unscaledTime;
+            if (now - _lastVerboseLogAt < 1f) return;
+            _lastVerboseLogAt = now;
+            Debug.Log(message);
+        }
 
         void OnEnable()
         {
@@ -139,7 +154,7 @@ namespace DeepAbyssHive.Units.Agents
                 Vector3 goal = _path[_path.Count - 1];
                 UnitPathQueue.Enqueue(from, goal, OnPath);
                 _lastRepathAt = Time.time;
-                Debug.Log($"[DEV] UnitAgent: dynamic re-path (hit {hit.collider.name})");
+                DevLog($"[DEV] UnitAgent: dynamic re-path (hit {hit.collider.name})");
             }
         }
 
@@ -188,7 +203,7 @@ namespace DeepAbyssHive.Units.Agents
             {
                 UnitPathQueue.Enqueue(a, b, OnPath);
                 _lastRepathAt = Time.time;
-                Debug.Log($"[DEV] UnitAgent: event re-path (d={d:0.##} ≤ r={radius:0.##})");
+                DevLog($"[DEV] UnitAgent: event re-path (d={d:0.##} ≤ r={radius:0.##})");
             }
         }
 
