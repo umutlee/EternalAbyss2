@@ -24,6 +24,7 @@ MonoBehaviour:
   devUnitsSpawnKey: 287
   devUnitsTestKey: 291
   devSpawnCount: 20
+  rmbLocksCursor: 0
   creepSpeedMul: 1.25
   offCreepSpeedMul: 1
   creepSampleInterval: 0.25

@@ -75,7 +75,7 @@ namespace DeepAbyssHive.Core.Config
         [Tooltip("健康監測輸出間隔（秒）。")]
         public float healthLogInterval = 10f;
 
-        // -------- Pathfinding / Budget（外放）--------
+        // -------- Pathfinding / Budget --------
         [Header("Pathfinding / Budget")]
         [Tooltip("每幀最多啟動的算路任務數（<=0 表示使用預設值 8）。")]
         public int pathJobsPerFrame = 8;

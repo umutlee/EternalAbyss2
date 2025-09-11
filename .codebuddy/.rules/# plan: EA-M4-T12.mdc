@@ -1,0 +1,120 @@
+
+
+---
+description: M4-T12：Path jobs 分幀配額（平滑算路尖峰）— 新增 PathJobScheduler + 外放 pathJobsPerFrame + UnitAgent 接線 — 2025-09-11 23:10 Asia/Taipei
+globs:
+  - DeepAbyssHive/Core/Config/GameConfigSO.cs
+  - DeepAbyssHive/Units/Pathfinding/PathJobScheduler.cs
+  - DeepAbyssHive/Units/Agents/UnitAgent.cs
+alwaysApply: true
+# PLAN
+# - 不改既有 UnitPathQueue 算法；只是在「呼叫入列」前加一層 Scheduler，把啟動算路的呼叫分散到多幀。
+# - 外放 GameConfig.pathJobsPerFrame（預設 8）；Runner 自動建立於 ~PathJobScheduler（DontDestroyOnLoad）。
+# - UnitAgent.SetDestination 改呼叫 PathJobScheduler.Enqueue(...)，其餘邏輯不變。
+# CHANGES
+PATCH: DeepAbyssHive/Core/Config/GameConfigSO.cs
+*** /a/DeepAbyssHive/Core/Config/GameConfigSO.cs
+--- /b/DeepAbyssHive/Core/Config/GameConfigSO.cs
+@@
+         [Header("Health / Telemetry")]
+         [Tooltip("是否啟用 Runtime 健康監測輸出（FPS/記憶體/單位/建築）。")]
+         public bool healthLogEnabled = true;
+         [Tooltip("健康監測輸出間隔（秒）。")]
+         public float healthLogInterval = 10f;
++
++        // -------- Pathfinding / Budget（外放）--------
++        [Header("Pathfinding / Budget")]
++        [Tooltip("每幀最多啟動的算路任務數（<=0 表示使用預設值 8）。")]
++        public int pathJobsPerFrame = 8;
+@@
+         private static void LogConfigOnLoad()
+         {
+             var cfg = Current;
+-            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}/{cfg.devUnitsSpawnKeyAlt}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s, keys:build={cfg.buildPlacerToggleKey}, verbose={cfg.devVerboseLogs}, assignBatch={cfg.devAssignBatchSize}@{cfg.devAssignBatchDelay:0.###}s");
++            Debug.Log($"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, spawnKey={cfg.devUnitsSpawnKey}/{cfg.devUnitsSpawnKeyAlt}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s, keys:build={cfg.buildPlacerToggleKey}, verbose={cfg.devVerboseLogs}, assignBatch={cfg.devAssignBatchSize}@{cfg.devAssignBatchDelay:0.###}s, pathJobs={cfg.pathJobsPerFrame}");
+         }
+*** End Patch
+WRITE_CHANGE: DeepAbyssHive/Units/Pathfinding/PathJobScheduler.cs
+```csharp
+// [EA-M4-T12|2025-09-11] Path jobs 分幀配額：以最小侵入方式平滑算路尖峰。
+// 原理：把「呼叫 UnitPathQueue.Enqueue(...)」排入本地佇列，由 Runner 每幀最多啟動 N 筆（GameConfig.pathJobsPerFrame）。
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using DeepAbyssHive.Core.Config;
+
+namespace DeepAbyssHive.Units.Pathfinding
+{
+    /// <summary>
+    /// 對外 API：與 UnitPathQueue.Enqueue 相同，但會依配額分幀觸發真正的 Enqueue。
+    /// </summary>
+    public static class PathJobScheduler
+    {
+        private struct Job
+        {
+            public Vector3 from, to;
+            public Action<List<Vector3>> cb;
+        }
+
+        private static readonly Queue<Job> _q = new Queue<Job>(256);
+        private static Runner _runner;
+
+        /// <summary>
+        /// 入列一個算路工作；將在未來數幀內依配額啟動真正的 UnitPathQueue.Enqueue。
+        /// </summary>
+        public static void Enqueue(Vector3 from, Vector3 to, Action<List<Vector3>> onPathReady)
+        {
+            _q.Enqueue(new Job { from = from, to = to, cb = onPathReady });
+            EnsureRunner();
+        }
+
+        private static void EnsureRunner()
+        {
+            if (_runner != null) return;
+            var go = new GameObject("~PathJobScheduler");
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            _runner = go.AddComponent<Runner>();
+        }
+
+        /// <summary>
+        /// 實際執行者：每幀處理固定數量工作，避免一次性尖峰。
+        /// </summary>
+        private class Runner : MonoBehaviour
+        {
+            void Update()
+            {
+                // 從 GameConfig 讀配額；<=0 退回預設 8
+                var cfg = GameConfigProvider.Current;
+                int budget = (cfg != null && cfg.pathJobsPerFrame > 0) ? cfg.pathJobsPerFrame : 8;
+                int n = Mathf.Min(budget, _q.Count);
+                for (int i = 0; i < n; i++)
+                {
+                    var job = _q.Dequeue();
+                    // 最小侵入：仍用既有 UnitPathQueue 來算，只是把觸發分散到多幀
+                    UnitPathQueue.Enqueue(job.from, job.to, job.cb);
+                }
+            }
+        }
+    }
+}
+PATCH: DeepAbyssHive/Units/Agents/UnitAgent.cs
+*** /a/DeepAbyssHive/Units/Agents/UnitAgent.cs
+--- /b/DeepAbyssHive/Units/Agents/UnitAgent.cs
+@@
+public void SetDestination(Vector3 worldTarget)
+{
+var start = transform.position;
+
+markdown
+Copy code
+       UnitPathQueue.Enqueue(start, worldTarget, OnPath);
+cpp
+Copy code
+       // [EA-M4-T12] 改用分幀配額的調度器，降低同幀大量算路尖峰
+markdown
+Copy code
+       PathJobScheduler.Enqueue(start, worldTarget, OnPath);
+   }
+*** End Patch
+
+

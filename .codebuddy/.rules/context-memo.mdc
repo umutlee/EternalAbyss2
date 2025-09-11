@@ -270,6 +270,14 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **綠燈標準**: fail < 2%，平均求路 < 1.5ms（PC）
 - **驗收**: 一鍵測出穩定數據
 
+#### M4-T12: Path jobs 分幀配額（平滑算路尖峰） ✅ 已完成
+- **PathJobScheduler.cs**: 分幀配額調度器，避免同幀大量算路尖峰
+- **GameConfig 外放**: pathJobsPerFrame 參數（預設 8），控制每幀最多啟動算路數
+- **診斷日誌**: devVerboseLogs 開啟時輸出調度統計 [PathSched] 
+- **UnitAgent 整合**: SetDestination 改用 PathJobScheduler.Enqueue 分散觸發
+- **最小侵入**: 保持既有 UnitPathQueue 算法，僅在觸發層面分幀
+- **驗收**: 大量單位同時尋路時幀率更穩定，Console 有調度統計輸出
+
 ### 落地順序
 1. **T01+T02**: Grid + A* → Console 單測可跑通
 2. **T03**: Agent/Manager → 單位可以走
@@ -282,7 +290,7 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **不改**: 既有 BOOT/SMOKE 日誌
 - **依賴**: CreepManager 查詢、CreepRules 門檻、PlacementLayerUtil 遮罩
 - **新增**: Dev/Smoke 腳本都在 QA/Smoke/Dev 目錄
-- **GameConfig 外放**: pathRequestsPerFrame、creepSpeedMul、offCreepSpeedMul、devSpawnCount、devUnitsKey/devUnitsTestKey
+- **GameConfig 外放**: pathRequestsPerFrame、pathJobsPerFrame、creepSpeedMul、offCreepSpeedMul、devSpawnCount、devUnitsKey/devUnitsTestKey
 
 ## 熱鍵管理最佳實踐 (M3 建立)
 **重要原則**: 以後所有遊戲功能操作按鍵都應該使用可自定義的做法，並集中到 GameConfig.asset 管理
@@ -314,6 +322,19 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **操作流程**: git commit + push + Neo4j 記錄
 - **回滾保證**: 每個階段都標記為安全回滾點
 - **追蹤機制**: 記錄為 ProjectMilestone 便於管理
+
+---
+
+## 📌 附錄：2025-09-11 更新（M4 PathJobScheduler 診斷補丁完成）
+
+### M4-T12 PathJobScheduler 診斷補丁完成 ✅ 2025-09-11
+- **目的**: 平滑算路尖峰，避免同幀大量 UnitPathQueue.Enqueue 造成卡頓
+- **實現**: PathJobScheduler 分幀配額調度器，每幀最多處理 N 筆算路請求
+- **配置**: GameConfig.pathJobsPerFrame（預設 8），可調整每幀算路配額
+- **診斷**: devVerboseLogs=true 時輸出 [PathSched] 統計信息
+- **整合**: UnitAgent.SetDestination 改用 PathJobScheduler.Enqueue
+- **兼容**: 保持既有 UnitPathQueue 算法不變，僅在觸發層面分幀
+- **修復**: 解決 CS0102 重複欄位定義編譯錯誤
 
 ---
 

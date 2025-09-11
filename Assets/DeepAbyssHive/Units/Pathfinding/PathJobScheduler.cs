@@ -20,6 +20,7 @@ namespace DeepAbyssHive.Units.Pathfinding
 
         private static readonly Queue<Job> _q = new Queue<Job>(256);
         private static Runner _runner;
+        private static bool _runnerLogged;
 
         /// <summary>
         /// 入列一個算路工作；將在未來數幀內依配額啟動真正的 UnitPathQueue.Enqueue。
@@ -36,6 +37,12 @@ namespace DeepAbyssHive.Units.Pathfinding
             var go = new GameObject("~PathJobScheduler");
             UnityEngine.Object.DontDestroyOnLoad(go);
             _runner = go.AddComponent<Runner>();
+            var cfg = GameConfigProvider.Current;
+            if (!_runnerLogged && cfg != null && cfg.devVerboseLogs)
+            {
+                Debug.Log("[PathSched] runner created (DontDestroyOnLoad)");
+                _runnerLogged = true;
+            }
         }
 
         /// <summary>
@@ -54,6 +61,10 @@ namespace DeepAbyssHive.Units.Pathfinding
                     var job = _q.Dequeue();
                     // 最小侵入：仍用既有 UnitPathQueue 來算，只是把觸發分散到多幀
                     UnitPathQueue.Enqueue(job.from, job.to, job.cb);
+                }
+                if (n > 0 && cfg != null && cfg.devVerboseLogs)
+                {
+                    Debug.Log($"[PathSched] budget={budget}, processed={n}, queued={_q.Count}");
                 }
             }
         }

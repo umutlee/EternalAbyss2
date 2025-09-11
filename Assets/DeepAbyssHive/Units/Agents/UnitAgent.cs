@@ -70,7 +70,7 @@ namespace DeepAbyssHive.Units.Agents
         public void SetDestination(Vector3 worldTarget)
         {
             var start = transform.position;
-            // [EA-M4-T12] 改用分幀配額的調度器，降低同幀大量算路尖峰
+            // 經 PathJobScheduler 以每幀配額分散啟動算路
             PathJobScheduler.Enqueue(start, worldTarget, OnPath);
         }
 
