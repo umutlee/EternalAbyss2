@@ -1,6 +1,6 @@
 using UnityEngine;
 using DeepAbyssHive.Core.Config;
-using DeepAbyssHive.Common.Placement;
+using DeepAbyssHive.Dev;
 
 namespace DeepAbyssHive.QA.Smoke.Dev
 {
