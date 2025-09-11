@@ -85,9 +85,9 @@ namespace DeepAbyssHive.Core.Config
 
         [Header("Units × Batch Target Dispatch")]
         [Tooltip("目標派發分批大小。每批處理的單位數量，避免大量單位同時派發造成卡頓。")]
-        public int batchTargetDispatchSize = 32;
+        public int batchTargetDispatchSize = 10;
         [Tooltip("分批派發間隔（秒）。每批之間的等待時間。")]
-        public float batchTargetDispatchInterval = 0.02f;
+        public float batchTargetDispatchInterval = 0.1f;
     }
 
     /// <summary>

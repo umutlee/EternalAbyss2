@@ -51,6 +51,8 @@ public class UnitClickMoveDev : MonoBehaviour
         {
             int endIdx = Mathf.Min(i + batchSize, totalUnits);
             int batchCount = 0;
+            int batchNum = (i / batchSize) + 1;
+            int totalBatches = Mathf.CeilToInt((float)totalUnits / batchSize);
             
             // 處理當前批次
             for (int j = i; j < endIdx; j++)
@@ -63,6 +65,7 @@ public class UnitClickMoveDev : MonoBehaviour
             }
             
             processed += batchCount;
+            Debug.Log($"[DEV] Units: batch {batchNum}/{totalBatches} processed {batchCount} units (total: {processed}/{totalUnits})");
             
             // 如果不是最後一批，等待間隔
             if (endIdx < totalUnits)
