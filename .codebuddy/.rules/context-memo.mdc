@@ -270,12 +270,41 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **綠燈標準**: fail < 2%，平均求路 < 1.5ms（PC）
 - **驗收**: 一鍵測出穩定數據
 
-#### M4-T12: Path jobs 分幀配額（平滑算路尖峰） ✅ 已完成
+#### M4-T08: Runtime 健康監測系統 ✅ 已完成 (2025-09-11)
+- **HealthMonitor.cs**: 週期性輸出 FPS/記憶體/單位數/建築數統計
+- **GameConfig 外放**: healthLogEnabled/healthLogInterval 參數控制監測開關與間隔
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動掛載到 DontDestroyOnLoad
+- **統計內容**: FPS、記憶體使用、活躍單位數、建築數量
+- **驗收**: Console 定期輸出 [Health] 統計，可通過 GameConfig 控制
+
+#### M4-T09: Keybinding 外放與 Key Hints HUD ✅ 已完成 (2025-09-11)
+- **KeyHintsHUD.cs**: 實時顯示當前可用熱鍵提示的 HUD 系統
+- **GameConfig 統一**: 所有開發工具熱鍵集中到 GameConfig 管理
+- **動態提示**: 根據當前場景狀態顯示相關熱鍵 (建築放置、單位生成等)
+- **UI 整合**: 與現有 HUD 系統協調，避免重疊顯示
+- **驗收**: 螢幕右上角顯示熱鍵提示，隨場景狀態動態更新
+
+#### M4-T10: UnitAgent DevLog 節流機制 ✅ 已完成 (2025-09-11)
+- **日誌節流**: UnitAgent 移動/尋路日誌加入頻率限制，避免 Console 洪水攻擊
+- **GameConfig 控制**: devVerboseLogs 開關控制詳細日誌輸出
+- **性能優化**: 大量單位移動時不再產生過量日誌，保持 Console 可讀性
+- **智能過濾**: 關鍵事件 (路徑完成、障礙檢測) 仍正常輸出
+- **驗收**: 200 隻單位移動時 Console 日誌量可控，不影響性能
+
+#### M4-GameConfig: Unit 動態障礙檢測與 Building 監看器參數外放 ✅ 已完成 (2025-09-11)
+- **動態障礙參數**: unitDynCheckInterval/unitDynRepathCooldown/unitObstacleProbeRadius/unitObstacleProbeExtra
+- **Building 監看器**: buildingWatcherInterval/buildingWatcherPadRadius 參數外放
+- **統一配置**: 所有 Unit 和 Building 相關參數集中到 GameConfig 管理
+- **實時調整**: 支援 Runtime 調整參數，便於性能調優
+- **驗收**: GameConfig Inspector 可調整所有相關參數，立即生效
+
+#### M4-T12: Path jobs 分幀配額（平滑算路尖峰） ✅ 已完成 (2025-09-11)
 - **PathJobScheduler.cs**: 分幀配額調度器，避免同幀大量算路尖峰
 - **GameConfig 外放**: pathJobsPerFrame 參數（預設 8），控制每幀最多啟動算路數
 - **診斷日誌**: devVerboseLogs 開啟時輸出調度統計 [PathSched] 
 - **UnitAgent 整合**: SetDestination 改用 PathJobScheduler.Enqueue 分散觸發
 - **最小侵入**: 保持既有 UnitPathQueue 算法，僅在觸發層面分幀
+- **修復完成**: 解決 CS0102 重複欄位定義編譯錯誤，診斷補丁完成
 - **驗收**: 大量單位同時尋路時幀率更穩定，Console 有調度統計輸出
 
 ### 落地順序
