@@ -82,6 +82,12 @@ namespace DeepAbyssHive.Core.Config
         public float offCreepSpeedMul = 1.0f;
         [Tooltip("UnitAgent 取樣是否在 Creep 上的週期（秒）。")]
         public float creepSampleInterval = 0.25f;
+
+        [Header("Units × Batch Target Dispatch")]
+        [Tooltip("目標派發分批大小。每批處理的單位數量，避免大量單位同時派發造成卡頓。")]
+        public int batchTargetDispatchSize = 32;
+        [Tooltip("分批派發間隔（秒）。每批之間的等待時間。")]
+        public float batchTargetDispatchInterval = 0.02f;
     }
 
     /// <summary>
