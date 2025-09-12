@@ -9,11 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0000000000000000000000000000000000, type: 3}
+  m_Script: {fileID: 11500000, guid: 67bcc1ac658c04abfbd8c51381f04d5f, type: 3}
   m_Name: DevLogSettings
+  m_EditorClassIdentifier: 
   minLevel: 1
   ringBufferCapacity: 2000
-  foldDuplicates: 1
+  foldDuplicates: 0
   foldWindowSeconds: 1
   enableRateLimit: 1
   maxLogsPerSecond: 200
@@ -38,5 +39,8 @@ MonoBehaviour:
   - CreepSim
   - Game
   - General
+  - UnitCreepBinder
+  - DEV HUD
+  - Editor
   enableRuntimeOverlay: 0
   overlayMinLevel: 3

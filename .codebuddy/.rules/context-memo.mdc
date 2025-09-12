@@ -222,6 +222,17 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **選型**: 輕量「格網 A*」（與 Creep Grid/Chunk 對齊）
 - **整合**: Creep Grid 移速加成、Building 層動態阻擋、Terrain 坡度/高差門檻
 
+### M4-T11: Smart Console 開發工具系統 ✅ 已完成 (2025-09-12)
+- **DLog.cs**: 統一日誌 API，支援 T/D/I/W/E/F 六級別 + 格式化版本
+- **SmartConsoleWindow.cs**: Editor 視窗，支援分類過濾、搜尋、摺疊、速率限制
+- **DevLogSettingsSO.cs**: ScriptableObject 配置系統，管理緩衝區大小、速率限制等
+- **DevLogBootstrap.cs**: Editor 自動初始化，確保設定載入
+- **RuntimeMiniConsole.cs**: 可選的 Runtime 控制台顯示組件
+- **DevLogSettings.asset**: 預設配置資產，包含所有系統參數
+- **功能特性**: 標籤分類、即時過濾、自動摺疊重複訊息、速率限制防洪水
+- **快捷鍵**: Ctrl+Alt+L 開啟 Smart Console 視窗
+- **驗收**: 完整的開發日誌系統，支援高頻日誌場景，UI 響應流暢
+
 ### M4 任務拆解
 
 #### M4-T01: Nav Grid 介面與取樣器 ✅ 待開始
