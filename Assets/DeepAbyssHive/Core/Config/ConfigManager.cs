@@ -4,6 +4,7 @@ using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Buildings.Enums;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Config
 {
@@ -70,7 +71,7 @@ namespace DeepAbyssHive.Core.Config
         {
             if (IsInitialized) return;
 
-            Debug.Log("[ConfigManager] 開始初始化配置管理器...");
+            DAHLog.Info(LogCategory.SYSTEM, "[ConfigManager] 開始初始化配置管理器...");
 
             LoadUnitTemplates();
             LoadBuildingTemplates();
@@ -79,7 +80,7 @@ namespace DeepAbyssHive.Core.Config
             BuildLookupDictionaries();
 
             IsInitialized = true;
-            Debug.Log("[ConfigManager] 配置管理器初始化完成");
+            DAHLog.Info(LogCategory.SYSTEM, "[ConfigManager] 配置管理器初始化完成");
         }
 
         /// <summary>
@@ -95,11 +96,11 @@ namespace DeepAbyssHive.Core.Config
                 if (template != null)
                 {
                     unitTemplates.Add(template);
-                    Debug.Log($"[ConfigManager] 加載單位模板: {template.UnitName} ({template.UnitType})");
+                    DAHLog.Info(LogCategory.SYSTEM, $"[ConfigManager] 加載單位模板: {template.UnitName} ({template.UnitType})");
                 }
             }
 
-            Debug.Log($"[ConfigManager] 共加載 {unitTemplates.Count} 個單位模板");
+            DAHLog.Info(LogCategory.SYSTEM, $"[ConfigManager] 共加載 {unitTemplates.Count} 個單位模板");
         }
 
         /// <summary>
@@ -115,11 +116,11 @@ namespace DeepAbyssHive.Core.Config
                 if (template != null)
                 {
                     buildingTemplates.Add(template);
-                    Debug.Log($"[ConfigManager] 加載建築模板: {template.BuildingName} ({template.BuildingType})");
+                    DAHLog.Info(LogCategory.SYSTEM, $"[ConfigManager] 加載建築模板: {template.BuildingName} ({template.BuildingType})");
                 }
             }
 
-            Debug.Log($"[ConfigManager] 共加載 {buildingTemplates.Count} 個建築模板");
+            DAHLog.Info(LogCategory.SYSTEM, $"[ConfigManager] 共加載 {buildingTemplates.Count} 個建築模板");
         }
 
         /// <summary>
@@ -135,11 +136,11 @@ namespace DeepAbyssHive.Core.Config
                 if (template != null)
                 {
                     researchTemplates.Add(template);
-                    Debug.Log($"[ConfigManager] 加載研究模板: {template.ResearchName} ({template.Id})");
+                    DAHLog.Info(LogCategory.SYSTEM, $"[ConfigManager] 加載研究模板: {template.ResearchName} ({template.Id})");
                 }
             }
 
-            Debug.Log($"[ConfigManager] 共加載 {researchTemplates.Count} 個研究模板");
+            DAHLog.Info(LogCategory.SYSTEM, $"[ConfigManager] 共加載 {researchTemplates.Count} 個研究模板");
         }
 
         /// <summary>

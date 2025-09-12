@@ -7,6 +7,7 @@ using DeepAbyssHive.Buildings.Interfaces;
 using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Units.Interfaces;
 using DeepAbyssHive.Terrain.Interfaces;
+using DeepAbyssHive.Core.Logging;
 using IBuildingManager = DeepAbyssHive.Buildings.Interfaces.IBuildingManager;
 
 namespace DeepAbyssHive.Core.Managers
@@ -211,7 +212,7 @@ namespace DeepAbyssHive.Core.Managers
                 // 设置时间缩放
                 Time.timeScale = _timeScale;
                 
-                Debug.Log("[GameManager] 核心系统初始化完成");
+                DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 核心系统初始化完成");
             }
             catch (Exception ex)
             {
@@ -255,7 +256,7 @@ namespace DeepAbyssHive.Core.Managers
             Time.timeScale = _gameSpeed;
             
             OnGameStarted?.Invoke();
-            Debug.Log("[GameManager] 游戏开始");
+            DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏开始");
         }
         
         /// <summary>
@@ -269,7 +270,7 @@ namespace DeepAbyssHive.Core.Managers
             Time.timeScale = 0f;
             
             OnGamePaused?.Invoke();
-            Debug.Log("[GameManager] 游戏暂停");
+            DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏暂停");
         }
         
         /// <summary>
@@ -283,7 +284,7 @@ namespace DeepAbyssHive.Core.Managers
             Time.timeScale = _gameSpeed;
             
             OnGameResumed?.Invoke();
-            Debug.Log("[GameManager] 游戏恢复");
+            DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏恢复");
         }
         
         /// <summary>
@@ -297,7 +298,7 @@ namespace DeepAbyssHive.Core.Managers
                 Time.timeScale = _gameSpeed;
             }
             
-            Debug.Log($"[GameManager] 游戏速度设置为: {_gameSpeed}");
+            DAHLog.Info(LogCategory.SYSTEM, $"[GameManager] 游戏速度设置为: {_gameSpeed}");
         }
         
         /// <summary>
@@ -309,7 +310,7 @@ namespace DeepAbyssHive.Core.Managers
             Time.timeScale = 0f;
             
             OnGameEnded?.Invoke();
-            Debug.Log("[GameManager] 游戏结束");
+            DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏结束");
         }
         
         #endregion
@@ -321,7 +322,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void ShutdownCore()
         {
-            Debug.Log("[GameManager] 开始关闭核心系统...");
+            DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 开始关闭核心系统...");
             
             try
             {
@@ -336,7 +337,7 @@ namespace DeepAbyssHive.Core.Managers
                 OnGameEnded = null;
                 OnGameQuitting = null;
                 
-                Debug.Log("[GameManager] 核心系统关闭完成");
+                DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 核心系统关闭完成");
             }
             catch (Exception ex)
             {

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using DeepAbyssHive.Core.Config;          // GameConfigProvider
 using DeepAbyssHive.Common.Placement;     // Result<>, PlaceResultCode, PlacementResults
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Common.Placement
 {
@@ -71,7 +72,7 @@ namespace DeepAbyssHive.Common.Placement
                 }
                 else
                 {
-                    Debug.LogWarning("[DEV HUD] useSpatialIndexForPlacement=true，但尚未提供 SpatialIndexPredicate；暫以 Physics 結果為準。");
+                    DAHLog.Warning(LogCategory.SYSTEM, "[DEV HUD] useSpatialIndexForPlacement=true，但尚未提供 SpatialIndexPredicate；暫以 Physics 結果為準。");
                 }
             }
 

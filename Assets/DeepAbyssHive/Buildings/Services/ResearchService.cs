@@ -5,6 +5,7 @@ using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Core.Utils;
+using DeepAbyssHive.Core.Logging;
 using ResearchPrerequisiteResult = DeepAbyssHive.Buildings.Data.ResearchPrerequisiteResult;
 using ResearchUnlocks = DeepAbyssHive.Buildings.Data.ResearchUnlocks;
 
@@ -47,7 +48,7 @@ namespace DeepAbyssHive.Buildings.Services
             LoadResearchTemplates();
             IsInitialized = true;
 
-            Debug.Log("[ResearchService] 研究服务初始化完成");
+            DAHLog.Info(LogCategory.BUILDINGS, "[ResearchService] 研究服务初始化完成");
         }
 
         public void Cleanup()
@@ -58,7 +59,7 @@ namespace DeepAbyssHive.Buildings.Services
             _playerAvailableResearch?.Clear();
             IsInitialized = false;
 
-            Debug.Log("[ResearchService] 研究服务清理完成");
+            DAHLog.Info(LogCategory.BUILDINGS, "[ResearchService] 研究服务清理完成");
         }
 
         public void Pause()
@@ -98,7 +99,7 @@ namespace DeepAbyssHive.Buildings.Services
         {
             if (!IsResearchAvailable(researchId, playerId))
             {
-                Debug.LogWarning($"[ResearchService] 研究 {researchId} 对玩家 {playerId} 不可用");
+                DAHLog.Warning(LogCategory.BUILDINGS, $"[ResearchService] 研究 {researchId} 对玩家 {playerId} 不可用");
                 return false;
             }
 
@@ -107,7 +108,7 @@ namespace DeepAbyssHive.Buildings.Services
 
             if (_playerActiveResearch[playerId].ContainsKey(researchId))
             {
-                Debug.LogWarning($"[ResearchService] 研究 {researchId} 已在进行中");
+                DAHLog.Warning(LogCategory.BUILDINGS, $"[ResearchService] 研究 {researchId} 已在进行中");
                 return false;
             }
 
@@ -120,7 +121,7 @@ namespace DeepAbyssHive.Buildings.Services
             };
 
             _playerActiveResearch[playerId][researchId] = progress;
-            Debug.Log($"[ResearchService] 开始研究 {researchId} (玩家: {playerId}, 建筑: {buildingId})");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[ResearchService] 开始研究 {researchId} (玩家: {playerId}, 建筑: {buildingId})");
             return true;
         }
 
@@ -135,7 +136,7 @@ namespace DeepAbyssHive.Buildings.Services
             }
 
             _playerActiveResearch[playerId].Remove(researchId);
-            Debug.Log($"[ResearchService] 取消研究 {researchId} (玩家: {playerId})");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[ResearchService] 取消研究 {researchId} (玩家: {playerId})");
             return true;
         }
 
@@ -159,7 +160,7 @@ namespace DeepAbyssHive.Buildings.Services
             // 更新可用研究
             UpdateAvailableResearch(playerId);
 
-            Debug.Log($"[ResearchService] 完成研究 {researchId} (玩家: {playerId})");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[ResearchService] 完成研究 {researchId} (玩家: {playerId})");
             return true;
         }
 
@@ -293,7 +294,7 @@ namespace DeepAbyssHive.Buildings.Services
             progress.SpeedMultiplier = speedMultiplier;
             _playerActiveResearch[playerId][researchId] = progress;
 
-            Debug.Log($"[ResearchService] 加速研究 {researchId} (倍数: {speedMultiplier})");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[ResearchService] 加速研究 {researchId} (倍数: {speedMultiplier})");
             return true;
         }
 
@@ -366,7 +367,7 @@ namespace DeepAbyssHive.Buildings.Services
             // TODO: 从配置文件或 ScriptableObject 加载研究模板
             // 这里先添加一些示例数据
             
-            Debug.Log("[ResearchService] 研究模板加载完成");
+            DAHLog.Info(LogCategory.BUILDINGS, "[ResearchService] 研究模板加载完成");
         }
 
         /// <summary>

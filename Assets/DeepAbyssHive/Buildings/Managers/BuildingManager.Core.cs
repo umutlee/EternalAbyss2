@@ -11,6 +11,7 @@ using DeepAbyssHive.Buildings.Extensions;
 using System.Linq;
 using DeepAbyssHive.Buildings.Config;
 using DeepAbyssHive.SpatialIndex.Interfaces;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
@@ -60,11 +61,11 @@ namespace DeepAbyssHive.Buildings.Managers
                 _maxBuildingUpdatesPerFrame = _config.performanceConfig.maxUpdatesPerFrame;
                 _buildingPlacementGridSize = _config.constructionConfig.placementCheckRadius;
                 
-                Debug.Log($"[{_managerName}] 配置加载成功: {_config.ConfigName}");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 配置加载成功: {_config.ConfigName}");
             }
             else
             {
-                Debug.LogWarning($"[{_managerName}] 配置文件未找到，使用默认值");
+                DAHLog.Warning(LogCategory.BUILDINGS, $"[{_managerName}] 配置文件未找到，使用默认值");
             }
         }
 
@@ -90,7 +91,7 @@ namespace DeepAbyssHive.Buildings.Managers
                     };
                     _buildingTemplates[templateConfig.buildingType] = template;
                 }
-                Debug.Log($"[{_managerName}] 从配置加载了 {_config.buildingTemplates.Length} 个建筑模板");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 从配置加载了 {_config.buildingTemplates.Length} 个建筑模板");
             }
             else
             {
@@ -110,7 +111,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     _buildingPrefabPaths[templateConfig.buildingType] = templateConfig.prefabPath;
                 }
-                Debug.Log($"[{_managerName}] 从配置加载了 {_config.buildingTemplates.Length} 个预制体路径");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 从配置加载了 {_config.buildingTemplates.Length} 个预制体路径");
             }
             else
             {
@@ -139,7 +140,7 @@ namespace DeepAbyssHive.Buildings.Managers
                     };
                     _researchTemplates[researchConfig.researchId] = template;
                 }
-                Debug.Log($"[{_managerName}] 从配置加载了 {_config.researchTemplates.Length} 个研究模板");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 从配置加载了 {_config.researchTemplates.Length} 个研究模板");
             }
         }
 
@@ -234,7 +235,7 @@ namespace DeepAbyssHive.Buildings.Managers
             InitializeBuildingPrefabPathsFromConfig();
             InitializeResearchTemplatesFromConfig();
             
-            Debug.Log($"[{_managerName}] 初始化完成");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 初始化完成");
         }
 
         /// <summary>
@@ -249,7 +250,7 @@ namespace DeepAbyssHive.Buildings.Managers
             _playerResearch.Clear();
             _buildingUpdateQueue.Clear();
             
-            Debug.Log($"[{_managerName}] 清理完成");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 清理完成");
         }
 
         /// <summary>
@@ -324,7 +325,7 @@ namespace DeepAbyssHive.Buildings.Managers
         {
             if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试销毁不存在的建筑: {buildingId}");
+                DAHLog.Warning(LogCategory.BUILDINGS, $"[{_managerName}] 尝试销毁不存在的建筑: {buildingId}");
                 return;
             }
 
@@ -338,7 +339,7 @@ namespace DeepAbyssHive.Buildings.Managers
             // 移除建筑数据
             _buildings.Remove(buildingId);
 
-            Debug.Log($"[{_managerName}] 销毁建筑: ID={buildingId}");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 销毁建筑: ID={buildingId}");
         }
     }
 }

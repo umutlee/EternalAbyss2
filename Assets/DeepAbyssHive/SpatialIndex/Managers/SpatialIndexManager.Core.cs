@@ -6,6 +6,7 @@ using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.SpatialIndex.Config;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Implementations;
+using DeepAbyssHive.Core.Logging;
 using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
@@ -137,7 +138,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             }
 
             IsInitialized = true;
-            Debug.Log($"[{ManagerName}] 初始化完成 - 使用{(_useOctree ? "八叉树" : "四叉树")}索引");
+            DAHLog.Info(LogCategory.SYSTEM, $"[{ManagerName}] 初始化完成 - 使用{(_useOctree ? "八叉树" : "四叉树")}索引");
         }
 
         /// <summary>
@@ -149,11 +150,11 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             
             if (_config == null)
             {
-                Debug.LogWarning($"[{ManagerName}] 未找到SpatialIndexConfig配置文件，使用默认值");
+                DAHLog.Warning(LogCategory.SYSTEM, $"[{ManagerName}] 未找到SpatialIndexConfig配置文件，使用默认值");
             }
             else
             {
-                Debug.Log($"[{ManagerName}] 成功加载空间索引配置: {_config.name}");
+                DAHLog.Info(LogCategory.SYSTEM, $"[{ManagerName}] 成功加载空间索引配置: {_config.name}");
             }
         }
 
@@ -171,7 +172,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             _pendingRemovals.Clear();
 
             IsInitialized = false;
-            Debug.Log($"[{ManagerName}] 清理完成");
+            DAHLog.Info(LogCategory.SYSTEM, $"[{ManagerName}] 清理完成");
         }
     
 
