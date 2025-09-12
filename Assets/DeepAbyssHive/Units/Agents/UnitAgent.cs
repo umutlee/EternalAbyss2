@@ -3,6 +3,7 @@ using UnityEngine;
 using DeepAbyssHive.Units.Pathfinding;
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Common.Placement; // +事件：ObstaclesChanged
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Agents
 {
@@ -53,7 +54,7 @@ namespace DeepAbyssHive.Units.Agents
             float now = Time.unscaledTime;
             if (now - _lastVerboseLogAt < 1f) return;
             _lastVerboseLogAt = now;
-            Debug.Log(message);
+            DAHLog.Dev(message);
         }
 
         void OnEnable()
@@ -175,7 +176,7 @@ namespace DeepAbyssHive.Units.Agents
                 float offMul = (cfg != null) ? Mathf.Max(0.01f, cfg.offCreepSpeedMul) : 1f;
                 _speedFactor = on ? onMul : offMul;
                 _isOnCreep = on;
-                Debug.Log($"[DEV] UnitAgent: creep={(on ? "ON" : "OFF")} speedMul={_speedFactor:0.##}");
+                DAHLog.Dev($"[DEV] UnitAgent: creep={(on ? "ON" : "OFF")} speedMul={_speedFactor:0.##}");
             }
             else
             {

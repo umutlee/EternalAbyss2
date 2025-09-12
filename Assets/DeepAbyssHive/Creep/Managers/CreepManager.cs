@@ -5,6 +5,7 @@ using DeepAbyssHive.Creep.Data;
 // 使用别名解决枚举冲突
 using DataNS = DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Enums;
+using DeepAbyssHive.Core.Logging;
 using System;
 
 namespace DeepAbyssHive.Creep.Managers

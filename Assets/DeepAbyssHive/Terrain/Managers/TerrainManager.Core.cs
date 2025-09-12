@@ -8,6 +8,7 @@ using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using DeepAbyssHive.Terrain.Config;
 using DeepAbyssHive.Terrain.Chunks;
+using DeepAbyssHive.Core.Logging;
 
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
@@ -86,7 +87,7 @@ namespace DeepAbyssHive.Terrain.Managers
         {
             if (_isInitialized) return;
 
-            Debug.Log($"[{_managerName}] 初始化地形管理器");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 初始化地形管理器");
 
             InitializeTerrainGeneration();
             LoadTerrain(Vector3.zero);
@@ -96,7 +97,7 @@ namespace DeepAbyssHive.Terrain.Managers
             ApplyConfig(__cfg);
 
             _isInitialized = true;
-            Debug.Log($"[{_managerName}] 地形管理器初始化完成");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 地形管理器初始化完成");
         }
 
         public void UpdateManager()
@@ -107,7 +108,7 @@ namespace DeepAbyssHive.Terrain.Managers
 
         public void Cleanup()
         {
-            Debug.Log($"[{_managerName}] 清理地形管理器");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 清理地形管理器");
 
             var allChunks = new List<Vector2Int>(_terrainChunks.Keys);
             foreach (var key in allChunks)
@@ -119,7 +120,7 @@ namespace DeepAbyssHive.Terrain.Managers
             _modificationHistory.Clear();
 
             _isInitialized = false;
-            Debug.Log($"[{_managerName}] 地形管理器清理完成");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 地形管理器清理完成");
         }
 
         public void TickUpdate(float deltaTime)
@@ -165,7 +166,7 @@ namespace DeepAbyssHive.Terrain.Managers
                 _config = ScriptableObject.CreateInstance<TerrainConfigSO>();
 
             // Dev 訊息（驗收需要）- 每次 ApplyConfig 都顯示
-            Debug.Log($"[DEV HUD] Terrain: chunkSize={_config.chunkSize}, LOD={_config.maxLODLevels}, view={_config.viewDistance}");
+            DAHLog.Dev($"[DEV HUD] Terrain: chunkSize={_config.chunkSize}, LOD={_config.maxLODLevels}, view={_config.viewDistance}");
 
             // 若關鍵維度變更，後續重建（佔位，不阻擋）
             bool changed = (oldChunkSize != _config.chunkSize)
