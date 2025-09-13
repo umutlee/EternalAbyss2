@@ -5,6 +5,7 @@ using System.Linq;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.SpatialIndex.Implementations
 {
@@ -118,7 +119,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             }
             else
             {
-                Debug.LogWarning($"QuadTreeSpatialIndex: 尝试插入非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
+                DAHLog.Warning(LogCategory.SPATIAL, $"QuadTreeSpatialIndex: 尝试插入非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
             }
         }
         
@@ -160,7 +161,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             }
             else
             {
-                Debug.LogWarning($"QuadTreeSpatialIndex: 尝试更新非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
+                DAHLog.Warning(LogCategory.SPATIAL, $"QuadTreeSpatialIndex: 尝试更新非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
             }
         }
         
@@ -199,7 +200,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             }
             else
             {
-                Debug.LogWarning($"QuadTreeSpatialIndex: 尝试移除非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
+                DAHLog.Warning(LogCategory.SPATIAL, $"QuadTreeSpatialIndex: 尝试移除非SpatialNode对象: {obj?.GetType().Name ?? "null"}");
             }
         }
         

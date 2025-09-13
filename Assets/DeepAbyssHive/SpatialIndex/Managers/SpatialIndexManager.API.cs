@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.SpatialIndex.Extensions;
+using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.SpatialIndex.Managers
 {
@@ -307,9 +309,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 index?.Optimize();
             }
             
-            Debug.Log($"[{ManagerName}] 空间索引优化完成");
-
-            Debug.Log($"[{ManagerName}] 空间索引优化完成");
+            DAHLog.Info(LogCategory.SPATIAL, $"[{ManagerName}] 空间索引优化完成");
         }
 
         /// <summary>
@@ -383,7 +383,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 RemoveNodeImmediate(node);
             }
 
-            Debug.Log($"[{ManagerName}] 已清空分类: {category}, 移除了 {nodesToRemove.Count} 个对象");
+            DAHLog.Info(LogCategory.SPATIAL, $"[{ManagerName}] 已清空分类: {category}, 移除了 {nodesToRemove.Count} 个对象");
         }
     }
 }

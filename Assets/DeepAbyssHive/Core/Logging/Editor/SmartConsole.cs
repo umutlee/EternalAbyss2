@@ -24,12 +24,12 @@ namespace DeepAbyssHive.Core.Logging.Editor
         [Serializable]
         public class LogEntry
         {
-            public string fullMessage;
+            public string fullMessage = "";
             public LogType type;
             public LogCategory category;
             public DateTime timestamp;
             public int frameCount;
-            public string cleanMessage; // 去除前綴的純訊息
+            public string cleanMessage = ""; // 去除前綴的純訊息
             public int duplicateCount = 1;
         }
 
@@ -47,8 +47,8 @@ namespace DeepAbyssHive.Core.Logging.Editor
         private Vector2 _scrollPosition;
 
         // 樣式
-        private GUIStyle _logStyle;
-        private GUIStyle _categoryButtonStyle;
+        private GUIStyle? _logStyle;
+        private GUIStyle? _categoryButtonStyle;
 
         // 正則解析 DAHLog 格式：[CAT][HH:mm:ss.fff][frame] message
         private static readonly Regex LogPattern = new Regex(@"^\[(\w+)\]\[(\d{2}:\d{2}:\d{2}\.\d{3})\](?:\[(\d+)\])?\s*(.*)$");
@@ -157,7 +157,7 @@ namespace DeepAbyssHive.Core.Logging.Editor
 
                 // 搜尋過濾
                 if (!string.IsNullOrEmpty(_searchText) && 
-                    !log.cleanMessage.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                    log.cleanMessage.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) < 0)
                     continue;
 
                 _filteredLogs.Add(log);

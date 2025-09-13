@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Profiling;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Managers
 {
@@ -85,7 +86,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             if (!_enablePerformanceMonitoring) return;
             
-            Debug.Log("[GameManager] 初始化性能监控系统...");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 初始化性能监控系统...");
             
             try
             {
@@ -102,11 +103,11 @@ namespace DeepAbyssHive.Core.Managers
                 // 重置统计数据
                 ResetPerformanceStats();
                 
-                Debug.Log("[GameManager] 性能监控系统初始化完成");
+                DAHLog.Info(LogCategory.MANAGER, "[GameManager] 性能监控系统初始化完成");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 性能监控系统初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 性能监控系统初始化失败: {ex.Message}");
             }
         }
         
@@ -202,7 +203,7 @@ namespace DeepAbyssHive.Core.Managers
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[GameManager] 更新内存统计失败: {ex.Message}");
+                DAHLog.Warning(LogCategory.MANAGER, $"[GameManager] 更新内存统计失败: {ex.Message}");
             }
         }
         
@@ -218,7 +219,7 @@ namespace DeepAbyssHive.Core.Managers
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[GameManager] 更新渲染统计失败: {ex.Message}");
+                DAHLog.Warning(LogCategory.MANAGER, $"[GameManager] 更新渲染统计失败: {ex.Message}");
             }
         }
         
@@ -280,7 +281,7 @@ namespace DeepAbyssHive.Core.Managers
         private void LogPerformanceReport()
         {
             var report = GeneratePerformanceReport();
-            Debug.Log($"[GameManager] 性能报告:\n{report}");
+            DAHLog.Info(LogCategory.MANAGER, $"[GameManager] 性能报告:\n{report}");
         }
         
         /// <summary>
@@ -332,7 +333,7 @@ namespace DeepAbyssHive.Core.Managers
             _queryStats.Clear();
             _gcCollectionCount = GC.CollectionCount(0);
             
-            Debug.Log("[GameManager] 性能统计已重置");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 性能统计已重置");
         }
         
         /// <summary>
@@ -354,7 +355,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             if (!_enablePerformanceMonitoring) return;
             
-            Debug.Log("[GameManager] 清理性能监控系统...");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 清理性能监控系统...");
             
             try
             {
@@ -367,11 +368,11 @@ namespace DeepAbyssHive.Core.Managers
                 _updateTimeHistory.Clear();
                 _queryStats.Clear();
                 
-                Debug.Log("[GameManager] 性能监控系统清理完成");
+                DAHLog.Info(LogCategory.MANAGER, "[GameManager] 性能监控系统清理完成");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 性能监控系统清理失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 性能监控系统清理失败: {ex.Message}");
             }
         }
         

@@ -5,6 +5,7 @@ using DeepAbyssHive.Buildings.Services;
 using DeepAbyssHive.Terrain.Services;
 using DeepAbyssHive.Creep.Services;
 using DeepAbyssHive.SpatialIndex.Services;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Services
 {
@@ -39,7 +40,7 @@ namespace DeepAbyssHive.Core.Services
         /// </summary>
         public void RegisterAllServices()
         {
-            Debug.Log("[ServiceRegistrar] 开始注册所有服务...");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 开始注册所有服务...");
 
             var serviceManager = ServiceManager.Instance;
 
@@ -58,7 +59,7 @@ namespace DeepAbyssHive.Core.Services
             // 注册空间索引服务
             RegisterSpatialIndexServices(serviceManager);
 
-            Debug.Log("[ServiceRegistrar] 所有服务注册完成");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 所有服务注册完成");
         }
 
         /// <summary>
@@ -70,7 +71,7 @@ namespace DeepAbyssHive.Core.Services
             serviceManager.RegisterService<IUnitQueryService>(new UnitQueryService());
             serviceManager.RegisterService<IUnitCommandService>(new UnitCommandService());
             
-            Debug.Log("[ServiceRegistrar] 单位服务注册完成（待实现）");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 单位服务注册完成（待实现）");
         }
 
         /// <summary>
@@ -83,7 +84,7 @@ namespace DeepAbyssHive.Core.Services
             serviceManager.RegisterService<IBuildingConstructionService>(new BuildingConstructionService());
             serviceManager.RegisterService<IResearchService>(new ResearchService());
             
-            Debug.Log("[ServiceRegistrar] 建筑服务注册完成（待实现）");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 建筑服务注册完成（待实现）");
         }
 
         /// <summary>
@@ -94,7 +95,7 @@ namespace DeepAbyssHive.Core.Services
             // 地形服务已统一到 ITerrainManager，由 TerrainManager 直接提供
             // 不再需要单独的 Service 接口注册
             
-            Debug.Log("[ServiceRegistrar] 地形服务注册完成（使用 ITerrainManager）");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 地形服务注册完成（使用 ITerrainManager）");
         }
 
         /// <summary>
@@ -106,7 +107,7 @@ namespace DeepAbyssHive.Core.Services
             // serviceManager.RegisterService<ICreepQueryService>(new CreepQueryService());
             // serviceManager.RegisterService<ICreepSimulationService>(new CreepSimulationService());
             
-            Debug.Log("[ServiceRegistrar] 菌毯服务注册完成（待实现）");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 菌毯服务注册完成（待实现）");
         }
 
         /// <summary>
@@ -117,7 +118,7 @@ namespace DeepAbyssHive.Core.Services
             // 这里暂时创建空的服务实现，后续会替换为真实的Manager服务
             // serviceManager.RegisterService<ISpatialIndexService>(new SpatialIndexService());
             
-            Debug.Log("[ServiceRegistrar] 空间索引服务注册完成（待实现）");
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 空间索引服务注册完成（待实现）");
         }
 
         /// <summary>

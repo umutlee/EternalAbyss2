@@ -6,6 +6,7 @@ using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
 using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
 using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -24,7 +25,7 @@ namespace DeepAbyssHive.Units.Managers
         {
             if (!_unitColdData.TryGetValue(unitId, out UnitColdData coldData))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试进化不存在的单位: {unitId}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试进化不存在的单位: {unitId}");
                 return false;
             }
             
@@ -36,14 +37,14 @@ namespace DeepAbyssHive.Units.Managers
             // 检查进化路径是否存在
             if (!_evolutionPaths.TryGetValue(evolutionPath, out EvolutionPath path))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试使用不存在的进化路径: {evolutionPath}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试使用不存在的进化路径: {evolutionPath}");
                 return false;
             }
             
             // 检查单位类型是否匹配
             if (path.RequiredUnitType != coldData.Type)
             {
-                Debug.LogWarning($"[{_managerName}] 单位类型不匹配进化路径: {coldData.Type} != {path.RequiredUnitType}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 单位类型不匹配进化路径: {coldData.Type} != {path.RequiredUnitType}");
                 return false;
             }
             
@@ -51,7 +52,7 @@ namespace DeepAbyssHive.Units.Managers
             int nextLevel = ((EvolutionInfo)coldData.Evolution).Level + 1;
             if (nextLevel > path.MaxLevel)
             {
-                Debug.LogWarning($"[{_managerName}] 单位已达到最大进化等级: {((EvolutionInfo)coldData.Evolution).Level}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 单位已达到最大进化等级: {((EvolutionInfo)coldData.Evolution).Level}");
                 return false;
             }
             
@@ -107,7 +108,7 @@ namespace DeepAbyssHive.Units.Managers
             // 更新游戏对象
             UpdateUnitGameObject(unitId, hotData);
             
-            Debug.Log($"[{_managerName}] 单位进化: ID={unitId}, 路径={evolutionPath}, 等级={nextLevel}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位进化: ID={unitId}, 路径={evolutionPath}, 等级={nextLevel}");
             
             return true;
         }
@@ -121,7 +122,7 @@ namespace DeepAbyssHive.Units.Managers
         {
             if (!_unitColdData.TryGetValue(unitId, out UnitColdData coldData))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试适应不存在的单位: {unitId}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试适应不存在的单位: {unitId}");
                 return;
             }
             
@@ -133,7 +134,7 @@ namespace DeepAbyssHive.Units.Managers
             // 检查环境适应是否存在
             if (!_environmentAdaptations.TryGetValue(environmentType, out EnvironmentAdaptation adaptation))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试适应不存在的环境类型: {environmentType}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试适应不存在的环境类型: {environmentType}");
                 return;
             }
             
@@ -199,7 +200,7 @@ namespace DeepAbyssHive.Units.Managers
             // 更新游戏对象
             UpdateUnitGameObject(unitId, hotData);
             
-            Debug.Log($"[{_managerName}] 单位适应环境: ID={unitId}, 环境={environmentType}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位适应环境: ID={unitId}, 环境={environmentType}");
         }
 
         /// <summary>

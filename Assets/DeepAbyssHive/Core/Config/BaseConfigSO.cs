@@ -1,4 +1,5 @@
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Config
 {
@@ -49,7 +50,7 @@ namespace DeepAbyssHive.Core.Config
             
             if (_enableDebugLog)
             {
-                Debug.Log($"[{GetType().Name}] 配置验证结果: {(isValid ? "通过" : "失败")}");
+                DAHLog.Info(LogCategory.CONFIG, $"[{GetType().Name}] 配置验证结果: {(isValid ? "通过" : "失败")}");
             }
             
             return isValid;
@@ -73,7 +74,7 @@ namespace DeepAbyssHive.Core.Config
             
             if (_enableDebugLog)
             {
-                Debug.Log($"[{GetType().Name}] 已应用默认配置");
+                DAHLog.Info(LogCategory.CONFIG, $"[{GetType().Name}] 已应用默认配置");
             }
         }
 
@@ -92,7 +93,7 @@ namespace DeepAbyssHive.Core.Config
         {
             if (_enableDebugLog)
             {
-                Debug.Log($"[{GetType().Name}] 配置已重新加载");
+                DAHLog.Info(LogCategory.CONFIG, $"[{GetType().Name}] 配置已重新加载");
             }
         }
 

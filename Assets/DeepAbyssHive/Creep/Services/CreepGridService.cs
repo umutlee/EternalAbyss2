@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 
@@ -294,7 +295,7 @@ namespace DeepAbyssHive.Creep.Services
         public void SetPaused(bool paused)
         {
             _isPaused = paused;
-            Debug.Log($"[CreepGridService] 服务已{(paused ? "暂停" : "恢复")}");
+            DAHLog.Info(LogCategory.SERVICE, $"[CreepGridService] 服务已{(paused ? "暂停" : "恢复")}");
         }
 
         #endregion

@@ -10,6 +10,7 @@ using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Data;
 using DeepAbyssHive.Units.Config;
 using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Core.Logging;
 using IUnitManager = DeepAbyssHive.Units.Interfaces.IUnitManager;
 using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
 
@@ -51,7 +52,7 @@ namespace DeepAbyssHive.Units.Managers
             if (_isInitialized)
                 return;
                 
-            Debug.Log($"[{_managerName}] 初始化单位管理器");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 初始化单位管理器");
             
             // 加载配置
             LoadConfiguration();
@@ -66,7 +67,7 @@ namespace DeepAbyssHive.Units.Managers
             InitializeEnvironmentAdaptations();
             
             _isInitialized = true;
-            Debug.Log($"[{_managerName}] 单位管理器初始化完成");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位管理器初始化完成");
         }
 
         // IManager 介面實作
@@ -105,7 +106,7 @@ namespace DeepAbyssHive.Units.Managers
         /// </summary>
         public void Cleanup()
         {
-            Debug.Log($"[{_managerName}] 清理单位管理器");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 清理单位管理器");
             
             // 销毁所有单位
             List<int> unitIds = new List<int>(_unitColdData.Keys);
@@ -120,7 +121,7 @@ namespace DeepAbyssHive.Units.Managers
             _unitSpatialNodes.Clear();
             _isInitialized = false;
             
-            Debug.Log($"[{_managerName}] 单位管理器清理完成");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位管理器清理完成");
         }
 
         /// <summary>
@@ -132,7 +133,7 @@ namespace DeepAbyssHive.Units.Managers
                 return;
                 
             _isPaused = true;
-            Debug.Log($"[{_managerName}] 单位管理器已暂停");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位管理器已暂停");
         }
 
         /// <summary>
@@ -144,7 +145,7 @@ namespace DeepAbyssHive.Units.Managers
                 return;
                 
             _isPaused = false;
-            Debug.Log($"[{_managerName}] 单位管理器已恢复");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位管理器已恢复");
         }
 
         /// <summary>
@@ -166,7 +167,7 @@ namespace DeepAbyssHive.Units.Managers
             _config = ConfigManager.Instance.GetConfig<UnitConfigSO>();
             if (_config == null)
             {
-                Debug.LogWarning($"[{_managerName}] 未找到UnitConfig配置，将使用默认配置");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 未找到UnitConfig配置，将使用默认配置");
             }
         }
 
@@ -184,7 +185,7 @@ namespace DeepAbyssHive.Units.Managers
                 {
                     _unitPrefabPaths[prefabPath.unitType] = prefabPath.prefabPath;
                 }
-                Debug.Log($"[{_managerName}] 从配置加载了 {_unitPrefabPaths.Count} 个单位预制体路径");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 从配置加载了 {_unitPrefabPaths.Count} 个单位预制体路径");
             }
             else
             {
@@ -196,7 +197,7 @@ namespace DeepAbyssHive.Units.Managers
                 _unitPrefabPaths[UnitType.Scout] = "Prefabs/Units/Scout";
                 _unitPrefabPaths[(DeepAbyssHive.Units.Enums.UnitType)DeepAbyssHive.Units.Compat.UnitTypeCompat.Flyer] = "Prefabs/Units/Flyer";
                 _unitPrefabPaths[UnitType.Queen] = "Prefabs/Units/Queen";
-                Debug.Log($"[{_managerName}] 使用默认预制体路径配置");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 使用默认预制体路径配置");
             }
         }
 
@@ -243,13 +244,13 @@ namespace DeepAbyssHive.Units.Managers
                     
                     _evolutionPaths[evolutionConfig.pathId] = evolutionPath;
                 }
-                Debug.Log($"[{_managerName}] 从配置加载了 {_evolutionPaths.Count} 个进化路径");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 从配置加载了 {_evolutionPaths.Count} 个进化路径");
             }
             else
             {
                 // 使用默认硬编码进化路径作为后备
                 CreateDefaultEvolutionPaths();
-                Debug.Log($"[{_managerName}] 使用默认进化路径配置");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 使用默认进化路径配置");
             }
         }
 
@@ -335,13 +336,13 @@ namespace DeepAbyssHive.Units.Managers
                     
                     _environmentAdaptations[adaptationConfig.environmentType] = adaptation;
                 }
-                Debug.Log($"[{_managerName}] 从配置加载了 {_environmentAdaptations.Count} 个环境适应");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 从配置加载了 {_environmentAdaptations.Count} 个环境适应");
             }
             else
             {
                 // 使用默认硬编码环境适应作为后备
                 CreateDefaultEnvironmentAdaptations();
-                Debug.Log($"[{_managerName}] 使用默认环境适应配置");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 使用默认环境适应配置");
             }
         }
 

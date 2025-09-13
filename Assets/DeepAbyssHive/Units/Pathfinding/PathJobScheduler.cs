@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Pathfinding
 {
@@ -40,7 +41,7 @@ namespace DeepAbyssHive.Units.Pathfinding
             var cfg = GameConfigProvider.Current;
             if (!_runnerLogged && cfg != null && cfg.devVerboseLogs)
             {
-                Debug.Log("[PathSched] runner created (DontDestroyOnLoad)");
+                DAHLog.Info(LogCategory.UNITS, "[PathSched] runner created (DontDestroyOnLoad)");
                 _runnerLogged = true;
             }
         }
@@ -64,7 +65,7 @@ namespace DeepAbyssHive.Units.Pathfinding
                 }
                 if (n > 0 && cfg != null && cfg.devVerboseLogs)
                 {
-                    Debug.Log($"[PathSched] budget={budget}, processed={n}, queued={_q.Count}");
+                    DAHLog.Info(LogCategory.UNITS, $"[PathSched] budget={budget}, processed={n}, queued={_q.Count}");
                 }
             }
         }

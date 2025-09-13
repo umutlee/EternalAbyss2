@@ -1,5 +1,6 @@
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Tests
 {
@@ -25,17 +26,17 @@ namespace DeepAbyssHive.Core.Tests
         [ContextMenu("测试服务系统")]
         public void TestServiceSystem()
         {
-            Debug.Log("=== 服务系统测试开始 ===");
+            DAHLog.Info(LogCategory.TEST, "=== 服务系统测试开始 ===");
             
             // 1. 测试ServiceManager单例
             var serviceManager = ServiceManager.Instance;
             if (serviceManager != null)
             {
-                Debug.Log("✓ ServiceManager单例创建成功");
+                DAHLog.Info(LogCategory.TEST, "✓ ServiceManager单例创建成功");
             }
             else
             {
-                Debug.LogError("✗ ServiceManager单例创建失败");
+                DAHLog.Error(LogCategory.TEST, "✗ ServiceManager单例创建失败");
                 return;
             }
             
@@ -43,12 +44,12 @@ namespace DeepAbyssHive.Core.Tests
             var registrar = FindObjectOfType<ServiceRegistrar>();
             if (registrar != null)
             {
-                Debug.Log("✓ ServiceRegistrar找到");
+                DAHLog.Info(LogCategory.TEST, "✓ ServiceRegistrar找到");
                 registrar.RegisterAllServices();
             }
             else
             {
-                Debug.LogWarning("⚠ ServiceRegistrar未找到，手动创建");
+                DAHLog.Warning(LogCategory.TEST, "⚠ ServiceRegistrar未找到，手动创建");
                 var go = new GameObject("ServiceRegistrar");
                 registrar = go.AddComponent<ServiceRegistrar>();
                 registrar.RegisterAllServices();
@@ -58,18 +59,18 @@ namespace DeepAbyssHive.Core.Tests
             try
             {
                 serviceManager.InitializeAllServices();
-                Debug.Log("✓ 服务初始化成功");
+                DAHLog.Info(LogCategory.TEST, "✓ 服务初始化成功");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"✗ 服务初始化失败: {e.Message}");
+                DAHLog.Error(LogCategory.TEST, $"✗ 服务初始化失败: {e.Message}");
             }
             
             // 4. 测试服务查询（目前服务还未实现，所以会返回null）
             // var unitQueryService = serviceManager.GetService<IUnitQueryService>();
-            // Debug.Log($"单位查询服务: {(unitQueryService != null ? "已注册" : "未注册")}");
+            // DAHLog.Info(LogCategory.TEST, $"单位查询服务: {(unitQueryService != null ? "已注册" : "未注册")}");
             
-            Debug.Log("=== 服务系统测试完成 ===");
+            DAHLog.Info(LogCategory.TEST, "=== 服务系统测试完成 ===");
         }
         
         /// <summary>
@@ -78,20 +79,20 @@ namespace DeepAbyssHive.Core.Tests
         [ContextMenu("测试服务清理")]
         public void TestServiceCleanup()
         {
-            Debug.Log("=== 服务清理测试开始 ===");
+            DAHLog.Info(LogCategory.TEST, "=== 服务清理测试开始 ===");
             
             var serviceManager = ServiceManager.Instance;
             if (serviceManager != null)
             {
                 serviceManager.CleanupAllServices();
-                Debug.Log("✓ 服务清理完成");
+                DAHLog.Info(LogCategory.TEST, "✓ 服务清理完成");
             }
             else
             {
-                Debug.LogError("✗ ServiceManager不存在");
+                DAHLog.Error(LogCategory.TEST, "✗ ServiceManager不存在");
             }
             
-            Debug.Log("=== 服务清理测试完成 ===");
+            DAHLog.Info(LogCategory.TEST, "=== 服务清理测试完成 ===");
         }
     }
 }

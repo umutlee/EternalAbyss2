@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEngine;
 using DeepAbyssHive.Common.Placement;
 using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Core.Logging;
 
 /// <summary>
 /// 在場景載入後自動嘗試把 PlacementValidator 與現有系統接線：
@@ -21,7 +22,7 @@ public static class PlacementAutoWire
         TryWireCreep();
         // 立即輸出一次狀態摘要，方便驗收
         var cfg = GameConfigProvider.Current;
-        Debug.Log($"[DEV HUD] PlacementAutoWire: spatial={(PlacementValidator.HasSpatialIndex ? "OK" : "NONE")}, creep={(PlacementValidator.HasRequireCreep ? "OK" : "NONE")}, cfg(useSI={cfg.useSpatialIndexForPlacement}, requireCreep={cfg.requireCreep}, margin={cfg.margin:0.###}, minSpacing={cfg.minSpacing:0.###})");
+        DAHLog.Info(LogCategory.PLACEMENT, $"[DEV HUD] PlacementAutoWire: spatial={(PlacementValidator.HasSpatialIndex ? "OK" : "NONE")}, creep={(PlacementValidator.HasRequireCreep ? "OK" : "NONE")}, cfg(useSI={cfg.useSpatialIndexForPlacement}, requireCreep={cfg.requireCreep}, margin={cfg.margin:0.###}, minSpacing={cfg.minSpacing:0.###})");
     }
 
     private static void TryWireSpatialIndex()
@@ -32,13 +33,13 @@ public static class PlacementAutoWire
         var t = Type.GetType(typeName);
         if (t == null)
         {
-            Debug.Log("[DEV HUD] AutoWire: 無 SpatialIndexManager（略過 A）");
+            DAHLog.Info(LogCategory.PLACEMENT, "[DEV HUD] AutoWire: 無 SpatialIndexManager（略過 A）");
             return;
         }
         var mgr = UnityEngine.Object.FindObjectOfType(t);
         if (mgr == null)
         {
-            Debug.Log("[DEV HUD] AutoWire: 場景中未找到 SpatialIndexManager（略過 A）");
+            DAHLog.Info(LogCategory.PLACEMENT, "[DEV HUD] AutoWire: 場景中未找到 SpatialIndexManager（略過 A）");
             return;
         }
 
@@ -47,7 +48,7 @@ public static class PlacementAutoWire
 
         if (mi == null)
         {
-            Debug.LogWarning("[DEV HUD] AutoWire: SpatialIndex 上找不到 QueryBounds/HasOverlap，無法並聯（略過 A）");
+            DAHLog.Warning(LogCategory.PLACEMENT, "[DEV HUD] AutoWire: SpatialIndex 上找不到 QueryBounds/HasOverlap，無法並聯（略過 A）");
             return;
         }
 
@@ -70,7 +71,7 @@ public static class PlacementAutoWire
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[DEV HUD] AutoWire SpatialIndex 失敗：{e.Message}");
+                DAHLog.Warning(LogCategory.PLACEMENT, $"[DEV HUD] AutoWire SpatialIndex 失敗：{e.Message}");
                 return true;
             }
         };
@@ -83,13 +84,13 @@ public static class PlacementAutoWire
         var t = Type.GetType(typeName);
         if (t == null)
         {
-            Debug.Log("[DEV HUD] AutoWire: 無 CreepManager（略過 B）");
+            DAHLog.Info(LogCategory.PLACEMENT, "[DEV HUD] AutoWire: 無 CreepManager（略過 B）");
             return;
         }
         var mgr = UnityEngine.Object.FindObjectOfType(t);
         if (mgr == null)
         {
-            Debug.Log("[DEV HUD] AutoWire: 場景中未找到 CreepManager（略過 B）");
+            DAHLog.Info(LogCategory.PLACEMENT, "[DEV HUD] AutoWire: 場景中未找到 CreepManager（略過 B）");
             return;
         }
 
@@ -98,7 +99,7 @@ public static class PlacementAutoWire
 
         if (mi == null)
         {
-            Debug.LogWarning("[DEV HUD] AutoWire: CreepManager 上找不到 Covers/IsCovered，未接菌毯要求（略過 B）");
+            DAHLog.Warning(LogCategory.PLACEMENT, "[DEV HUD] AutoWire: CreepManager 上找不到 Covers/IsCovered，未接菌毯要求（略過 B）");
             return;
         }
 
@@ -117,7 +118,7 @@ public static class PlacementAutoWire
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[DEV HUD] AutoWire Creep 失敗：{e.Message}");
+                DAHLog.Warning(LogCategory.PLACEMENT, $"[DEV HUD] AutoWire Creep 失敗：{e.Message}");
                 return true;
             }
         };

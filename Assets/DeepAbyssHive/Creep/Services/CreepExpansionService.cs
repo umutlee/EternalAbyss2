@@ -5,6 +5,7 @@ using DeepAbyssHive.Core.Services;
 // using DeepAbyssHive.Creep.Config; // 已移至 Assets/Core/Config
 using DeepAbyssHive.Creep.Data;
 using CreepExpansionType = DeepAbyssHive.Creep.Data.CreepExpansionType;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Creep.Services
 {
@@ -327,7 +328,7 @@ namespace DeepAbyssHive.Creep.Services
         public void SetPaused(bool paused)
         {
             _isPaused = paused;
-            Debug.Log($"[CreepExpansionService] 服务已{(paused ? "暂停" : "恢复")}");
+            DAHLog.Info(LogCategory.CREEP, $"[CreepExpansionService] 服务已{(paused ? "暂停" : "恢复")}");
         }
 
         public CreepExpansionStatistics GetExpansionStatistics(int playerId)

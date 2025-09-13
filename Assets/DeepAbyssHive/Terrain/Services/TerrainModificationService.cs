@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 // 針對 TerrainModificationType 名稱衝突，使用別名區分 Data 與 Enums 的定義
@@ -68,7 +69,7 @@ namespace DeepAbyssHive.Terrain.Services
             InitializeParameters();
             IsInitialized = true;
             
-            Debug.Log($"[{ServiceName}] 地形修改服务初始化完成");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{ServiceName}] 地形修改服务初始化完成");
         }
 
         public void Cleanup()
@@ -77,7 +78,7 @@ namespace DeepAbyssHive.Terrain.Services
             _modificationHistory?.Clear();
             IsInitialized = false;
             
-            Debug.Log($"[{ServiceName}] 地形修改服务清理完成");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{ServiceName}] 地形修改服务清理完成");
         }
         #endregion
 
@@ -94,7 +95,7 @@ namespace DeepAbyssHive.Terrain.Services
             
             _pendingModifications.Enqueue(modification);
             
-            Debug.Log($"[TerrainModificationService] 添加地形修改: 位置={worldPosition}, 半径={radius}, 类型={terrainType}");
+            DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 添加地形修改: 位置={worldPosition}, 半径={radius}, 类型={terrainType}");
             
             return true;
         }
@@ -105,7 +106,7 @@ namespace DeepAbyssHive.Terrain.Services
             modification.Timestamp = DateTime.Now;
             
             _pendingModifications.Enqueue(modification);
-            Debug.Log($"[TerrainModificationService] 添加地形修改: 位置={worldPosition}, 类型={modification.TerrainTypeValue}");
+            DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 添加地形修改: 位置={worldPosition}, 类型={modification.TerrainTypeValue}");
         }
 
         public void ProcessPendingModifications(float deltaTime)
@@ -129,7 +130,7 @@ namespace DeepAbyssHive.Terrain.Services
             
             if (processCount > 0)
             {
-                Debug.Log($"[TerrainModificationService] 处理了 {processCount} 个地形修改，剩余 {_pendingModifications.Count} 个");
+                DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 处理了 {processCount} 个地形修改，剩余 {_pendingModifications.Count} 个");
             }
         }
 
@@ -137,7 +138,7 @@ namespace DeepAbyssHive.Terrain.Services
         {
             if (_modificationHistory.Count == 0)
             {
-                Debug.LogWarning($"[TerrainModificationService] 没有可撤销的地形修改");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[TerrainModificationService] 没有可撤销的地形修改");
                 return false;
             }
             
@@ -163,7 +164,7 @@ namespace DeepAbyssHive.Terrain.Services
                 }
             }
             
-            Debug.Log($"[TerrainModificationService] 撤销了最后一次地形修改");
+            DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 撤销了最后一次地形修改");
             
             return true;
         }
@@ -173,7 +174,7 @@ namespace DeepAbyssHive.Terrain.Services
             _pendingModifications.Clear();
             _modificationHistory.Clear();
             
-            Debug.Log($"[TerrainModificationService] 清除了所有地形修改");
+            DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 清除了所有地形修改");
             
             // 触发全部重新生成事件
             OnAllChunksRegenerationRequested?.Invoke();
@@ -199,7 +200,7 @@ namespace DeepAbyssHive.Terrain.Services
             _modificationProcessInterval = processInterval;
             _maxModificationsPerFrame = maxPerFrame;
             
-            Debug.Log($"[TerrainModificationService] 更新修改参数: 间隔={_modificationProcessInterval}, 最大每帧={_maxModificationsPerFrame}");
+            DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 更新修改参数: 间隔={_modificationProcessInterval}, 最大每帧={_maxModificationsPerFrame}");
         }
         // 新增的介面方法實現
         public bool ModifyHeight(Vector3 position, float radius, float heightDelta, AnimationCurve falloff = null)
@@ -298,7 +299,7 @@ namespace DeepAbyssHive.Terrain.Services
         {
             modification.Timestamp = System.DateTime.Now;
             _pendingModifications.Enqueue(modification);
-            Debug.Log($"[TerrainModificationService] 添加地形修改: 類型={modification.Type}, 位置={modification.Position}");
+            DAHLog.Info(LogCategory.TERRAIN, $"[TerrainModificationService] 添加地形修改: 類型={modification.Type}, 位置={modification.Position}");
             return true;
         }
 
@@ -311,7 +312,7 @@ namespace DeepAbyssHive.Terrain.Services
         public bool RedoModification(int modificationId)
         {
             // TODO: 實現重做功能
-            Debug.LogWarning("[TerrainModificationService] RedoModification 尚未實現");
+            DAHLog.Warning(LogCategory.TERRAIN, "[TerrainModificationService] RedoModification 尚未實現");
             return false;
         }
 
@@ -333,14 +334,14 @@ namespace DeepAbyssHive.Terrain.Services
         public bool SaveModifications(string filePath)
         {
             // TODO: 實現保存功能
-            Debug.LogWarning("[TerrainModificationService] SaveModifications 尚未實現");
+            DAHLog.Warning(LogCategory.TERRAIN, "[TerrainModificationService] SaveModifications 尚未實現");
             return false;
         }
 
         public bool LoadModifications(string filePath)
         {
             // TODO: 實現加載功能
-            Debug.LogWarning("[TerrainModificationService] LoadModifications 尚未實現");
+            DAHLog.Warning(LogCategory.TERRAIN, "[TerrainModificationService] LoadModifications 尚未實現");
             return false;
         }
 

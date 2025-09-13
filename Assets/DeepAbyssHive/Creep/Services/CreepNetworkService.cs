@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Creep.Services;
 
@@ -521,7 +522,7 @@ namespace DeepAbyssHive.Creep.Services
         public void SetPaused(bool paused)
         {
             _isPaused = paused;
-            Debug.Log($"[CreepNetworkService] 服务已{(paused ? "暂停" : "恢复")}");
+            DAHLog.Info(LogCategory.SERVICE, $"[CreepNetworkService] 服务已{(paused ? "暂停" : "恢复")}");
         }
 
         public CreepNetworkStatistics GetNetworkStatistics(int playerId)

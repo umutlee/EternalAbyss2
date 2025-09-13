@@ -1,6 +1,7 @@
 using UnityEngine;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -18,7 +19,7 @@ namespace DeepAbyssHive.Units.Managers
         {
             if (!_unitHotData.TryGetValue(unitId, out UnitHotData hotData))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试攻击不存在的单位: {unitId}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试攻击不存在的单位: {unitId}");
                 return;
             }
             
@@ -29,7 +30,7 @@ namespace DeepAbyssHive.Units.Managers
             
             if (!_unitHotData.TryGetValue(targetId, out UnitHotData targetHotData))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试攻击不存在的目标: {targetId}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试攻击不存在的目标: {targetId}");
                 return;
             }
             
@@ -56,7 +57,7 @@ namespace DeepAbyssHive.Units.Managers
             // 更新游戏对象
             UpdateUnitGameObject(unitId, hotData);
             
-            Debug.Log($"[{_managerName}] 攻击目标: ID={unitId}, 目标ID={targetId}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 攻击目标: ID={unitId}, 目标ID={targetId}");
         }
 
         /// <summary>
@@ -104,7 +105,7 @@ namespace DeepAbyssHive.Units.Managers
                 UpdateUnitGameObject(targetId, targetHotData);
             }
             
-            Debug.Log($"[{_managerName}] 单位攻击: 攻击者={attackerId}, 目标={targetId}, 伤害={damage}, 目标剩余生命={targetHotData.Health}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位攻击: 攻击者={attackerId}, 目标={targetId}, 伤害={damage}, 目标剩余生命={targetHotData.Health}");
         }
 
         /// <summary>

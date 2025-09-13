@@ -2,25 +2,18 @@ using System;
 
 namespace DeepAbyssHive.Core.Logging
 {
-    /// <summary>分類列舉，新增時僅需在這裡擴充。</summary>
+    /// <summary>
+    /// DAH 日誌分類枚舉。統一使用大寫命名以符合日誌格式。
+    /// </summary>
     public enum LogCategory
     {
-        Unset = 0,
-        Game,
-        Terrain,
-        Units,
-        Buildings,
-        Creep,
-        Placement,
-        HUD,
-        Health,
-        Stream,
-        Dev,
-        AI,
-        Path,
-        Input,
-        Editor,
-        Net,
-        Save
+        SYSTEM = 0,     // 系統核心
+        CREEP,          // 菌毯系統
+        TERRAIN,        // 地形系統
+        UNITS,          // 單位系統
+        BUILDINGS,      // 建築系統
+        PATHFINDING,    // 路徑規劃
+        UI,             // 使用者介面
+        DEV             // 開發工具
     }
 }

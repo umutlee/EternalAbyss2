@@ -3,6 +3,7 @@ using UnityEngine;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -20,7 +21,7 @@ namespace DeepAbyssHive.Units.Managers
         {
             if (!_unitHotData.TryGetValue(unitId, out UnitHotData hotData))
             {
-                Debug.LogWarning($"[{_managerName}] 尝试移动不存在的单位: {unitId}");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试移动不存在的单位: {unitId}");
                 return;
             }
             
@@ -52,7 +53,7 @@ namespace DeepAbyssHive.Units.Managers
             // 更新游戏对象
             UpdateUnitGameObject(unitId, hotData);
             
-            Debug.Log($"[{_managerName}] 移动单位: ID={unitId}, 目标位置={targetPosition}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 移动单位: ID={unitId}, 目标位置={targetPosition}");
         }
 
         /// <summary>
@@ -147,7 +148,7 @@ namespace DeepAbyssHive.Units.Managers
                 // 重置收集计时器
                 hotData.ActionTimer = 1f / coldData.BaseAttributes.ResourceGatherRate;
                 
-                Debug.Log($"[{_managerName}] 单位收集资源: ID={unitId}, 数量={gatherAmount}");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位收集资源: ID={unitId}, 数量={gatherAmount}");
             }
         }
 
@@ -177,7 +178,7 @@ namespace DeepAbyssHive.Units.Managers
                 // 重置建造计时器
                 hotData.ActionTimer = 1f / coldData.BaseAttributes.BuildSpeed;
                 
-                Debug.Log($"[{_managerName}] 单位建造进度: ID={unitId}, 进度={buildProgress}");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 单位建造进度: ID={unitId}, 进度={buildProgress}");
             }
         }
     }

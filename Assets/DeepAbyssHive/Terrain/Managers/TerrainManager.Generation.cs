@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
+using DeepAbyssHive.Core.Logging;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
 
@@ -59,7 +60,7 @@ namespace DeepAbyssHive.Terrain.Managers
                 }
             }
             
-            Debug.Log($"[{_managerName}] 地形加载完成，中心区块: {centerChunk}，已加载区块数: {_terrainChunks.Count}");
+            DAHLog.Info(LogCategory.TERRAIN, $"{_managerName} 地形加载完成，中心区块: {centerChunk}，已加载区块数: {_terrainChunks.Count}");
         }
 
         /// <summary>
@@ -159,7 +160,7 @@ namespace DeepAbyssHive.Terrain.Managers
             
             UnityEngine.Random.InitState(_seed);
             
-            Debug.Log($"[{_managerName}] 更新地形生成参数: 噪声缩放={_noiseScale}, 高度缩放={_heightScale}, 种子={_seed}");
+            DAHLog.Info(LogCategory.TERRAIN, $"{_managerName} 更新地形生成参数: 噪声缩放={_noiseScale}, 高度缩放={_heightScale}, 种子={_seed}");
             
             // 重新生成所有已加载的地形块
             RegenerateAllChunks();
@@ -174,7 +175,7 @@ namespace DeepAbyssHive.Terrain.Managers
             {
                 // 無已載入：直接以當前中心載入一圈
                 var centerWorld = ChunkToWorldPosition(_currentCenterChunk);
-                Debug.Log($"[STREAM] RegenerateAllChunks(): cold load around center={_currentCenterChunk}");
+                DAHLog.Info(LogCategory.TERRAIN, $"RegenerateAllChunks(): cold load around center={_currentCenterChunk}");
                 LoadTerrain(centerWorld);
                 return;
             }
@@ -188,7 +189,7 @@ namespace DeepAbyssHive.Terrain.Managers
 
             // 2) 以目前中心重載
             var world = ChunkToWorldPosition(_currentCenterChunk);
-            Debug.Log($"[STREAM] RegenerateAllChunks(): reload around center={_currentCenterChunk}");
+            DAHLog.Info(LogCategory.TERRAIN, $"RegenerateAllChunks(): reload around center={_currentCenterChunk}");
             LoadTerrain(world);
         }
 
@@ -214,7 +215,7 @@ namespace DeepAbyssHive.Terrain.Managers
             // —— M2-01: Creep grid ensure（與 Chunk 對齊）——
             DeepAbyssHive.Creep.Managers.CreepManagerGridHooks.OnChunkLoaded(chunkCoord, ConfigChunkSize);
 
-            Debug.Log($"[{_managerName}] 載入分塊 {chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"{_managerName} 載入分塊 {chunkCoord}");
         }
 
         /// <summary>
@@ -236,7 +237,7 @@ namespace DeepAbyssHive.Terrain.Managers
                 _chunkTerrainData.Remove(chunkCoord);
             }
 
-            Debug.Log($"[{_managerName}] 卸載分塊 {chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"{_managerName} 卸載分塊 {chunkCoord}");
         }
         #endregion
     }

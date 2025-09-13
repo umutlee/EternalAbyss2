@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
@@ -135,14 +136,14 @@ namespace DeepAbyssHive.Terrain.Services
             if (!_chunkTerrainData.ContainsKey(chunkCoord))
             {
                 // 如果区块未加载，返回默认地形类型
-                Debug.LogWarning($"[{ServiceName}] 尝试获取未加载区块的地形类型: {chunkCoord}");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[{ServiceName}] 尝试获取未加载区块的地形类型: {chunkCoord}");
                 return TerrainType.Normal;
             }
             
             // 检查本地坐标是否在有效范围内
             if (localCoord.x < 0 || localCoord.x >= _chunkSize || localCoord.y < 0 || localCoord.y >= _chunkSize)
             {
-                Debug.LogWarning($"[{ServiceName}] 本地坐标超出范围: {localCoord}");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[{ServiceName}] 本地坐标超出范围: {localCoord}");
                 return TerrainType.Normal;
             }
             
@@ -210,7 +211,7 @@ namespace DeepAbyssHive.Terrain.Services
             // 检查起点和终点是否可通行
             if (!IsPassable(start) || !IsPassable(end))
             {
-                Debug.LogWarning($"[{ServiceName}] 起點或終點不可通行");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[{ServiceName}] 起點或終點不可通行");
                 return path;
             }
             
@@ -232,7 +233,7 @@ namespace DeepAbyssHive.Terrain.Services
                 else
                 {
                     // 如果遇到不可通行的地形，停止路径查找
-                    Debug.LogWarning($"[{ServiceName}] 路径被阻挡在 {waypoint}");
+                    DAHLog.Warning(LogCategory.TERRAIN, $"[{ServiceName}] 路径被阻挡在 {waypoint}");
                     break;
                 }
             }
@@ -651,14 +652,14 @@ namespace DeepAbyssHive.Terrain.Services
             // 检查区块是否已加载
             if (!_chunkTerrainData.ContainsKey(chunkCoord))
             {
-                Debug.LogWarning($"[{ServiceName}] 尝试修改未加载区块的地形: {chunkCoord}");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[{ServiceName}] 尝试修改未加载区块的地形: {chunkCoord}");
                 return;
             }
             
             // 检查本地坐标是否在有效范围内
             if (localCoord.x < 0 || localCoord.x >= _chunkSize || localCoord.y < 0 || localCoord.y >= _chunkSize)
             {
-                Debug.LogWarning($"[{ServiceName}] 本地坐标超出范围: {localCoord}");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[{ServiceName}] 本地坐标超出范围: {localCoord}");
                 return;
             }
             

@@ -1,6 +1,7 @@
 using UnityEngine;
 using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Interfaces;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Compat
 {
@@ -49,7 +50,7 @@ namespace DeepAbyssHive.Terrain.Compat
             _isGenerated = true;
             _isDirty = false;
             
-            Debug.Log($"[TerrainChunk_Compat] 生成區塊 {_chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"TerrainChunk_Compat 生成區塊 {_chunkCoord}");
         }
 
         public void UpdateTerrainData(TerrainType[,] terrainData)
@@ -57,7 +58,7 @@ namespace DeepAbyssHive.Terrain.Compat
             _terrainData = terrainData;
             _isDirty = true;
             
-            Debug.Log($"[TerrainChunk_Compat] 更新區塊地形數據 {_chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"TerrainChunk_Compat 更新區塊地形數據 {_chunkCoord}");
         }
 
         public void SetTerrainType(Vector2Int localPos, TerrainType terrainType)
@@ -68,13 +69,13 @@ namespace DeepAbyssHive.Terrain.Compat
         public void Load()
         {
             _isGenerated = true;
-            Debug.Log($"[TerrainChunk_Compat] 加載區塊 {_chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"TerrainChunk_Compat 加載區塊 {_chunkCoord}");
         }
 
         public void Unload()
         {
             _isGenerated = false;
-            Debug.Log($"[TerrainChunk_Compat] 卸載區塊 {_chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"TerrainChunk_Compat 卸載區塊 {_chunkCoord}");
         }
 
         public void ModifyHeight(Vector2Int localPosition, float height)
@@ -113,7 +114,7 @@ namespace DeepAbyssHive.Terrain.Compat
             _heightData = heightData;
             _isDirty = true;
             
-            Debug.Log($"[TerrainChunk_Compat] 更新區塊高度數據 {_chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"TerrainChunk_Compat 更新區塊高度數據 {_chunkCoord}");
         }
 
         public TerrainType GetTerrainTypeAt(int localX, int localY)
@@ -179,7 +180,7 @@ namespace DeepAbyssHive.Terrain.Compat
             _isGenerated = false;
             _isDirty = false;
             
-            Debug.Log($"[TerrainChunk_Compat] 銷毀區塊 {_chunkCoord}");
+            DAHLog.Info(LogCategory.TERRAIN, $"TerrainChunk_Compat 銷毀區塊 {_chunkCoord}");
         }
         #endregion
 

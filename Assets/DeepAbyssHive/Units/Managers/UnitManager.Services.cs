@@ -2,6 +2,7 @@ using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Units.Interfaces;
 using DeepAbyssHive.Units.Services;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -28,7 +29,7 @@ namespace DeepAbyssHive.Units.Managers
         {
             if (_unitServicesInitialized) return;
 
-            Debug.Log($"[{_managerName}] 初始化單位服務依賴...");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 初始化單位服務依賴...");
 
             if (useServiceLocator)
             {
@@ -40,7 +41,7 @@ namespace DeepAbyssHive.Units.Managers
             }
 
             _unitServicesInitialized = true;
-            Debug.Log($"[{_managerName}] 單位服務依賴初始化完成");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 單位服務依賴初始化完成");
         }
 
         /// <summary>
@@ -54,14 +55,14 @@ namespace DeepAbyssHive.Units.Managers
                 _unitQueryService = ServiceLocator.Get<IUnitQueryService>();
                 _unitCommandService = ServiceLocator.Get<IUnitCommandService>();
 
-                Debug.Log($"[{_managerName}] 成功從ServiceLocator獲取所有單位服務");
+                DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 成功從ServiceLocator獲取所有單位服務");
             }
             catch (ServiceNotFoundException ex)
             {
-                Debug.LogError($"[{_managerName}] 單位服務獲取失敗: {ex.Message}");
+                DAHLog.Error(LogCategory.UNITS, $"[{_managerName}] 單位服務獲取失敗: {ex.Message}");
                 
                 // 回退到舊版初始化方法
-                Debug.LogWarning($"[{_managerName}] 回退到舊版單位服務初始化方法");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 回退到舊版單位服務初始化方法");
                 InitializeFromLegacyMethod();
             }
         }
@@ -71,7 +72,7 @@ namespace DeepAbyssHive.Units.Managers
         /// </summary>
         private void InitializeFromLegacyMethod()
         {
-            Debug.Log($"[{_managerName}] 使用舊版單位服務初始化方法");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 使用舊版單位服務初始化方法");
             
             // 直接創建服務實例（向後兼容）
             _unitQueryService = new UnitQueryService();
@@ -86,7 +87,7 @@ namespace DeepAbyssHive.Units.Managers
             // 等待ServiceLocator初始化完成
             if (useServiceLocator && !ServiceLocator.IsRegistered<IUnitQueryService>())
             {
-                Debug.LogWarning($"[{_managerName}] ServiceLocator尚未初始化，等待...");
+                DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] ServiceLocator尚未初始化，等待...");
                 DeepAbyssHive.Core.Utils.CoroutineStub.Start(WaitForUnitServiceLocatorInitialization());
             }
             else
@@ -115,7 +116,7 @@ namespace DeepAbyssHive.Units.Managers
             }
             else
             {
-                Debug.LogError($"[{_managerName}] ServiceLocator初始化超時，使用舊版方法");
+                DAHLog.Error(LogCategory.UNITS, $"[{_managerName}] ServiceLocator初始化超時，使用舊版方法");
                 useServiceLocator = false;
                 InitializeUnitServices();
             }

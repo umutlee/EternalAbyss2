@@ -103,7 +103,7 @@ namespace DeepAbyssHive.Core.Managers
             }
             else if (_instance != this)
             {
-                Debug.LogWarning("[GameManager] 检测到重复的GameManager实例，销毁多余实例");
+                DAHLog.Warning(LogCategory.MANAGER, "[GameManager] 检测到重复的GameManager实例，销毁多余实例");
                 Destroy(gameObject);
                 return;
             }
@@ -200,7 +200,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeCore()
         {
-            Debug.Log("[GameManager] 开始核心系统初始化...");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 开始核心系统初始化...");
             
             try
             {
@@ -216,7 +216,7 @@ namespace DeepAbyssHive.Core.Managers
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 核心系统初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 核心系统初始化失败: {ex.Message}");
                 throw;
             }
         }
@@ -248,7 +248,7 @@ namespace DeepAbyssHive.Core.Managers
             
             if (!_isInitialized)
             {
-                Debug.LogWarning("[GameManager] 游戏尚未初始化完成，无法开始");
+                DAHLog.Warning(LogCategory.MANAGER, "[GameManager] 游戏尚未初始化完成，无法开始");
                 return;
             }
             
@@ -341,7 +341,7 @@ namespace DeepAbyssHive.Core.Managers
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 核心系统关闭失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 核心系统关闭失败: {ex.Message}");
             }
         }
         

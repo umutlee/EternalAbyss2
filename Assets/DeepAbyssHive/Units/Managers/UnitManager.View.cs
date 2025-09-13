@@ -2,6 +2,7 @@ using UnityEngine;
 using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Units.Data;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -23,7 +24,7 @@ namespace DeepAbyssHive.Units.Managers
                 _unitGameObjects.Remove(unitId);
             }
             
-            Debug.Log($"[{_managerName}] 销毁单位视图: ID={unitId}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 销毁单位视图: ID={unitId}");
         }
 
         /// <summary>
@@ -93,7 +94,7 @@ namespace DeepAbyssHive.Units.Managers
                 _spatialIndex.Insert(spatialNode, position, new Vector3(coldData.BaseAttributes.SightRange, coldData.BaseAttributes.SightRange, coldData.BaseAttributes.SightRange));
             }
             
-            Debug.Log($"[{_managerName}] 创建单位: ID={unitId}, 类型={type}, 所有者={ownerId}, 位置={position}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 创建单位: ID={unitId}, 类型={type}, 所有者={ownerId}, 位置={position}");
             
             return unitId;
         }
@@ -111,7 +112,7 @@ namespace DeepAbyssHive.Units.Managers
             GameObject prefab = Resources.Load<GameObject>(coldData.PrefabPath);
             if (prefab == null)
             {
-                Debug.LogError($"[{_managerName}] 无法加载单位预制体: {coldData.PrefabPath}");
+                DAHLog.Error(LogCategory.UNITS, $"[{_managerName}] 无法加载单位预制体: {coldData.PrefabPath}");
                 return null;
             }
             
@@ -129,7 +130,7 @@ namespace DeepAbyssHive.Units.Managers
             // 在实际实现中，应该添加一个UnitComponent组件来管理单位的游戏对象
             // 这里简化处理，不添加额外组件
             
-            Debug.Log($"[{_managerName}] 实例化单位游戏对象: {unitObject.name}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 实例化单位游戏对象: {unitObject.name}");
             
             return unitObject;
         }
@@ -167,7 +168,7 @@ namespace DeepAbyssHive.Units.Managers
             // 在实际实现中，应该根据进化等级和适应性特征更新单位的外观
             // 这里简化处理，不更新外观
             
-            Debug.Log($"[{_managerName}] 更新单位外观: ID={unitId}, 进化等级={((EvolutionInfo)coldData.Evolution).Level}, 适应性特征数量={coldData.AdaptiveTraits.Length}");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 更新单位外观: ID={unitId}, 进化等级={((EvolutionInfo)coldData.Evolution).Level}, 适应性特征数量={coldData.AdaptiveTraits.Length}");
         }
     }
 }

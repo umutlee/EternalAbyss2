@@ -1,4 +1,5 @@
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 #if UNITY_EDITOR
 using UnityEditor;
 using System.IO;
@@ -22,10 +23,10 @@ public static class ConfigLoader
         AssetDatabase.CreateAsset(instance, assetPath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[ConfigLoader] Created default {typeof(T).Name} at {assetPath}");
+        DAHLog.Info(LogCategory.CONFIG, $"[ConfigLoader] Created default {typeof(T).Name} at {assetPath}");
         return instance;
         #else
-        Debug.LogWarning($"[ConfigLoader] Missing config at Resources/{pathInResources}. Using null/defaults.");
+        DAHLog.Warning(LogCategory.CONFIG, $"[ConfigLoader] Missing config at Resources/{pathInResources}. Using null/defaults.");
         return null;
         #endif
     }

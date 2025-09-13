@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Pathfinding
 {
@@ -67,7 +68,7 @@ namespace DeepAbyssHive.Units.Pathfinding
                     var r = _q.Dequeue();
                     var grid = EnsureGrid();
                     bool ok = GridAStar.TryFindPath(grid, r.s, r.g, out var path, allowDiagonal, maxExpand);
-                    try { r.cb?.Invoke(path, ok); } catch (Exception e) { Debug.LogException(e); }
+                    try { r.cb?.Invoke(path, ok); } catch (Exception e) { DAHLog.Error(LogCategory.UNITS, $"UnitPathQueue callback exception: {e}"); }
                 }
             }
         }

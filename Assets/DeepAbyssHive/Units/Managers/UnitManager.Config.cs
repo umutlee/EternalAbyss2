@@ -5,6 +5,7 @@ using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Core.Config;
 using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
 using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -28,7 +29,7 @@ namespace DeepAbyssHive.Units.Managers
         {
             if (_configInitialized) return;
 
-            Debug.Log($"[{_managerName}] 初始化配置系統...");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 初始化配置系統...");
 
             if (useScriptableObjectConfig)
             {
@@ -40,7 +41,7 @@ namespace DeepAbyssHive.Units.Managers
             }
 
             _configInitialized = true;
-            Debug.Log($"[{_managerName}] 配置系統初始化完成");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 配置系統初始化完成");
         }
 
         /// <summary>
@@ -63,11 +64,11 @@ namespace DeepAbyssHive.Units.Managers
                 if (template != null)
                 {
                     _unitTemplateCache[template.UnitType] = template;
-                    Debug.Log($"[{_managerName}] 加載單位模板: {template.UnitName} ({template.UnitType})");
+                    DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 加載單位模板: {template.UnitName} ({template.UnitType})");
                 }
             }
 
-            Debug.Log($"[{_managerName}] 從ScriptableObject加載了 {_unitTemplateCache.Count} 個單位模板");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 從ScriptableObject加載了 {_unitTemplateCache.Count} 個單位模板");
         }
 
         /// <summary>
@@ -75,7 +76,7 @@ namespace DeepAbyssHive.Units.Managers
         /// </summary>
         private void InitializeFromLegacyConfig()
         {
-            Debug.Log($"[{_managerName}] 使用舊版配置系統（向後兼容模式）");
+            DAHLog.Info(LogCategory.UNITS, $"[{_managerName}] 使用舊版配置系統（向後兼容模式）");
             // 這裡保留原有的硬編碼配置邏輯
             // 在完全遷移到ScriptableObject後可以移除
         }

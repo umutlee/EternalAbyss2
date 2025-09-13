@@ -2,7 +2,7 @@
     "name": "DeepAbyssHive.Core.Logging.Editor",
     "rootNamespace": "DeepAbyssHive.Core.Logging.Editor",
     "references": [
-        "GUID:478a2357cc57436488a56e564b08d223"
+        "DeepAbyssHive.Core.Logging"
     ],
     "includePlatforms": [
         "Editor"

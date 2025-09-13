@@ -1,5 +1,6 @@
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Services;
 // 明確使用介面命名空間的 ICreepSourceService，避免與 Services 同名型別衝突
@@ -33,7 +34,7 @@ namespace DeepAbyssHive.Creep.Managers
         {
             if (_servicesInitialized) return;
 
-            Debug.Log($"[{_managerName}] 初始化Creep服務依賴...");
+            DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] 初始化Creep服務依賴...");
 
             if (useServiceLocator)
             {
@@ -45,7 +46,7 @@ namespace DeepAbyssHive.Creep.Managers
             }
 
             _servicesInitialized = true;
-            Debug.Log($"[{_managerName}] Creep服務依賴初始化完成");
+            DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] Creep服務依賴初始化完成");
         }
 
         /// <summary>
@@ -62,14 +63,14 @@ namespace DeepAbyssHive.Creep.Managers
                 _gridService = ServiceLocator.Get<ICreepGridService>();
                 _simulationService = ServiceLocator.Get<ICreepSimulationService>();
 
-                Debug.Log($"[{_managerName}] 成功從ServiceLocator獲取所有Creep服務");
+                DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] 成功從ServiceLocator獲取所有Creep服務");
             }
             catch (ServiceNotFoundException ex)
             {
-                Debug.LogError($"[{_managerName}] Creep服務獲取失敗: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[{_managerName}] Creep服務獲取失敗: {ex.Message}");
                 
                 // 回退到舊版初始化方法
-                Debug.LogWarning($"[{_managerName}] 回退到舊版Creep服務初始化方法");
+                DAHLog.Warning(LogCategory.MANAGER, $"[{_managerName}] 回退到舊版Creep服務初始化方法");
                 InitializeFromLegacyMethod();
             }
         }
@@ -79,7 +80,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void InitializeFromLegacyMethod()
         {
-            Debug.Log($"[{_managerName}] 使用舊版Creep服務初始化方法");
+            DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] 使用舊版Creep服務初始化方法");
             
             // 直接創建服務實例（向後兼容）
             _gridService = new CreepGridService();
@@ -97,7 +98,7 @@ namespace DeepAbyssHive.Creep.Managers
             // 等待ServiceLocator初始化完成
             if (useServiceLocator && !ServiceLocator.IsRegistered<ICreepQueryService>())
             {
-                Debug.LogWarning($"[{_managerName}] ServiceLocator尚未初始化，等待...");
+                DAHLog.Warning(LogCategory.MANAGER, $"[{_managerName}] ServiceLocator尚未初始化，等待...");
                 StartCoroutine(WaitForServiceLocatorInitialization());
             }
             else
@@ -126,7 +127,7 @@ namespace DeepAbyssHive.Creep.Managers
             }
             else
             {
-                Debug.LogError($"[{_managerName}] ServiceLocator初始化超時，使用舊版方法");
+                DAHLog.Error(LogCategory.MANAGER, $"[{_managerName}] ServiceLocator初始化超時，使用舊版方法");
                 useServiceLocator = false;
                 InitializeCreepServices();
             }

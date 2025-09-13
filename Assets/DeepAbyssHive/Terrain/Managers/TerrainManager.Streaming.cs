@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Managers
 {
@@ -45,7 +46,7 @@ namespace DeepAbyssHive.Terrain.Managers
             {
                 runtime.SetLOD(desired);
                 _chunkLOD[coord] = desired;
-                Debug.Log($"[STREAM] LOD change {coord} => {desired}");
+                DAHLog.Info(LogCategory.TERRAIN, $"LOD change {coord} => {desired}");
             }
             else
             {
@@ -100,7 +101,7 @@ namespace DeepAbyssHive.Terrain.Managers
                 int levels = Mathf.Max(1, MaxLODLevels);
                 float perBand = vd / levels;
 
-                Debug.Log($"[STREAM] center={centerChunk}, interval={_streamUpdateInterval}s, hysteresis={_streamHysteresisChunks}ch, LODbands≈{perBand:0.##} (levels={levels})");
+                DAHLog.Info(LogCategory.TERRAIN, $"Stream center={centerChunk}, interval={_streamUpdateInterval}s, hysteresis={_streamHysteresisChunks}ch, LODbands≈{perBand:0.##} (levels={levels})");
             }
 
             // —— 對已載入的 chunk 依距離套 LOD ——   

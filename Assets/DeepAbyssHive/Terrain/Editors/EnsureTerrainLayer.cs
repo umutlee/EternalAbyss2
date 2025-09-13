@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Editors
 {
@@ -12,7 +13,7 @@ namespace DeepAbyssHive.Terrain.Editors
         {
             const string layerName = "Terrain";
             var obj = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
-            if (obj == null || obj.Length == 0) { Debug.LogWarning("[Config] TagManager not found."); return; }
+            if (obj == null || obj.Length == 0) { DAHLog.Warning(LogCategory.SYSTEM, "[Config] TagManager not found."); return; }
 
             var tagManager = new SerializedObject(obj[0]);
             var layersProp = tagManager.FindProperty("layers");
@@ -33,17 +34,17 @@ namespace DeepAbyssHive.Terrain.Editors
                     {
                         p.stringValue = layerName;
                         tagManager.ApplyModifiedProperties();
-                        Debug.Log($"[Config] Added '{layerName}' layer at slot {i}.");
+                        DAHLog.Info(LogCategory.SYSTEM, $"[Config] Added '{layerName}' layer at slot {i}.");
                         exists = true;
                         break;
                     }
                 }
                 if (!exists)
-                    Debug.LogWarning("[Config] No empty layer slot available. Please add 'Terrain' layer manually in Project Settings > Tags and Layers.");
+                    DAHLog.Warning(LogCategory.SYSTEM, "[Config] No empty layer slot available. Please add 'Terrain' layer manually in Project Settings > Tags and Layers.");
             }
             else
             {
-                Debug.Log("[Config] 'Terrain' layer already exists.");
+                DAHLog.Info(LogCategory.SYSTEM, "[Config] 'Terrain' layer already exists.");
             }
         }
     }

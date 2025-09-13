@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 using System.Linq;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Editors
 {
@@ -14,7 +15,7 @@ namespace DeepAbyssHive.Terrain.Editors
             Camera cam = Camera.main;
             if (!cam && SceneView.lastActiveSceneView != null)
                 cam = SceneView.lastActiveSceneView.camera;
-            if (!cam) { Debug.LogWarning("[Dev] No camera found to raycast from."); return; }
+            if (!cam) { DAHLog.Warning(LogCategory.DEV, "[Dev] No camera found to raycast from."); return; }
 
             // 用相機像素維度取中心，對 Game/Scene 皆穩定
             Vector3 center = new Vector3(cam.pixelWidth * 0.5f, cam.pixelHeight * 0.5f, 0f);
@@ -23,7 +24,7 @@ namespace DeepAbyssHive.Terrain.Editors
             var hits = Physics.RaycastAll(ray, 10000f);
             if (hits == null || hits.Length == 0)
             {
-                Debug.Log("[Dev] Nothing under crosshair.");
+                DAHLog.Info(LogCategory.DEV, "[Dev] Nothing under crosshair.");
                 return;
             }
 
@@ -50,7 +51,7 @@ namespace DeepAbyssHive.Terrain.Editors
                 SceneView.lastActiveSceneView.FrameSelected();
                 SceneView.lastActiveSceneView.Repaint();
             }
-            Debug.Log($"[Dev] Selected under crosshair: {pick.name}");
+            DAHLog.Info(LogCategory.DEV, $"[Dev] Selected under crosshair: {pick.name}");
         }
     }
 }

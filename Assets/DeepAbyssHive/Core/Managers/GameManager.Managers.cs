@@ -9,6 +9,7 @@ using DeepAbyssHive.Units.Interfaces;
 using DeepAbyssHive.Terrain.Interfaces;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.SpatialIndex.Managers;
+using DeepAbyssHive.Core.Logging;
 using IBuildingManager = DeepAbyssHive.Buildings.Interfaces.IBuildingManager;
 
 namespace DeepAbyssHive.Core.Managers
@@ -81,7 +82,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeAllManagers()
         {
-            Debug.Log("[GameManager] 开始初始化所有管理器...");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 开始初始化所有管理器...");
             
             try
             {
@@ -100,11 +101,11 @@ namespace DeepAbyssHive.Core.Managers
                 _isInitialized = true;
                 OnGameInitialized?.Invoke();
                 
-                Debug.Log("[GameManager] 所有管理器初始化完成");
+                DAHLog.Info(LogCategory.MANAGER, "[GameManager] 所有管理器初始化完成");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 管理器初始化失败: {ex.Message}");
                 throw;
             }
         }
@@ -130,12 +131,12 @@ namespace DeepAbyssHive.Core.Managers
                 if (_resourceManager != null)
                 {
                     RegisterManager(_resourceManager);
-                    Debug.Log("[GameManager] 资源管理器初始化完成");
+                    DAHLog.Info(LogCategory.MANAGER, "[GameManager] 资源管理器初始化完成");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 资源管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 资源管理器初始化失败: {ex.Message}");
             }
         }
         
@@ -160,12 +161,12 @@ namespace DeepAbyssHive.Core.Managers
                 if (_terrainManager != null)
                 {
                     RegisterManager(_terrainManager);
-                    Debug.Log("[GameManager] 地形管理器初始化完成");
+                    DAHLog.Info(LogCategory.MANAGER, "[GameManager] 地形管理器初始化完成");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 地形管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 地形管理器初始化失败: {ex.Message}");
             }
         }
         
@@ -190,12 +191,12 @@ namespace DeepAbyssHive.Core.Managers
                 if (_spatialIndexManager != null)
                 {
                     RegisterManager(_spatialIndexManager);
-                    Debug.Log("[GameManager] 空间索引管理器初始化完成");
+                    DAHLog.Info(LogCategory.MANAGER, "[GameManager] 空间索引管理器初始化完成");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 空间索引管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 空间索引管理器初始化失败: {ex.Message}");
             }
         }
         
@@ -220,12 +221,12 @@ namespace DeepAbyssHive.Core.Managers
                 if (_creepManager != null)
                 {
                     RegisterManager(_creepManager);
-                    Debug.Log("[GameManager] 菌毯管理器初始化完成");
+                    DAHLog.Info(LogCategory.MANAGER, "[GameManager] 菌毯管理器初始化完成");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 菌毯管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 菌毯管理器初始化失败: {ex.Message}");
             }
         }
         
@@ -250,12 +251,12 @@ namespace DeepAbyssHive.Core.Managers
                 if (_buildingManager != null)
                 {
                     RegisterManager(_buildingManager);
-                    Debug.Log("[GameManager] 建筑管理器初始化完成");
+                    DAHLog.Info(LogCategory.MANAGER, "[GameManager] 建筑管理器初始化完成");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 建筑管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 建筑管理器初始化失败: {ex.Message}");
             }
         }
         
@@ -280,12 +281,12 @@ namespace DeepAbyssHive.Core.Managers
                 if (_unitManager != null)
                 {
                     RegisterManager(_unitManager);
-                    Debug.Log("[GameManager] 单位管理器初始化完成");
+                    DAHLog.Info(LogCategory.MANAGER, "[GameManager] 单位管理器初始化完成");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 单位管理器初始化失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 单位管理器初始化失败: {ex.Message}");
             }
         }
         
@@ -312,11 +313,11 @@ namespace DeepAbyssHive.Core.Managers
                     // CreepManager需要SpatialIndexManager
                 }
                 
-                Debug.Log("[GameManager] 管理器依赖关系设置完成");
+                DAHLog.Info(LogCategory.MANAGER, "[GameManager] 管理器依赖关系设置完成");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 设置管理器依赖关系失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 设置管理器依赖关系失败: {ex.Message}");
             }
         }
         
@@ -331,7 +332,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             if (_isInitialized)
             {
-                Debug.LogWarning("[GameManager] 游戏管理器已经初始化");
+                DAHLog.Warning(LogCategory.MANAGER, "[GameManager] 游戏管理器已经初始化");
                 return;
             }
             
@@ -345,7 +346,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             if (manager == null)
             {
-                Debug.LogWarning("[GameManager] 尝试注册空的管理器");
+                DAHLog.Warning(LogCategory.MANAGER, "[GameManager] 尝试注册空的管理器");
                 return;
             }
             
@@ -361,7 +362,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
             }
             
-            Debug.Log($"[GameManager] 注册管理器: {managerName}");
+            DAHLog.Info(LogCategory.MANAGER, $"[GameManager] 注册管理器: {managerName}");
         }
         
         /// <summary>
@@ -373,7 +374,7 @@ namespace DeepAbyssHive.Core.Managers
             {
                 _registeredManagers.Remove(managerName);
                 _updateableManagers.Remove(manager);
-                Debug.Log($"[GameManager] 注销管理器: {managerName}");
+                DAHLog.Info(LogCategory.MANAGER, $"[GameManager] 注销管理器: {managerName}");
             }
         }
         
@@ -402,7 +403,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             if (system == null)
             {
-                Debug.LogWarning("[GameManager] 尝试注册空的系统");
+                DAHLog.Warning(LogCategory.MANAGER, "[GameManager] 尝试注册空的系统");
                 return;
             }
             
@@ -418,7 +419,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
             }
             
-            Debug.Log($"[GameManager] 注册系统: {systemName}");
+            DAHLog.Info(LogCategory.MANAGER, $"[GameManager] 注册系统: {systemName}");
         }
         
         /// <summary>
@@ -430,7 +431,7 @@ namespace DeepAbyssHive.Core.Managers
             {
                 _registeredSystems.Remove(systemName);
                 _updateableSystems.Remove(system);
-                Debug.Log($"[GameManager] 注销系统: {systemName}");
+                DAHLog.Info(LogCategory.MANAGER, $"[GameManager] 注销系统: {systemName}");
             }
         }
         
@@ -482,7 +483,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameManager] 管理器更新失败: {_updateableManagers[i].GetType().Name}, 错误: {ex.Message}");
+                    DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 管理器更新失败: {_updateableManagers[i].GetType().Name}, 错误: {ex.Message}");
                 }
             }
             
@@ -498,7 +499,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameManager] 系统更新失败: {_updateableSystems[i].GetType().Name}, 错误: {ex.Message}");
+                    DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 系统更新失败: {_updateableSystems[i].GetType().Name}, 错误: {ex.Message}");
                 }
             }
         }
@@ -520,7 +521,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameManager] 管理器固定更新失败: {_updateableManagers[i].GetType().Name}, 错误: {ex.Message}");
+                    DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 管理器固定更新失败: {_updateableManagers[i].GetType().Name}, 错误: {ex.Message}");
                 }
             }
             
@@ -536,7 +537,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameManager] 系统固定更新失败: {_updateableSystems[i].GetType().Name}, 错误: {ex.Message}");
+                    DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 系统固定更新失败: {_updateableSystems[i].GetType().Name}, 错误: {ex.Message}");
                 }
             }
         }
@@ -560,7 +561,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameManager] 管理器后更新失败: {_updateableManagers[i].GetType().Name}, 错误: {ex.Message}");
+                    DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 管理器后更新失败: {_updateableManagers[i].GetType().Name}, 错误: {ex.Message}");
                 }
             }
             
@@ -576,7 +577,7 @@ namespace DeepAbyssHive.Core.Managers
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[GameManager] 系统后更新失败: {_updateableSystems[i].GetType().Name}, 错误: {ex.Message}");
+                    DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 系统后更新失败: {_updateableSystems[i].GetType().Name}, 错误: {ex.Message}");
                 }
             }
         }
@@ -586,7 +587,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         public void QuitGame()
         {
-            Debug.Log("[GameManager] 退出游戏");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 退出游戏");
             
             _isQuitting = true;
             OnGameQuitting?.Invoke();
@@ -627,7 +628,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void ShutdownAllManagers()
         {
-            Debug.Log("[GameManager] 开始关闭所有管理器...");
+            DAHLog.Info(LogCategory.MANAGER, "[GameManager] 开始关闭所有管理器...");
             
             try
             {
@@ -645,11 +646,11 @@ namespace DeepAbyssHive.Core.Managers
                 _updateableManagers.Clear();
                 _updateableSystems.Clear();
                 
-                Debug.Log("[GameManager] 所有管理器关闭完成");
+                DAHLog.Info(LogCategory.MANAGER, "[GameManager] 所有管理器关闭完成");
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[GameManager] 关闭管理器失败: {ex.Message}");
+                DAHLog.Error(LogCategory.MANAGER, $"[GameManager] 关闭管理器失败: {ex.Message}");
             }
         }
         

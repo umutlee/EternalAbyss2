@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Services
 {
@@ -78,7 +79,7 @@ namespace DeepAbyssHive.Core.Services
             
             if (_services.ContainsKey(serviceType))
             {
-                Debug.LogWarning($"[ServiceManager] 服务已存在，将被替换: {serviceType.Name}");
+                DAHLog.Warning(LogCategory.SERVICE, $"[ServiceManager] 服务已存在，将被替换: {serviceType.Name}");
             }
 
             _services[serviceType] = service;
@@ -101,7 +102,7 @@ namespace DeepAbyssHive.Core.Services
 
             if (enableServiceLogging)
             {
-                Debug.Log($"[ServiceManager] 服务注册成功: {serviceType.Name} ({service.ServiceName})");
+                DAHLog.Info(LogCategory.SERVICE, $"[ServiceManager] 服务注册成功: {serviceType.Name} ({service.ServiceName})");
             }
         }
 
@@ -119,7 +120,7 @@ namespace DeepAbyssHive.Core.Services
                 return service as T;
             }
 
-            Debug.LogWarning($"[ServiceManager] 服务未找到: {serviceType.Name}");
+            DAHLog.Warning(LogCategory.SERVICE, $"[ServiceManager] 服务未找到: {serviceType.Name}");
             return null;
         }
 
@@ -140,7 +141,7 @@ namespace DeepAbyssHive.Core.Services
         {
             if (enableServiceLogging)
             {
-                Debug.Log("[ServiceManager] 开始初始化所有服务...");
+                DAHLog.Info(LogCategory.SERVICE, "[ServiceManager] 开始初始化所有服务...");
             }
 
             // 按优先级和依赖关系排序
@@ -156,19 +157,19 @@ namespace DeepAbyssHive.Core.Services
                         
                         if (enableServiceLogging)
                         {
-                            Debug.Log($"[ServiceManager] 服务初始化成功: {service.ServiceName}");
+                            DAHLog.Info(LogCategory.SERVICE, $"[ServiceManager] 服务初始化成功: {service.ServiceName}");
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[ServiceManager] 服务初始化失败: {service.ServiceName} - {e.Message}");
+                    DAHLog.Error(LogCategory.SERVICE, $"[ServiceManager] 服务初始化失败: {service.ServiceName} - {e.Message}");
                 }
             }
 
             if (enableServiceLogging)
             {
-                Debug.Log($"[ServiceManager] 所有服务初始化完成，共 {_services.Count} 个服务");
+                DAHLog.Info(LogCategory.SERVICE, $"[ServiceManager] 所有服务初始化完成，共 {_services.Count} 个服务");
             }
         }
 
@@ -179,7 +180,7 @@ namespace DeepAbyssHive.Core.Services
         {
             if (enableServiceLogging)
             {
-                Debug.Log("[ServiceManager] 开始清理所有服务...");
+                DAHLog.Info(LogCategory.SERVICE, "[ServiceManager] 开始清理所有服务...");
             }
 
             // 反向清理（与初始化顺序相反）
@@ -193,12 +194,12 @@ namespace DeepAbyssHive.Core.Services
                     
                     if (enableServiceLogging)
                     {
-                        Debug.Log($"[ServiceManager] 服务清理成功: {service.ServiceName}");
+                        DAHLog.Info(LogCategory.SERVICE, $"[ServiceManager] 服务清理成功: {service.ServiceName}");
                     }
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[ServiceManager] 服务清理失败: {service.ServiceName} - {e.Message}");
+                    DAHLog.Error(LogCategory.SERVICE, $"[ServiceManager] 服务清理失败: {service.ServiceName} - {e.Message}");
                 }
             }
 
@@ -209,7 +210,7 @@ namespace DeepAbyssHive.Core.Services
 
             if (enableServiceLogging)
             {
-                Debug.Log("[ServiceManager] 所有服务清理完成");
+                DAHLog.Info(LogCategory.SERVICE, "[ServiceManager] 所有服务清理完成");
             }
         }
 
@@ -231,7 +232,7 @@ namespace DeepAbyssHive.Core.Services
                     }
                     catch (Exception e)
                     {
-                        Debug.LogError($"[ServiceManager] 服务更新失败: {service.ServiceName} - {e.Message}");
+                        DAHLog.Error(LogCategory.SERVICE, $"[ServiceManager] 服务更新失败: {service.ServiceName} - {e.Message}");
                     }
 
                     if (enablePerformanceMonitoring)
@@ -269,11 +270,11 @@ namespace DeepAbyssHive.Core.Services
             var avgTime = totalTime / _serviceUpdateTimes.Count;
             var maxTime = _serviceUpdateTimes.Values.Max();
 
-            Debug.Log($"[ServiceManager] 性能统计 - 总时间: {totalTime:F4}ms, 平均: {avgTime:F4}ms, 最大: {maxTime:F4}ms");
+            DAHLog.Info(LogCategory.SERVICE, $"[ServiceManager] 性能统计 - 总时间: {totalTime:F4}ms, 平均: {avgTime:F4}ms, 最大: {maxTime:F4}ms");
 
             // 记录最耗时的服务
             var slowestService = _serviceUpdateTimes.OrderByDescending(kvp => kvp.Value).First();
-            Debug.Log($"[ServiceManager] 最耗时服务: {slowestService.Key.Name} ({slowestService.Value:F4}ms)");
+            DAHLog.Info(LogCategory.SERVICE, $"[ServiceManager] 最耗时服务: {slowestService.Key.Name} ({slowestService.Value:F4}ms)");
         }
 
         /// <summary>
@@ -304,7 +305,7 @@ namespace DeepAbyssHive.Core.Services
         {
             if (visiting.Contains(serviceType))
             {
-                Debug.LogWarning($"[ServiceManager] 检测到循环依赖: {serviceType.Name}");
+                DAHLog.Warning(LogCategory.SERVICE, $"[ServiceManager] 检测到循环依赖: {serviceType.Name}");
                 return;
             }
 

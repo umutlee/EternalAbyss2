@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Pathfinding
 {
@@ -28,7 +29,7 @@ namespace DeepAbyssHive.Units.Pathfinding
             if (!grid.TryWorldToCell(startWorld, out int sx, out int sy) ||
                 !grid.TryWorldToCell(goalWorld, out int gx, out int gy))
             {
-                Debug.LogWarning("[Path] WorldToCell failed (out-of-bounds?)");
+                DAHLog.Warning(LogCategory.UNITS, "[Path] WorldToCell failed (out-of-bounds?)");
                 return false;
             }
             var start = new Cell(sx, sy);
@@ -36,12 +37,12 @@ namespace DeepAbyssHive.Units.Pathfinding
 
             if (!grid.IsWalkable(start.x, start.y))
             {
-                Debug.LogWarning("[Path] Start not walkable");
+                DAHLog.Warning(LogCategory.UNITS, "[Path] Start not walkable");
                 return false;
             }
             if (!grid.IsWalkable(goal.x, goal.y))
             {
-                Debug.LogWarning("[Path] Goal not walkable");
+                DAHLog.Warning(LogCategory.UNITS, "[Path] Goal not walkable");
                 return false;
             }
 
@@ -66,7 +67,7 @@ namespace DeepAbyssHive.Units.Pathfinding
 
                 if (++expanded > maxExpand)
                 {
-                    Debug.LogWarning($"[Path] Abort: expand>{maxExpand}");
+                    DAHLog.Warning(LogCategory.UNITS, $"[Path] Abort: expand>{maxExpand}");
                     return false;
                 }
 
@@ -102,7 +103,7 @@ namespace DeepAbyssHive.Units.Pathfinding
                     }
                 }
             }
-            Debug.LogWarning("[Path] Open exhausted, no path");
+            DAHLog.Warning(LogCategory.UNITS, "[Path] Open exhausted, no path");
             return false;
         }
 

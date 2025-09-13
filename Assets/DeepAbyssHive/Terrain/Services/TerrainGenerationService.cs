@@ -10,6 +10,7 @@ using DeepAbyssHive.Terrain.Config;
 using DeepAbyssHive.Terrain;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Services
 {
@@ -60,13 +61,13 @@ namespace DeepAbyssHive.Terrain.Services
             InitializeParameters();
             IsInitialized = true;
             
-            Debug.Log($"[{ServiceName}] 地形生成服务初始化完成");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{ServiceName}] 地形生成服务初始化完成");
         }
 
         public void Cleanup()
         {
             IsInitialized = false;
-            Debug.Log($"[{ServiceName}] 地形生成服务清理完成");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{ServiceName}] 地形生成服务清理完成");
         }
         #endregion
 
@@ -215,7 +216,7 @@ namespace DeepAbyssHive.Terrain.Services
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[TerrainGenerationService] 重新生成地形块失败 {chunkCoord}: {ex.Message}");
+                DAHLog.Error(LogCategory.TERRAIN, $"[TerrainGenerationService] 重新生成地形块失败 {chunkCoord}: {ex.Message}");
                 return false;
             }
         }

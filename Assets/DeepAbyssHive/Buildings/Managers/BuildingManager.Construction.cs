@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Buildings.Enums;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
@@ -80,7 +81,7 @@ namespace DeepAbyssHive.Buildings.Managers
             {
                 buildingData.State = BuildingState.Operational;
                 buildingData.Health = buildingData.MaxHealth;
-                Debug.Log($"[BuildingManager] 建筑建造完成: ID={buildingId}");
+                DAHLog.Info(LogCategory.BUILDING, $"[BuildingManager] 建筑建造完成: ID={buildingId}");
             }
 
             _buildings[buildingId] = buildingData;

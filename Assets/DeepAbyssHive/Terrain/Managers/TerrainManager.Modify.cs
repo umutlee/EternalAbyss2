@@ -5,6 +5,7 @@ using DeepAbyssHive.Terrain.Enums;
 using DeepAbyssHive.Terrain.Data;
 using TerrainType = DeepAbyssHive.Terrain.Enums.TerrainType;
 using TerrainTypeData = DeepAbyssHive.Terrain.Data.TerrainType;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Managers
 {
@@ -22,7 +23,7 @@ namespace DeepAbyssHive.Terrain.Managers
         public void ModifyTerrainAt(Vector3 worldPosition, TerrainModification modification)
         {
             _pendingModifications.Enqueue(modification);
-            Debug.Log($"[{_managerName}] 添加地形修改: 位置={worldPosition}, 类型={modification.TerrainTypeValue}");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 添加地形修改: 位置={worldPosition}, 类型={modification.TerrainTypeValue}");
         }
         
         /// <summary>
@@ -44,7 +45,7 @@ namespace DeepAbyssHive.Terrain.Managers
             
             _pendingModifications.Enqueue(modification);
             
-            Debug.Log($"[{_managerName}] 添加地形修改: 位置={worldPosition}, 半径={radius}, 类型={terrainType}");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 添加地形修改: 位置={worldPosition}, 半径={radius}, 类型={terrainType}");
             
             return true;
         }
@@ -73,7 +74,7 @@ namespace DeepAbyssHive.Terrain.Managers
             
             if (processCount > 0)
             {
-                Debug.Log($"[{_managerName}] 处理了 {processCount} 个地形修改，剩余 {_pendingModifications.Count} 个");
+                DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 处理了 {processCount} 个地形修改，剩余 {_pendingModifications.Count} 个");
             }
         }
 
@@ -151,7 +152,7 @@ namespace DeepAbyssHive.Terrain.Managers
         {
             if (_modificationHistory.Count == 0)
             {
-                Debug.LogWarning($"[{_managerName}] 没有可撤销的地形修改");
+                DAHLog.Warning(LogCategory.TERRAIN, $"[{_managerName}] 没有可撤销的地形修改");
                 return false;
             }
             
@@ -178,7 +179,7 @@ namespace DeepAbyssHive.Terrain.Managers
                 }
             }
             
-            Debug.Log($"[{_managerName}] 撤销了最后一次地形修改");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 撤销了最后一次地形修改");
             
             return true;
         }
@@ -194,7 +195,7 @@ namespace DeepAbyssHive.Terrain.Managers
             // 重新生成所有区块
             RegenerateAllChunks();
             
-            Debug.Log($"[{_managerName}] 清除了所有地形修改");
+            DAHLog.Info(LogCategory.TERRAIN, $"[{_managerName}] 清除了所有地形修改");
         }
         #endregion
     }

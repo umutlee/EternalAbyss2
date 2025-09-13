@@ -42,5 +42,7 @@ MonoBehaviour:
   - UnitCreepBinder
   - DEV HUD
   - Editor
+  - PLACE
+  - Placer
   enableRuntimeOverlay: 0
   overlayMinLevel: 3

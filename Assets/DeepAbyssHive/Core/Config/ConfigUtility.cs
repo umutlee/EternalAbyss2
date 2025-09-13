@@ -1,4 +1,5 @@
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Config
 {
@@ -58,7 +59,7 @@ namespace DeepAbyssHive.Core.Config
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[ConfigUtility] 获取配置值失败: {typeof(T).Name}, 错误: {e.Message}");
+                    DAHLog.Error(LogCategory.CONFIG, $"[ConfigUtility] 获取配置值失败: {typeof(T).Name}, 错误: {e.Message}");
                 }
             }
             

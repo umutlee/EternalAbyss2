@@ -5,6 +5,7 @@ using UnityEngine;
 using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Core.Interfaces;
+using DeepAbyssHive.Core.Logging;
 using ICreepManager = DeepAbyssHive.Creep.Interfaces.ICreepManager;
 
 namespace DeepAbyssHive.Buildings.Managers
@@ -172,7 +173,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     // 恢复建筑运行
                     building.State = BuildingState.Operational;
-                    Debug.Log($"[BuildingManager] 建筑 {building.BuildingId} 因菌毯扩张恢复运行");
+                    DAHLog.Info(LogCategory.BUILDING, $"[BuildingManager] 建筑 {building.BuildingId} 因菌毯扩张恢复运行");
                 }
             }
         }
@@ -192,7 +193,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     // 暂停建筑运行
                     building.State = BuildingState.Paused;
-                    Debug.Log($"[BuildingManager] 建筑 {building.BuildingId} 因菌毯移除暂停运行");
+                    DAHLog.Info(LogCategory.BUILDING, $"[BuildingManager] 建筑 {building.BuildingId} 因菌毯移除暂停运行");
                 }
             }
         }

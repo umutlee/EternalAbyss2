@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.Buildings.Data;
 // 使用别名解决枚举冲突
@@ -43,7 +44,7 @@ namespace DeepAbyssHive.Creep.Managers
             // 检查位置是否已有源点
             if (HasSourceAt(gridPos))
             {
-                Debug.LogWarning($"[CreepManager] 位置 {worldPosition} 已存在菌毯源点");
+                DAHLog.Warning(LogCategory.MANAGER, $"[CreepManager] 位置 {worldPosition} 已存在菌毯源点");
                 return -1;
             }
             
@@ -82,7 +83,7 @@ namespace DeepAbyssHive.Creep.Managers
             // 初始扩张
             InitialSourceExpansion(source);
             
-            Debug.Log($"[CreepManager] 创建菌毯源点 {sourceId} 于位置 {worldPosition}，半径 {radius}");
+            DAHLog.Info(LogCategory.MANAGER, $"[CreepManager] 创建菌毯源点 {sourceId} 于位置 {worldPosition}，半径 {radius}");
             return sourceId;
         }
         
@@ -118,7 +119,7 @@ namespace DeepAbyssHive.Creep.Managers
             // 检查网络分割
             CheckNetworkSplit(source.NetworkId);
             
-            Debug.Log($"[CreepManager] 移除菌毯源点 {sourceId}");
+            DAHLog.Info(LogCategory.MANAGER, $"[CreepManager] 移除菌毯源点 {sourceId}");
             return true;
         }
         
@@ -242,7 +243,7 @@ namespace DeepAbyssHive.Creep.Managers
                 }
             }
             
-            Debug.Log($"[CreepManager] 合并 {networkIds.Count} 个网络到网络 {primaryNetworkId}");
+            DAHLog.Info(LogCategory.MANAGER, $"[CreepManager] 合并 {networkIds.Count} 个网络到网络 {primaryNetworkId}");
         }
         
         /// <summary>
@@ -293,7 +294,7 @@ namespace DeepAbyssHive.Creep.Managers
                 }
             }
             
-            Debug.Log($"[CreepManager] 网络 {originalNetworkId} 分割为 {connectedGroups.Count} 个子网络");
+            DAHLog.Info(LogCategory.MANAGER, $"[CreepManager] 网络 {originalNetworkId} 分割为 {connectedGroups.Count} 个子网络");
         }
         
         #endregion

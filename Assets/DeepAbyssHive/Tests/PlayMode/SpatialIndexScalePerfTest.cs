@@ -8,6 +8,7 @@ using UnityEngine.TestTools;
 using DeepAbyssHive.SpatialIndex.Enums;
 using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Tests.SpatialIndex
 {
@@ -93,7 +94,7 @@ namespace DeepAbyssHive.Tests.SpatialIndex
             json.AppendFormat(",\"avgQueryTimeSec\":{0}", stats.AverageQueryTime.ToString("0.########"));
             json.AppendFormat(",\"objects\":{0}", stats.ObjectCount);
             json.Append("}");
-            Debug.Log(json.ToString());
+            DAHLog.Info(LogCategory.COMMON, json.ToString());
 
             _svc.Cleanup();
             _svc = null;

@@ -1,4 +1,5 @@
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Boot
 {
@@ -23,7 +24,7 @@ namespace DeepAbyssHive.Core.Boot
             if (root == null)
             {
                 root = new GameObject("Managers");
-                Debug.Log("[BOOT] Created 'Managers' root and marked DontDestroyOnLoad.");
+                DAHLog.Info(LogCategory.MANAGER, "[BOOT] Created 'Managers' root and marked DontDestroyOnLoad.");
             }
             DontDestroyOnLoad(root);
 
@@ -39,7 +40,7 @@ namespace DeepAbyssHive.Core.Boot
             if (!go.TryGetComponent<T>(out var comp))
             {
                 comp = go.AddComponent<T>();
-                Debug.Log(string.Format(logFmt, typeof(T).FullName));
+                DAHLog.Info(LogCategory.MANAGER, string.Format(logFmt, typeof(T).FullName));
             }
             return comp;
         }

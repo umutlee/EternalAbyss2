@@ -2,6 +2,7 @@ using ICreepSourceService = DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Interfaces;
 using DeepAbyssHive.Creep.Services;
 using DeepAbyssHive.Buildings.Services;
@@ -32,7 +33,7 @@ namespace DeepAbyssHive.Core.Managers
             // 確保只有一個GameBootstrapper實例
             if (FindObjectsOfType<GameBootstrapper>().Length > 1)
             {
-                Debug.LogWarning("[GameBootstrapper] 發現多個GameBootstrapper實例，銷毀重複的實例");
+                DAHLog.Warning(LogCategory.CORE, "[GameBootstrapper] 發現多個GameBootstrapper實例，銷毀重複的實例");
                 Destroy(gameObject);
                 return;
             }
@@ -40,7 +41,7 @@ namespace DeepAbyssHive.Core.Managers
             // 設置為不銷毀
             DontDestroyOnLoad(gameObject);
 
-            Debug.Log("[GameBootstrapper] 開始初始化核心服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 開始初始化核心服務...");
 
             InitializeServices();
             
@@ -53,10 +54,10 @@ namespace DeepAbyssHive.Core.Managers
             
             if (enableDebugLogging)
             {
-                Debug.Log("OK");
+                DAHLog.Info(LogCategory.CORE, "OK");
             }
 
-            Debug.Log("[GameBootstrapper] 核心服務初始化完成");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 核心服務初始化完成");
         }
 
         /// <summary>
@@ -94,7 +95,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeConfigManager()
         {
-            Debug.Log("[GameBootstrapper] 初始化配置管理器...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 初始化配置管理器...");
             
             // ConfigManager是單例，直接確保其初始化
             if (!ConfigManager.Instance.IsInitialized)
@@ -108,7 +109,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeSpatialIndexServices()
         {
-            Debug.Log("[GameBootstrapper] 初始化空間索引服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 初始化空間索引服務...");
             
             var spatialIndexService = new SpatialIndexService();
             ServiceLocator.Register<ISpatialIndexService>(spatialIndexService, "SpatialIndexService");
@@ -119,7 +120,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeCreepServices()
         {
-            Debug.Log("[GameBootstrapper] 初始化Creep服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 初始化Creep服務...");
 
             // 創建Creep服務實例
             var creepGridService = new CreepGridService();
@@ -143,7 +144,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeBuildingServices()
         {
-            Debug.Log("[GameBootstrapper] 初始化建築服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 初始化建築服務...");
 
             // 創建建築服務實例
             var buildingQueryService = new BuildingQueryService();
@@ -161,7 +162,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeUnitServices()
         {
-            Debug.Log("[GameBootstrapper] 初始化單位服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 初始化單位服務...");
 
             // 創建單位服務實例
             var unitQueryService = new UnitQueryService();
@@ -177,7 +178,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void InitializeOtherServices()
         {
-            Debug.Log("[GameBootstrapper] 初始化其他核心服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 初始化其他核心服務...");
             
             // 這裡可以添加其他需要的服務
             // 例如：音效服務、UI服務、存檔服務等
@@ -188,7 +189,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void ValidateServices()
         {
-            Debug.Log("[GameBootstrapper] 驗證服務註冊狀態...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 驗證服務註冊狀態...");
 
             var requiredServices = new System.Type[]
             {
@@ -209,18 +210,18 @@ namespace DeepAbyssHive.Core.Managers
             {
                 if (!ServiceLocator.IsRegistered<object>())  // TODO: fix generic constraint
                 {
-                    Debug.LogError($"[GameBootstrapper] 必要服務未註冊: {serviceType.Name}");
+                    DAHLog.Error(LogCategory.CORE, $"[GameBootstrapper] 必要服務未註冊: {serviceType.Name}");
                     allServicesRegistered = false;
                 }
             }
 
             if (allServicesRegistered)
             {
-                Debug.Log("[GameBootstrapper] 所有必要服務已正確註冊");
+                DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 所有必要服務已正確註冊");
             }
             else
             {
-                Debug.LogError("[GameBootstrapper] 部分必要服務未註冊，可能影響遊戲功能");
+                DAHLog.Error(LogCategory.CORE, "[GameBootstrapper] 部分必要服務未註冊，可能影響遊戲功能");
             }
         }
 
@@ -229,7 +230,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void OnApplicationQuit()
         {
-            Debug.Log("[GameBootstrapper] 應用程序退出，清理服務...");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 應用程序退出，清理服務...");
             ServiceLocator.Clear();
         }
 
@@ -241,7 +242,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             ServiceLocator.Clear();
             InitializeServices();
-            Debug.Log("[GameBootstrapper] 服務重新初始化完成");
+            DAHLog.Info(LogCategory.CORE, "[GameBootstrapper] 服務重新初始化完成");
         }
     }
 }

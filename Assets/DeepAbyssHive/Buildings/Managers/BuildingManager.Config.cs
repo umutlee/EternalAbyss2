@@ -4,6 +4,7 @@ using DeepAbyssHive.Buildings.Data;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Buildings.Utils;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Buildings.Managers
 {
@@ -28,7 +29,7 @@ namespace DeepAbyssHive.Buildings.Managers
         {
             if (_configInitialized) return;
 
-            Debug.Log($"[{_managerName}] 初始化配置系統...");
+            DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 初始化配置系統...");
 
             if (useScriptableObjectConfig)
             {
@@ -40,7 +41,7 @@ namespace DeepAbyssHive.Buildings.Managers
             }
 
             _configInitialized = true;
-            Debug.Log($"[{_managerName}] 配置系統初始化完成");
+            DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 配置系統初始化完成");
         }
 
         /// <summary>
@@ -63,7 +64,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 if (template != null)
                 {
                     _buildingTemplateCache[template.BuildingType] = template;
-                    Debug.Log($"[{_managerName}] 加載建築模板: {template.BuildingName} ({template.BuildingType})");
+                    DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 加載建築模板: {template.BuildingName} ({template.BuildingType})");
                 }
             }
 
@@ -76,11 +77,11 @@ namespace DeepAbyssHive.Buildings.Managers
                 if (template != null)
                 {
                     _researchTemplateCache[template.Id] = template;
-                    Debug.Log($"[{_managerName}] 加載研究模板: {template.ResearchName} ({template.Id})");
+                    DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 加載研究模板: {template.ResearchName} ({template.Id})");
                 }
             }
 
-            Debug.Log($"[{_managerName}] 從ScriptableObject加載了 {_buildingTemplateCache.Count} 個建築模板和 {_researchTemplateCache.Count} 個研究模板");
+            DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 從ScriptableObject加載了 {_buildingTemplateCache.Count} 個建築模板和 {_researchTemplateCache.Count} 個研究模板");
         }
 
         /// <summary>
@@ -88,7 +89,7 @@ namespace DeepAbyssHive.Buildings.Managers
         /// </summary>
         private void InitializeFromLegacyConfig()
         {
-            Debug.Log($"[{_managerName}] 使用舊版配置系統（向後兼容模式）");
+            DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 使用舊版配置系統（向後兼容模式）");
             // 這裡保留原有的硬編碼配置邏輯
             // 在完全遷移到ScriptableObject後可以移除
         }

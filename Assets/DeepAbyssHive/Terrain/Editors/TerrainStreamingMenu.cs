@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Terrain.Editors
 {
@@ -15,18 +16,18 @@ namespace DeepAbyssHive.Terrain.Editors
             var mgr = Object.FindObjectOfType<DeepAbyssHive.Terrain.Managers.TerrainManager>();
             if (mgr == null)
             {
-                Debug.LogWarning("[STREAM] TerrainManager not found in scene.");
+                DAHLog.Warning(LogCategory.TERRAIN, "[STREAM] TerrainManager not found in scene.");
                 return;
             }
 
             if (Selection.activeTransform == null)
             {
-                Debug.LogWarning("[STREAM] No Selection. Select a Transform first.");
+                DAHLog.Warning(LogCategory.TERRAIN, "[STREAM] No Selection. Select a Transform first.");
                 return;
             }
 
             mgr.SetStreamingTarget(Selection.activeTransform);
-            Debug.Log($"[STREAM] Target set to '{Selection.activeTransform.name}' via menu.");
+            DAHLog.Info(LogCategory.TERRAIN, $"[STREAM] Target set to '{Selection.activeTransform.name}' via menu.");
         }
     }
 }

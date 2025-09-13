@@ -18,19 +18,19 @@ namespace DeepAbyssHive.Core.Logging
             return $"[{cat}][{time}]{frame} ";
         }
 
-        public static void Info(LogCategory cat, string message, UnityEngine.Object ctx = null)
+        public static void Info(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
             if (ctx) Debug.Log(Prefix(cat) + message, ctx);
             else Debug.Log(Prefix(cat) + message);
         }
 
-        public static void Warn(LogCategory cat, string message, UnityEngine.Object ctx = null)
+        public static void Warn(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
             if (ctx) Debug.LogWarning(Prefix(cat) + message, ctx);
             else Debug.LogWarning(Prefix(cat) + message);
         }
 
-        public static void Error(LogCategory cat, string message, UnityEngine.Object ctx = null)
+        public static void Error(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
             if (ctx) Debug.LogError(Prefix(cat) + message, ctx);
             else Debug.LogError(Prefix(cat) + message);
@@ -38,7 +38,7 @@ namespace DeepAbyssHive.Core.Logging
 
         /// <summary>開發期噪音；正式版可關閉或改為條件編譯。</summary>
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
-        public static void Dev(LogCategory cat, string message, UnityEngine.Object ctx = null)
+        public static void Dev(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
             Info(cat, message, ctx);
         }

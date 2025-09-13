@@ -1,4 +1,5 @@
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Creep.Config
 {
@@ -70,7 +71,7 @@ namespace DeepAbyssHive.Creep.Config
         {
             var cfg = Current;
             // 以 DEV HUD 前綴輸出，與專案慣例一致；不影響 SMOKE。
-            Debug.Log($"[DEV HUD] Creep: slope={cfg.maxSlopeDegrees:0.#}°, step={cfg.maxStepHeight:0.###}, cooldown={cfg.neighborCooldownFrames}, blockMask={cfg.buildingBlockMask.value}");
+            DAHLog.Info(LogCategory.CONFIG, $"[DEV HUD] Creep: slope={cfg.maxSlopeDegrees:0.#}°, step={cfg.maxStepHeight:0.###}, cooldown={cfg.neighborCooldownFrames}, blockMask={cfg.buildingBlockMask.value}");
         }
     }
 }

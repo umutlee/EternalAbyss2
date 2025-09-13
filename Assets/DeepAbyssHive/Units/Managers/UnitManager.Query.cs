@@ -6,6 +6,7 @@ using DeepAbyssHive.Units.Data;
 using UnitAttributes = DeepAbyssHive.Units.Data.UnitAttributes;
 using UnitAttributeType = DeepAbyssHive.Units.Enums.UnitAttributes;
 using DeepAbyssHive.SpatialIndex.Data;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Units.Managers
 {
@@ -26,7 +27,7 @@ namespace DeepAbyssHive.Units.Managers
                 return hotData;
             }
             
-            Debug.LogWarning($"[{_managerName}] 尝试获取不存在的单位热数据: {unitId}");
+            DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试获取不存在的单位热数据: {unitId}");
             return new UnitHotData();
         }
 
@@ -42,7 +43,7 @@ namespace DeepAbyssHive.Units.Managers
                 return coldData;
             }
             
-            Debug.LogWarning($"[{_managerName}] 尝试获取不存在的单位冷数据: {unitId}");
+            DAHLog.Warning(LogCategory.UNITS, $"[{_managerName}] 尝试获取不存在的单位冷数据: {unitId}");
             return null;
         }
 

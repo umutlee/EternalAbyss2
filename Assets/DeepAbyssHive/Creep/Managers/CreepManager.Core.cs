@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.Buildings.Managers;
@@ -28,7 +29,7 @@ namespace DeepAbyssHive.Creep.Managers
         {
             if (IsInitialized) return;
 
-            Debug.Log("[CreepManager] 初始化菌毯管理器");
+            DAHLog.Info(LogCategory.MANAGER, "[CreepManager] 初始化菌毯管理器");
             
             // 加载配置
             LoadConfiguration();
@@ -41,17 +42,17 @@ namespace DeepAbyssHive.Creep.Managers
             // 获取其他管理器引用
             // TODO: 需要通过依赖注入或其他方式获取BuildingManager引用
             // _buildingManager = GameManager.Instance.GetManager<BuildingManager>();
-            Debug.Log("[CreepManager] BuildingManager引用暂时禁用，等待依赖注入实现");
+            DAHLog.Info(LogCategory.MANAGER, "[CreepManager] BuildingManager引用暂时禁用，等待依赖注入实现");
             
             IsInitialized = true;
-            Debug.Log("[CreepManager] 菌毯管理器初始化完成");
+            DAHLog.Info(LogCategory.MANAGER, "[CreepManager] 菌毯管理器初始化完成");
         }
 
         public void Cleanup()
         {
             if (!IsInitialized) return;
 
-            Debug.Log("[CreepManager] 清理菌毯管理器");
+            DAHLog.Info(LogCategory.MANAGER, "[CreepManager] 清理菌毯管理器");
             
             _creepGrid.Clear();
             _creepTiles.Clear();
@@ -180,7 +181,7 @@ namespace DeepAbyssHive.Creep.Managers
                 _updateInterval = _config.updateInterval;
                 _networkCheckInterval = _config.networkCheckInterval;
                 
-                Debug.Log($"[{_managerName}] 从配置加载菌毯参数：网格({_gridWidth}x{_gridHeight})，单元格大小({_gridCellSize})");
+                DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] 从配置加载菌毯参数：网格({_gridWidth}x{_gridHeight})，单元格大小({_gridCellSize})");
             }
             else
             {
@@ -196,7 +197,7 @@ namespace DeepAbyssHive.Creep.Managers
                 _updateInterval = 0.1f;
                 _networkCheckInterval = 2f;
                 
-                Debug.LogWarning($"[{_managerName}] 未找到CreepConfig配置，使用默认参数");
+                DAHLog.Warning(LogCategory.MANAGER, $"[{_managerName}] 未找到CreepConfig配置，使用默认参数");
             }
         }
 

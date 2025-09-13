@@ -158,7 +158,7 @@ namespace DeepAbyssHive.Core.Config
                 }
                 else
                 {
-                    Debug.LogWarning($"[ConfigManager] 重複的單位類型: {template.UnitType}");
+                    DAHLog.Warning(LogCategory.CONFIG, $"[ConfigManager] 重複的單位類型: {template.UnitType}");
                 }
             }
 
@@ -172,7 +172,7 @@ namespace DeepAbyssHive.Core.Config
                 }
                 else
                 {
-                    Debug.LogWarning($"[ConfigManager] 重複的建築類型: {template.BuildingType}");
+                    DAHLog.Warning(LogCategory.CONFIG, $"[ConfigManager] 重複的建築類型: {template.BuildingType}");
                 }
             }
 
@@ -186,7 +186,7 @@ namespace DeepAbyssHive.Core.Config
                 }
                 else
                 {
-                    Debug.LogWarning($"[ConfigManager] 重複的研究ID: {template.Id}");
+                    DAHLog.Warning(LogCategory.CONFIG, $"[ConfigManager] 重複的研究ID: {template.Id}");
                 }
             }
         }

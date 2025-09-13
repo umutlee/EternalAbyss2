@@ -1,6 +1,7 @@
 using ICreepSourceService = DeepAbyssHive.Creep.Interfaces.ICreepSourceService;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Logging;
 using DeepAbyssHive.Creep.Data;
 using CreepSourceType = DeepAbyssHive.Creep.Data.CreepSourceType;
 
@@ -102,7 +103,7 @@ namespace DeepAbyssHive.Creep.Services
             if (radius.HasValue)
             {
                 // Note: 新介面沒有直接更新半徑的方法，半徑由強度和類型決定
-                Debug.LogWarning("UpdateSource: 半徑更新已改為由強度和類型自動計算");
+                DAHLog.Warning(LogCategory.SERVICE, "UpdateSource: 半徑更新已改為由強度和類型自動計算");
             }
 
             return true;
@@ -405,12 +406,12 @@ namespace DeepAbyssHive.Creep.Services
             try
             {
                 // TODO: 实现菌毯状态序列化和保存
-                Debug.LogWarning("[CreepSimulationService] SaveCreepState 功能待实现");
+                DAHLog.Warning(LogCategory.SERVICE, "[CreepSimulationService] SaveCreepState 功能待实现");
                 return false;
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[CreepSimulationService] 保存菌毯状态失败: {ex.Message}");
+                DAHLog.Error(LogCategory.SERVICE, $"[CreepSimulationService] 保存菌毯状态失败: {ex.Message}");
                 return false;
             }
         }
@@ -426,12 +427,12 @@ namespace DeepAbyssHive.Creep.Services
             try
             {
                 // TODO: 实现菌毯状态反序列化和加载
-                Debug.LogWarning("[CreepSimulationService] LoadCreepState 功能待实现");
+                DAHLog.Warning(LogCategory.SERVICE, "[CreepSimulationService] LoadCreepState 功能待实现");
                 return false;
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[CreepSimulationService] 加载菌毯状态失败: {ex.Message}");
+                DAHLog.Error(LogCategory.SERVICE, $"[CreepSimulationService] 加载菌毯状态失败: {ex.Message}");
                 return false;
             }
         }
@@ -459,11 +460,11 @@ namespace DeepAbyssHive.Creep.Services
             if (IsInitialized)
                 return;
 
-            Debug.Log("[CreepSimulationService] 初始化菌毯模拟服务");
+            DAHLog.Info(LogCategory.SERVICE, "[CreepSimulationService] 初始化菌毯模拟服务");
             
             IsInitialized = true;
             
-            Debug.Log("[CreepSimulationService] 菌毯模拟服务初始化完成");
+            DAHLog.Info(LogCategory.SERVICE, "[CreepSimulationService] 菌毯模拟服务初始化完成");
         }
 
         /// <summary>
@@ -485,7 +486,7 @@ namespace DeepAbyssHive.Creep.Services
             if (!IsInitialized)
                 return;
 
-            Debug.Log("[CreepSimulationService] 清理菌毯模拟服务");
+            DAHLog.Info(LogCategory.SERVICE, "[CreepSimulationService] 清理菌毯模拟服务");
             
             _simulationPaused = false;
             _globalGrowthMultiplier = 1f;
@@ -493,7 +494,7 @@ namespace DeepAbyssHive.Creep.Services
             
             IsInitialized = false;
             
-            Debug.Log("[CreepSimulationService] 菌毯模拟服务清理完成");
+            DAHLog.Info(LogCategory.SERVICE, "[CreepSimulationService] 菌毯模拟服务清理完成");
         }
 
         #endregion
