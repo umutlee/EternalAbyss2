@@ -1,46 +1,96 @@
 {
-  "name": "default-agent",
-  "version": "1.0.0",
+  "name": "amazon_q_default",
   "description": "Default agent configuration",
   "mcpServers": {
     "Context7": {
       "command": "npx",
+      "disabled": false,
+      "timeout": 60000,
       "args": [
         "-y ",
         "@upstash/context7-mcp@latest"
-      ],
-      "env": {},
-      "timeout": 60000
+      ]
     },
-    "Sequential Thinking": {
+    "SequentialThinking": {
       "command": "npx",
+      "disabled": false,
+      "timeout": 60000,
       "args": [
         "-y",
         "@modelcontextprotocol/server-sequential-thinking"
-      ],
-      "env": {},
-      "timeout": 60000
+      ]
     },
     "vibedev-specs": {
       "command": "npx",
+      "disabled": false,
+      "timeout": 60000,
       "args": [
         "-y",
         "vibedev-specs-mcp@latest"
+      ]
+    },
+    "neo4j-cypher": {
+      "command": "uvx",
+      "args": [
+        "mcp-neo4j-cypher@0.3.0"
       ],
-      "env": {},
-      "timeout": 60000
+      "env": {
+        "NEO4J_URI": "neo4j://127.0.0.1:7687",
+        "NEO4J_USERNAME": "neo4j",
+        "NEO4J_PASSWORD": "!powerball12345",
+        "NEO4J_DATABASE": "neo4j"
+      },
+      "timeout": 60000,
+      "disabled": false
+    },
+    "neo4j-memory": {
+      "command": "uvx",
+      "args": [
+        "mcp-neo4j-memory@0.2.0"
+      ],
+      "env": {
+        "NEO4J_URL": "neo4j://127.0.0.1:7687",
+        "NEO4J_USERNAME": "neo4j",
+        "NEO4J_PASSWORD": "!powerball12345"
+      },
+      "timeout": 60,
+      "disabled": false
+    },
+    "neo4j-data-modeling": {
+      "command": "uvx",
+      "args": [
+        "mcp-neo4j-data-modeling@0.3.0"
+      ],
+      "timeout": 60,
+      "disabled": false
+    },
+    "unityMCP": {
+      "command": "/usr/local/bin/uv",
+      "args": [
+        "--directory",
+        "/usr/local/bin/UnityMCP/UnityMcpServer/src",
+        "run",
+        "server.py"
+      ],
+      "timeout": 60,
+      "disabled": false
     }
   },
   "tools": [
-    "@Context7",
-    "@Sequential Thinking",
     "fsRead",
     "fsWrite",
     "fsReplace",
     "listDirectory",
     "fileSearch",
     "executeBash",
-    "codeReview"
+    "codeReview",
+    "@Context7",
+    "@SequentialThinking",
+    "@vibedev-specs",
+    "@neo4j-cypher",
+    "@neo4j-memory",
+    "@unityMCP",
+    "@neo4j-data-modeling"
   ],
   "allowedTools": [
     "fsRead",
@@ -49,7 +99,49 @@
     "listDirectory",
     "fileSearch",
     "executeBash",
-    "codeReview"
+    "codeReview",
+    "@Context7/resolve-library-id",
+    "@Context7/get-library-docs",
+    "@SequentialThinking/sequentialthinking",
+    "@vibedev-specs/vibedev_specs_workflow_start",
+    "@vibedev-specs/vibedev_specs_goal_confirmed",
+    "@vibedev-specs/vibedev_specs_requirements_start",
+    "@vibedev-specs/vibedev_specs_requirements_confirmed",
+    "@vibedev-specs/vibedev_specs_design_start",
+    "@vibedev-specs/vibedev_specs_design_confirmed",
+    "@vibedev-specs/vibedev_specs_tasks_start",
+    "@vibedev-specs/vibedev_specs_tasks_confirmed",
+    "@vibedev-specs/vibedev_specs_execute_start",
+    "@neo4j-cypher/get_neo4j_schema",
+    "@neo4j-cypher/read_neo4j_cypher",
+    "@neo4j-cypher/write_neo4j_cypher",
+    "@neo4j-memory/read_graph",
+    "@neo4j-memory/create_entities",
+    "@neo4j-memory/create_relations",
+    "@neo4j-memory/add_observations",
+    "@neo4j-memory/delete_entities",
+    "@neo4j-memory/delete_observations",
+    "@neo4j-memory/delete_relations",
+    "@neo4j-memory/search_memories",
+    "@neo4j-memory/find_memories_by_name",
+    "@unityMCP/manage_script",
+    "@unityMCP/manage_scene",
+    "@unityMCP/manage_editor",
+    "@unityMCP/manage_gameobject",
+    "@unityMCP/manage_asset",
+    "@unityMCP/read_console",
+    "@unityMCP/execute_menu_item",
+    "@neo4j-data-modeling/validate_node",
+    "@neo4j-data-modeling/validate_relationship",
+    "@neo4j-data-modeling/validate_data_model",
+    "@neo4j-data-modeling/load_from_arrows_json",
+    "@neo4j-data-modeling/export_to_arrows_json",
+    "@neo4j-data-modeling/get_mermaid_config_str",
+    "@neo4j-data-modeling/get_node_cypher_ingest_query",
+    "@neo4j-data-modeling/get_relationship_cypher_ingest_query",
+    "@neo4j-data-modeling/get_constraints_cypher_queries",
+    "@neo4j-data-modeling/get_example_data_model",
+    "@neo4j-data-modeling/list_example_data_models"
   ],
   "toolsSettings": {
     "execute_bash": {
@@ -67,6 +159,8 @@
       ]
     }
   },
-  "includedFiles": [],
-  "resources": []
+  "resources": [],
+  "prompt": "",
+  "toolAliases": {},
+  "useLegacyMcpJson": false
 }
