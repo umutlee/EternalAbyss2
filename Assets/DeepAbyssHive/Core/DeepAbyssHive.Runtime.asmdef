@@ -1,13 +1,6 @@
 {
   "name": "DeepAbyssHive.Runtime",
   "references": [
-    "DeepAbyssHive.Units",
-    "DeepAbyssHive.Buildings",
-    "DeepAbyssHive.Creep",
-    "DeepAbyssHive.Terrain",
-    "DeepAbyssHive.SpatialIndex",
-    "DeepAbyssHive.Common",
-    "DeepAbyssHive.Research",
     "Unity.Mathematics"
   ],
   "includePlatforms": [],

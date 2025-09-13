@@ -1,7 +1,8 @@
 {
   "name": "DeepAbyssHive.Buildings",
   "references": [
-    "DeepAbyssHive.Runtime"
+    "DeepAbyssHive.Runtime",
+    "DeepAbyssHive.Common"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
