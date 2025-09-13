@@ -144,7 +144,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private void OnGUI()
         {
             if (!_visible) return;
-            _rect = GUI.Window(0xDAH001, _rect, DrawWindow, "Health HUD");
+            _rect = GUI.Window(0xDA0001, _rect, DrawWindow, "Health HUD");
         }
 
         private void DrawWindow(int id)
