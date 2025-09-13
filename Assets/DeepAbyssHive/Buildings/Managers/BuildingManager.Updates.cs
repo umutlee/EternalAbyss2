@@ -116,7 +116,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 buildingData.State = BuildingState.Operational;
                 buildingData.Health = buildingData.MaxHealth;
                 
-                DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 建筑建造完成: ID={buildingData.BuildingId}");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 建筑建造完成: ID={buildingData.BuildingId}");
             }
         }
 
@@ -139,7 +139,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 // 应用升级效果
                 ApplyUpgradeEffects(buildingData);
                 
-                DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 建筑升级完成: ID={buildingData.BuildingId}, 等级={buildingData.Level}");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 建筑升级完成: ID={buildingData.BuildingId}, 等级={buildingData.Level}");
             }
         }
 
@@ -160,7 +160,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 buildingData.Health = buildingData.MaxHealth;
                 buildingData.State = BuildingState.Operational;
                 
-                DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 建筑修理完成: ID={buildingData.BuildingId}");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 建筑修理完成: ID={buildingData.BuildingId}");
             }
         }
 

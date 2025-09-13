@@ -81,7 +81,7 @@ namespace DeepAbyssHive.Buildings.Managers
             {
                 buildingData.State = BuildingState.Operational;
                 buildingData.Health = buildingData.MaxHealth;
-                DAHLog.Info(LogCategory.BUILDING, $"[BuildingManager] 建筑建造完成: ID={buildingId}");
+                DAHLog.Info(LogCategory.BUILDINGS, $"[BuildingManager] 建筑建造完成: ID={buildingId}");
             }
 
             _buildings[buildingId] = buildingData;

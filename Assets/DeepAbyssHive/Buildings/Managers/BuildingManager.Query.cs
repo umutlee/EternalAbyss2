@@ -173,7 +173,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     // 恢复建筑运行
                     building.State = BuildingState.Operational;
-                    DAHLog.Info(LogCategory.BUILDING, $"[BuildingManager] 建筑 {building.BuildingId} 因菌毯扩张恢复运行");
+                    DAHLog.Info(LogCategory.BUILDINGS, $"[BuildingManager] 建筑 {building.BuildingId} 因菌毯扩张恢复运行");
                 }
             }
         }
@@ -193,7 +193,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     // 暂停建筑运行
                     building.State = BuildingState.Paused;
-                    DAHLog.Info(LogCategory.BUILDING, $"[BuildingManager] 建筑 {building.BuildingId} 因菌毯移除暂停运行");
+                    DAHLog.Info(LogCategory.BUILDINGS, $"[BuildingManager] 建筑 {building.BuildingId} 因菌毯移除暂停运行");
                 }
             }
         }

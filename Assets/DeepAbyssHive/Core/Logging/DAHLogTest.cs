@@ -39,7 +39,7 @@ namespace DeepAbyssHive.Core.Logging
             DAHLog.Info(LogCategory.PATHFINDING, "路徑規劃測試");
             
             // 測試不同日誌等級
-            DAHLog.Warn(LogCategory.SYSTEM, "這是一個警告訊息");
+            DAHLog.Warning(LogCategory.SYSTEM, "這是一個警告訊息");
             DAHLog.Error(LogCategory.SYSTEM, "這是一個錯誤訊息");
             DAHLog.Dev(LogCategory.DEV, "這是開發期日誌（僅 Editor 模式）");
             

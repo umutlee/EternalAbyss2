@@ -30,7 +30,7 @@ namespace DeepAbyssHive.Buildings.Managers
         {
             if (!_buildings.TryGetValue(buildingId, out BuildingData buildingData))
             {
-                DAHLog.Warning(LogCategory.BUILDING, $"[{_managerName}] 尝试在不存在的建筑中开始研究: {buildingId}");
+                DAHLog.Warning(LogCategory.BUILDINGS, $"[{_managerName}] 尝试在不存在的建筑中开始研究: {buildingId}");
                 return;
             }
             
@@ -49,14 +49,14 @@ namespace DeepAbyssHive.Buildings.Managers
         {
             if (!_researchTemplates.TryGetValue(researchId, out ResearchTemplate template))
             {
-                DAHLog.Error(LogCategory.BUILDING, $"[{_managerName}] 研究模板不存在: {researchId}");
+                DAHLog.Error(LogCategory.BUILDINGS, $"[{_managerName}] 研究模板不存在: {researchId}");
                 return false;
             }
             
             // 检查是否已经研究过
             if (IsResearchCompleted(researchId, playerId))
             {
-                DAHLog.Warning(LogCategory.BUILDING, $"[{_managerName}] 研究已完成: {researchId}");
+                DAHLog.Warning(LogCategory.BUILDINGS, $"[{_managerName}] 研究已完成: {researchId}");
                 return false;
             }
             
@@ -67,7 +67,7 @@ namespace DeepAbyssHive.Buildings.Managers
                 {
                     if (!IsResearchCompleted(prerequisite, playerId))
                     {
-                        DAHLog.Warning(LogCategory.BUILDING, $"[{_managerName}] 前置研究未完成: {prerequisite}");
+                        DAHLog.Warning(LogCategory.BUILDINGS, $"[{_managerName}] 前置研究未完成: {prerequisite}");
                         return false;
                     }
                 }
@@ -76,7 +76,7 @@ namespace DeepAbyssHive.Buildings.Managers
             // 开始研究
             CompleteResearch(researchId, playerId);
             
-            DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 开始研究: {researchId}, 玩家={playerId}");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 开始研究: {researchId}, 玩家={playerId}");
             
             return true;
         }
@@ -88,7 +88,7 @@ namespace DeepAbyssHive.Buildings.Managers
         public void CancelResearch(int buildingId)
         {
             // 简化实现，实际项目中需要完整的研究系统
-            DAHLog.Info(LogCategory.BUILDING, $"[{_managerName}] 取消研究: 建筑={buildingId}");
+            DAHLog.Info(LogCategory.BUILDINGS, $"[{_managerName}] 取消研究: 建筑={buildingId}");
         }
 
         /// <summary>

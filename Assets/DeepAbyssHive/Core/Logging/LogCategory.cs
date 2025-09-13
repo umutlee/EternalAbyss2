@@ -22,7 +22,6 @@ namespace DeepAbyssHive.Core.Logging
         SERVICE,        // 服務層
         MANAGER,        // 管理器層
         CORE,           // 核心系統
-        BUILDING,       // 建築系統（別名）
         SPATIAL,        // 空間索引
         TEST            // 測試系統
     }
