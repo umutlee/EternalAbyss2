@@ -1,6 +1,7 @@
 {
-  "name": "DeepAbyssHive.Runtime",
+  "name": "DeepAbyssHive.Tests",
   "references": [
+    "DeepAbyssHive.Runtime",
     "DeepAbyssHive.Units",
     "DeepAbyssHive.Buildings",
     "DeepAbyssHive.Creep",
@@ -8,15 +9,20 @@
     "DeepAbyssHive.SpatialIndex",
     "DeepAbyssHive.Common",
     "DeepAbyssHive.Research",
-    "Unity.Mathematics"
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
   "versionDefines": [],
   "noEngineReferences": false
 }
