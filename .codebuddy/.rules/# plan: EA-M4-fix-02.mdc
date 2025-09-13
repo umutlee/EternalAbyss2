@@ -1,0 +1,75 @@
+description: EA-M4-FIX-02 統一 ISpatialIndex 別名用法＋標準化 CreepTile.Status 使用（以 CreepTileStatusCompat 為唯一來源） — 2025-09-14 01:05 Asia/Taipei
+globs:
+  - Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+alwaysApply: true
+
+# PLAN
+- 將欄位 `_spatialIndex` 改為使用檔頭已存在的別名 `ISpatialIndex`（移除冗餘完整限定名）。
+- 將 `CreepTile.Status` 的寫入/判斷，統一以 `CreepTileStatusCompat` 為唯一枚舉來源：
+  - 建立 using 別名 `CTSC = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat`。
+  - 所有賦值以 `tile.Status = (int)CTSC.Xxx`；所有 switch case 以 `case (int)CTSC.Xxx:`。
+- 僅改本檔，**不調整資料結構型別**（假設 `Status` 為 `int`），避免跨檔重構。
+
+# CHANGES
+
+PATCH: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+*** Begin Patch
+*** Update File: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+@@
+ using DeepAbyssHive.Creep.Enums;
+ using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
++using CTSC = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat;
+@@
+-        private DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex _spatialIndex;
++        private ISpatialIndex _spatialIndex;
+@@
+-            switch (tile.Status)
++            switch (tile.Status)
+             {
+-                case (CreepTileStatus)0:
++                case (int)CTSC.Healthy:
+                     // 健康状态下不需要特殊处理
+                     break;
+-                case (CreepTileStatus)1:
++                case (int)CTSC.Weakened:
+                     UpdateWeakenedTile(tile, deltaTime);
+                     break;
+-                case (CreepTileStatus)2:
++                case (int)CTSC.Collapsing:
+                     UpdateCollapsingTile(tile, deltaTime);
+                     break;
+             }
+*** End Patch
+
+PATCH: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+*** Begin Patch
+*** Update File: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+@@
+-            tile.Status = (CreepTileStatus)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing;
++            tile.Status = (int)CTSC.Collapsing;
+*** End Patch
+
+PATCH: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+*** Begin Patch
+*** Update File: Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs
+@@
+-                Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy,
++                Status = (int)CTSC.Healthy,
+*** End Patch
+
+# 註解
+- 這是**語意一致性**修復：不更動 `CreepTile` 的欄位型別（假設為 `int`），僅統一「常數來源」為 `CreepTileStatusCompat`，避免跨 enum 名稱的混用與誤解。
+- 改動行數 ≈10，無跨檔影響；可隨時回滾。
+
+# 驗收步驟
+1) 重新編譯：無新增警告/錯誤（特別是 enum 名稱衝突）。
+2) 執行單元邏輯：
+   - `CreateCreepTile()` 產生的 `Status` 為 `Healthy`（以 CTSC）。
+   - 觸發 `UpdateWeakenedTile()` → `Status` 轉為 `Collapsing`（以 CTSC）。
+   - `UpdateTileStatus()` 的 switch 正確落入 `Healthy/Weakened/Collapsing` 分支。
+3) 觀察 Console：不應有 enum 轉換相關例外。
+
+# 回滾指引
+- 還原 `Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs` 到改動前版本即可。
+
+
