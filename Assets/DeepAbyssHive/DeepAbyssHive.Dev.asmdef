@@ -1,0 +1,13 @@
+{
+  "name": "DeepAbyssHive.Dev",
+  "references": [ "DeepAbyssHive.Runtime", "DeepAbyssHive.Editor" ],
+  "includePlatforms": [ "Editor" ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [ "DEV_TOOLS" ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
