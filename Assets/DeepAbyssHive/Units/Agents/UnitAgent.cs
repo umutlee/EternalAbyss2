@@ -176,7 +176,7 @@ namespace DeepAbyssHive.Units.Agents
                 float offMul = (cfg != null) ? Mathf.Max(0.01f, cfg.offCreepSpeedMul) : 1f;
                 _speedFactor = on ? onMul : offMul;
                 _isOnCreep = on;
-                DAHLog.Dev($"[DEV] UnitAgent: creep={(on ? "ON" : "OFF")} speedMul={_speedFactor:0.##}");
+                DAHLog.Dev(LogCategory.UNITS, $"[DEV] UnitAgent: creep={(on ? "ON" : "OFF")} speedMul={_speedFactor:0.##}");
             }
             else
             {
