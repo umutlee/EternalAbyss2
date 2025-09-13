@@ -102,17 +102,32 @@ namespace DeepAbyssHive.EditorTools.ProjectStructure
 
         private void CreateAsmdefs()
         {
+            // Ensure target folders
             EnsureFolder($"{Root}");
             EnsureFolder($"{Root}/Editor");
             EnsureFolder($"{Root}/Dev");
-            EnsureFolder($"{Root}/Dev/Logging/Editor");
-            EnsureFolder($"{Root}/Core/Logging");
 
+            // Legacy cleanup: if Editor/Dev asmdefs mistakenly exist at root, delete them before writing
+            var legacyEditorPath = $"{Root}/DeepAbyssHive.Editor.asmdef";
+            var legacyDevPath    = $"{Root}/DeepAbyssHive.Dev.asmdef";
+            if (AssetDatabase.LoadAssetAtPath<TextAsset>(legacyEditorPath) != null)
+            {
+                AssetDatabase.DeleteAsset(legacyEditorPath);
+                Append($"[ASMDEF][CLEAN] Removed legacy {legacyEditorPath}");
+            }
+            if (AssetDatabase.LoadAssetAtPath<TextAsset>(legacyDevPath) != null)
+            {
+                AssetDatabase.DeleteAsset(legacyDevPath);
+                Append($"[ASMDEF][CLEAN] Removed legacy {legacyDevPath}");
+            }
+
+            // Write (or repair) asmdefs to correct locations
             WriteText($"{Root}/DeepAbyssHive.Runtime.asmdef", RUNTIME_ASMDEF);
-            WriteText($"{Root}/DeepAbyssHive.Editor.asmdef", EDITOR_ASMDEF);
-            WriteText($"{Root}/DeepAbyssHive.Dev.asmdef", DEV_ASMDEF);
+            WriteText($"{Root}/Editor/DeepAbyssHive.Editor.asmdef", EDITOR_ASMDEF);
+            WriteText($"{Root}/Dev/DeepAbyssHive.Dev.asmdef", DEV_ASMDEF);
+
             AssetDatabase.Refresh();
-            Append("[ASMDEF] Created/Updated 3 asmdefs.");
+            Append("[ASMDEF] Created/Updated Runtime (root), Editor (Editor/), Dev (Dev/) asmdefs.");
         }
 
         private void FixNamespaces()
