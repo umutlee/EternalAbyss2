@@ -373,6 +373,43 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **回滾保證**: 每個階段都標記為安全回滾點
 - **追蹤機制**: 記錄為 ProjectMilestone 便於管理
 
+## T14 Assembly Definition 架構重構 ✅ 已完成 (2025-09-14)
+
+### 問題背景
+- **循環依賴危機**: 12 個 Assembly Definition 文件形成複雜循環依賴網
+- **編譯錯誤爆發**: 初次修復嘗試導致 80+ 編譯錯誤，Core 模組無法找到業務模組引用
+- **架構債務**: 過度細分的 Assembly Definition 導致維護複雜度指數增長
+
+### T14 解決方案：統一 Assembly Definition
+- **核心原則**: 單一根級 Assembly Definition，消除內部模組邊界
+- **文件結構**:
+  - `Assets/DeepAbyssHive/DeepAbyssHive.Runtime.asmdef` (統一運行時程式集)
+  - `Assets/DeepAbyssHive/Editor/DeepAbyssHive.Editor.asmdef` (Editor 專用程式集)
+- **刪除文件**: 移除所有子模組 .asmdef 文件 (Buildings, Common, Creep, Core, Research, SpatialIndex, Terrain, Tests, Units)
+
+### 實施過程與挑戰
+1. **第一次嘗試失敗**: 創建分層架構，Core 作為底層，導致 Core 無法管理業務模組
+2. **T14 正確理解**: 統一程式集邊界，所有業務邏輯在同一 Assembly 內
+3. **清理衝突**: 解決重複 Assembly Definition 文件問題
+4. **命名空間修復**: 修復 CreepConfigSO 等類型的命名空間引用問題
+
+### 關鍵修復
+- **CreepManager.Core.cs LoadConfiguration()**: 修復大括號錯位與 NullConfig 後備參數
+- **Assembly Definition 清理**: 移除重複文件，統一到正確目錄結構
+- **命名空間統一**: 解決 using 語句衝突和類型找不到問題
+
+### 經驗教訓
+- **過度工程化風險**: Assembly Definition 過度細分會帶來維護負擔
+- **依賴關係複雜性**: 業務模組間的相互依賴難以用 Assembly 邊界清晰分離
+- **Unity 限制**: 每個目錄只能有一個 .asmdef 文件的限制
+- **漸進式重構**: 大型架構變更需要分步驟進行，避免同時引入多個變數
+
+### 最終狀態
+- ✅ **零編譯錯誤**: 所有 CS 錯誤已解決
+- ✅ **統一程式集**: DeepAbyssHive.Runtime 包含所有業務邏輯
+- ✅ **Editor 分離**: DeepAbyssHive.Editor 獨立處理 Editor 工具
+- ✅ **架構簡化**: 消除循環依賴，降低維護複雜度
+
 ---
 
 ## 📌 附錄：2025-09-11 更新（M4 PathJobScheduler 診斷補丁完成）
