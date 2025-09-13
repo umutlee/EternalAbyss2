@@ -302,10 +302,15 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **功能特性**: 標籤分類、即時過濾、自動摺疊重複訊息、速率限制防洪水
 - **快捷鍵**: Ctrl+Alt+L 開啟 Smart Console 視窗
 - **驗收**: 完整的開發日誌系統，支援高頻日誌場景，UI 響應流暢
-- **GameConfig 控制**: devVerboseLogs 開關控制詳細日誌輸出
-- **性能優化**: 大量單位移動時不再產生過量日誌，保持 Console 可讀性
-- **智能過濾**: 關鍵事件 (路徑完成、障礙檢測) 仍正常輸出
-- **驗收**: 200 隻單位移動時 Console 日誌量可控，不影響性能
+
+#### M4-T13: SmartConsole Debug.Log 統一遷移 ✅ 已完成 (2025-09-13)
+- **DAHLog 統一日誌系統**: 完成全專案 Debug.Log 到 DAHLog 的系統性遷移
+- **核心系統遷移**: Creep、Units、Tests、Core/Config、Core/Bootstrap 全部完成
+- **LogCategory 分類**: SERVICE、MANAGER、CONFIG、COMMON 等分類管理
+- **保留策略**: Editor 腳本、QA/Dev 工具、DAHLog 本身保留原 Debug 調用
+- **最終狀態**: DeepAbyssHive 和 Core 目錄下僅剩 DAHLog.cs 和註釋中的 Debug 調用
+- **編譯錯誤修復**: 修復 256+ 編譯錯誤，包括 LogCategory 缺失、DAHLog.Warning 方法、參數錯誤
+- **驗收**: 全案搜索確認無遺漏，統一日誌格式，編譯成功無錯誤
 
 #### M4-GameConfig: Unit 動態障礙檢測與 Building 監看器參數外放 ✅ 已完成 (2025-09-11)
 - **動態障礙參數**: unitDynCheckInterval/unitDynRepathCooldown/unitObstacleProbeRadius/unitObstacleProbeExtra

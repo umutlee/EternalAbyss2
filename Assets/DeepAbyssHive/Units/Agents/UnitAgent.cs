@@ -54,7 +54,7 @@ namespace DeepAbyssHive.Units.Agents
             float now = Time.unscaledTime;
             if (now - _lastVerboseLogAt < 1f) return;
             _lastVerboseLogAt = now;
-            DAHLog.Dev(message);
+            DAHLog.Dev(LogCategory.UNITS, message);
         }
 
         void OnEnable()

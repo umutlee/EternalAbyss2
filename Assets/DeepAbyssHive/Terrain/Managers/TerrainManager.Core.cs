@@ -166,7 +166,7 @@ namespace DeepAbyssHive.Terrain.Managers
                 _config = ScriptableObject.CreateInstance<TerrainConfigSO>();
 
             // Dev 訊息（驗收需要）- 每次 ApplyConfig 都顯示
-            DAHLog.Dev($"[DEV HUD] Terrain: chunkSize={_config.chunkSize}, LOD={_config.maxLODLevels}, view={_config.viewDistance}");
+            DAHLog.Dev(LogCategory.MANAGER, $"[DEV HUD] Terrain: chunkSize={_config.chunkSize}, LOD={_config.maxLODLevels}, view={_config.viewDistance}");
 
             // 若關鍵維度變更，後續重建（佔位，不阻擋）
             bool changed = (oldChunkSize != _config.chunkSize)
