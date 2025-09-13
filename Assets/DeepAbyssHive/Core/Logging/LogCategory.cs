@@ -14,6 +14,16 @@ namespace DeepAbyssHive.Core.Logging
         BUILDINGS,      // 建築系統
         PATHFINDING,    // 路徑規劃
         UI,             // 使用者介面
-        DEV             // 開發工具
+        DEV,            // 開發工具
+        
+        // 新增的分類
+        PLACEMENT,      // 建築放置系統
+        CONFIG,         // 配置系統
+        SERVICE,        // 服務層
+        MANAGER,        // 管理器層
+        CORE,           // 核心系統
+        BUILDING,       // 建築系統（別名）
+        SPATIAL,        // 空間索引
+        TEST            // 測試系統
     }
 }

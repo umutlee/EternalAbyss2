@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Logging.Editor
 {
@@ -52,6 +53,11 @@ namespace DeepAbyssHive.Core.Logging.Editor
 
         // 正則解析 DAHLog 格式：[CAT][HH:mm:ss.fff][frame] message
         private static readonly Regex LogPattern = new Regex(@"^\[(\w+)\]\[(\d{2}:\d{2}:\d{2}\.\d{3})\](?:\[(\d+)\])?\s*(.*)$");
+
+        // --- 新增：左側分類面板/控制狀態 ---
+        private bool _allLogsScreen = false;          // 顯示全部（忽略分類/型別/solo 過濾，但仍套用 Search）
+        private float _sidebarWidth = 180f;           // 左側面板寬度
+        private Vector2 _sidebarScroll;               // 左側面板滾動
 
         void OnEnable()
         {
@@ -143,17 +149,21 @@ namespace DeepAbyssHive.Core.Logging.Editor
 
             foreach (var log in _allLogs)
             {
-                // Solo 模式過濾
-                if (_soloCategory.HasValue && log.category != _soloCategory.Value)
-                    continue;
+                // All Logs Screen：忽略分類/型別/solo 過濾，只做搜尋
+                if (!_allLogsScreen)
+                {
+                    // Solo 模式過濾
+                    if (_soloCategory.HasValue && log.category != _soloCategory.Value)
+                        continue;
 
-                // 分類過濾
-                if (!_categoryFilters.GetValueOrDefault(log.category, true))
-                    continue;
+                    // 分類過濾
+                    if (!_categoryFilters.GetValueOrDefault(log.category, true))
+                        continue;
 
-                // 類型過濾
-                if (!_typeFilters.GetValueOrDefault(log.type, true))
-                    continue;
+                    // 類型過濾
+                    if (!_typeFilters.GetValueOrDefault(log.type, true))
+                        continue;
+                }
 
                 // 搜尋過濾
                 if (!string.IsNullOrEmpty(_searchText) && 
@@ -169,8 +179,19 @@ namespace DeepAbyssHive.Core.Logging.Editor
         void OnGUI()
         {
             InitStyles();
+            
+            EditorGUILayout.BeginHorizontal();
+            
+            // 左側邊欄
+            DrawSidebar();
+            
+            // 右側主要區域
+            EditorGUILayout.BeginVertical();
             DrawToolbar();
             DrawLogList();
+            EditorGUILayout.EndVertical();
+            
+            EditorGUILayout.EndHorizontal();
         }
 
         void InitStyles()
@@ -230,76 +251,121 @@ namespace DeepAbyssHive.Core.Logging.Editor
 
             EditorGUILayout.EndHorizontal();
 
-            // 分類過濾器
-            DrawCategoryFilters();
 
-            // 類型過濾器
-            DrawTypeFilters();
         }
 
-        void DrawCategoryFilters()
-        {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Categories:", GUILayout.Width(70));
 
-            // Solo 模式按鈕
+
+        void DrawSidebar()
+        {
+            EditorGUILayout.BeginVertical(GUILayout.Width(_sidebarWidth));
+            
+            // All Logs Screen 開關
+            var newAllLogs = EditorGUILayout.Toggle("All Logs Screen", _allLogsScreen);
+            if (newAllLogs != _allLogsScreen)
+            {
+                _allLogsScreen = newAllLogs;
+                RefreshFilteredLogs();
+            }
+            
+            EditorGUILayout.Space();
+            
+            // Enable All / Disable All 按鈕
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Enable All", EditorStyles.miniButtonLeft))
+            {
+                foreach (var key in _categoryFilters.Keys.ToList())
+                {
+                    _categoryFilters[key] = true;
+                }
+                foreach (var key in _typeFilters.Keys.ToList())
+                {
+                    _typeFilters[key] = true;
+                }
+                _soloCategory = null;
+                RefreshFilteredLogs();
+            }
+            
+            if (GUILayout.Button("Disable All", EditorStyles.miniButtonRight))
+            {
+                foreach (var key in _categoryFilters.Keys.ToList())
+                {
+                    _categoryFilters[key] = false;
+                }
+                foreach (var key in _typeFilters.Keys.ToList())
+                {
+                    _typeFilters[key] = false;
+                }
+                _soloCategory = null;
+                RefreshFilteredLogs();
+            }
+            EditorGUILayout.EndHorizontal();
+            
+            EditorGUILayout.Space();
+            
+            // 分類過濾器（垂直佈局）
+            _sidebarScroll = EditorGUILayout.BeginScrollView(_sidebarScroll);
+            
+            GUILayout.Label("Categories:", EditorStyles.boldLabel);
+            
+            // Solo 模式顯示
             if (_soloCategory.HasValue)
             {
                 GUI.backgroundColor = Color.yellow;
-                if (GUILayout.Button($"Solo: {_soloCategory.Value}", _categoryButtonStyle))
+                if (GUILayout.Button($"Solo: {_soloCategory.Value}", EditorStyles.miniButton))
                 {
                     _soloCategory = null;
                     RefreshFilteredLogs();
                 }
                 GUI.backgroundColor = Color.white;
+                EditorGUILayout.Space();
             }
-
+            
+            // 分類 Checkbox
             foreach (LogCategory cat in Enum.GetValues(typeof(LogCategory)))
             {
+                EditorGUILayout.BeginHorizontal();
+                
                 var isActive = _categoryFilters.GetValueOrDefault(cat, true);
                 var isSolo = _soloCategory == cat;
-
-                if (isSolo) GUI.backgroundColor = Color.yellow;
-                else if (isActive) GUI.backgroundColor = Color.green;
-                else GUI.backgroundColor = Color.gray;
-
-                if (GUILayout.Button(cat.ToString(), _categoryButtonStyle))
+                
+                // Checkbox
+                var newActive = EditorGUILayout.Toggle(isActive, GUILayout.Width(20));
+                if (newActive != isActive)
                 {
-                    if (Event.current.control) // Ctrl+Click = Solo
-                    {
-                        _soloCategory = _soloCategory == cat ? null : cat;
-                    }
-                    else
-                    {
-                        _categoryFilters[cat] = !isActive;
-                    }
+                    _categoryFilters[cat] = newActive;
                     RefreshFilteredLogs();
                 }
+                
+                // 分類名稱按鈕（點擊 Solo）
+                if (isSolo) GUI.backgroundColor = Color.yellow;
+                if (GUILayout.Button(cat.ToString(), EditorStyles.label))
+                {
+                    _soloCategory = _soloCategory == cat ? null : cat;
+                    RefreshFilteredLogs();
+                }
+                if (isSolo) GUI.backgroundColor = Color.white;
+                
+                EditorGUILayout.EndHorizontal();
             }
-
-            GUI.backgroundColor = Color.white;
-            EditorGUILayout.EndHorizontal();
-        }
-
-        void DrawTypeFilters()
-        {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Types:", GUILayout.Width(70));
-
+            
+            EditorGUILayout.Space();
+            GUILayout.Label("Log Types:", EditorStyles.boldLabel);
+            
+            // 類型 Checkbox
             foreach (LogType type in Enum.GetValues(typeof(LogType)))
             {
                 var isActive = _typeFilters.GetValueOrDefault(type, true);
-                GUI.backgroundColor = isActive ? Color.green : Color.gray;
-
-                if (GUILayout.Button(type.ToString(), _categoryButtonStyle))
+                var newActive = EditorGUILayout.Toggle(type.ToString(), isActive);
+                if (newActive != isActive)
                 {
-                    _typeFilters[type] = !isActive;
+                    _typeFilters[type] = newActive;
                     RefreshFilteredLogs();
                 }
             }
-
-            GUI.backgroundColor = Color.white;
-            EditorGUILayout.EndHorizontal();
+            
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
         }
 
         void DrawLogList()
@@ -325,6 +391,10 @@ namespace DeepAbyssHive.Core.Logging.Editor
             if (_soloCategory.HasValue)
             {
                 GUILayout.Label($"Solo: {_soloCategory.Value}", EditorStyles.boldLabel);
+            }
+            if (_allLogsScreen)
+            {
+                GUILayout.Label("All Logs Mode", EditorStyles.boldLabel);
             }
             EditorGUILayout.EndHorizontal();
         }

@@ -30,6 +30,12 @@ namespace DeepAbyssHive.Core.Logging
             else Debug.LogWarning(Prefix(cat) + message);
         }
 
+        /// <summary>Warning 方法別名，保持向後兼容</summary>
+        public static void Warning(LogCategory cat, string message, UnityEngine.Object? ctx = null)
+        {
+            Warn(cat, message, ctx);
+        }
+
         public static void Error(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
             if (ctx) Debug.LogError(Prefix(cat) + message, ctx);
