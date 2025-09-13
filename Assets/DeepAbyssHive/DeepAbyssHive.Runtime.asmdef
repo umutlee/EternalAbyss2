@@ -1,7 +1,8 @@
 {
-  "name": "DeepAbyssHive.Common",
+  "name": "DeepAbyssHive.Runtime",
   "references": [
-    "DeepAbyssHive.Runtime"
+    "Unity.Mathematics",
+    "Unity.Burst"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

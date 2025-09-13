@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Creep.Data;
 using DeepAbyssHive.SpatialIndex.Interfaces;
 using DeepAbyssHive.Buildings.Managers;
-// using DeepAbyssHive.Creep.Config; // 已移至 Assets/Core/Config
-using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Creep.Config;
 using DeepAbyssHive.Creep.Enums;
 using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
 
@@ -165,29 +165,23 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void LoadConfiguration()
         {
-            _config = ConfigManager.Instance.GetConfig<CreepConfigSO>();
-            
-            if (_config != null)
+            _config = CreepConfigProvider.Current;
+
+            // 預設值（當前 CreepConfigSO 僅含地形約束，故核心數值先用預設）
+            _gridCellSize = 1f;
+            _gridWidth = 100;
+            _gridHeight = 100;
+            _expansionRate = 1f;
+            _decayRate = 0.1f;
+            _expansionThreshold = 0.8f;
+            _minDecayDensity = 0.1f;
+            _batchSize = 32;
+            _updateInterval = 0.1f;
+            _networkCheckInterval = 1f;
+
+            // 若未載到 Config，採用較保守的後備參數並告警
+            if (_config == null)
             {
-                // 从配置加载参数
-                _gridCellSize = _config.gridCellSize;
-                _gridWidth = _config.gridWidth;
-                _gridHeight = _config.gridHeight;
-                _expansionRate = _config.expansionRate;
-                _decayRate = _config.decayRate;
-                _expansionThreshold = _config.expansionThreshold;
-                _minDecayDensity = _config.minDecayDensity;
-                _batchSize = _config.batchSize;
-                _updateInterval = _config.updateInterval;
-                _networkCheckInterval = _config.networkCheckInterval;
-                
-                DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] 从配置加载菌毯参数：网格({_gridWidth}x{_gridHeight})，单元格大小({_gridCellSize})");
-            }
-            else
-            {
-                // 使用默认值
-                _gridCellSize = 1f;
-                _gridWidth = 100;
                 _gridHeight = 100;
                 _expansionRate = 1f;
                 _decayRate = 0.05f;
@@ -196,9 +190,11 @@ namespace DeepAbyssHive.Creep.Managers
                 _batchSize = 100;
                 _updateInterval = 0.1f;
                 _networkCheckInterval = 2f;
-                
-                DAHLog.Warning(LogCategory.MANAGER, $"[{_managerName}] 未找到CreepConfig配置，使用默认参数");
+
+                DAHLog.Warning(LogCategory.MANAGER, $"[{_managerName}] 未找到 CreepConfig，使用預設參數（後備值）");
             }
+
+            DAHLog.Info(LogCategory.MANAGER, $"[{_managerName}] 使用菌毯參數：Grid={_gridWidth}x{_gridHeight} Cell={_gridCellSize} Update={_updateInterval}s Batch={_batchSize}");
         }
 
         #endregion

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using DeepAbyssHive.Core.Services;
-// using DeepAbyssHive.Creep.Config; // 已移至 Assets/Core/Config
+using DeepAbyssHive.Creep.Config;
 using DeepAbyssHive.Creep.Data;
 using CreepExpansionType = DeepAbyssHive.Creep.Data.CreepExpansionType;
 using DeepAbyssHive.Core.Logging;
@@ -369,11 +369,9 @@ namespace DeepAbyssHive.Creep.Services
 
         private void LoadConfiguration()
         {
-            if (_config != null)
-            {
-                _expansionRate = _config.expansionRate;
-                _expansionThreshold = _config.expansionThreshold;
-            }
+            // 使用默认值（CreepConfigSO 目前只有地形约束参数）
+            _expansionRate = 1f;
+            _expansionThreshold = 0.8f;
         }
 
         private void UpdateAutoExpansion(float deltaTime)

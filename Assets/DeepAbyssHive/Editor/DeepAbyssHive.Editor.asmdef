@@ -1,15 +1,6 @@
 {
   "name": "DeepAbyssHive.Editor",
-  "references": [ 
-    "DeepAbyssHive.Runtime",
-    "DeepAbyssHive.Units",
-    "DeepAbyssHive.Buildings", 
-    "DeepAbyssHive.Creep",
-    "DeepAbyssHive.Terrain",
-    "DeepAbyssHive.SpatialIndex",
-    "DeepAbyssHive.Common",
-    "DeepAbyssHive.Research"
-  ],
+  "references": [ "DeepAbyssHive.Runtime" ],
   "includePlatforms": [ "Editor" ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
