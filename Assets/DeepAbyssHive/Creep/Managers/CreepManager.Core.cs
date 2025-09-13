@@ -10,6 +10,7 @@ using DeepAbyssHive.Buildings.Managers;
 using DeepAbyssHive.Creep.Config;
 using DeepAbyssHive.Creep.Enums;
 using ISpatialIndex = DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex;
+using CTSC = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat;
 
 namespace DeepAbyssHive.Creep.Managers
 {
@@ -132,7 +133,7 @@ namespace DeepAbyssHive.Creep.Managers
         private readonly Dictionary<Vector2Int, CreepData> _creepGrid = new Dictionary<Vector2Int, CreepData>();
         private readonly Dictionary<Vector2Int, CreepTile> _creepTiles = new Dictionary<Vector2Int, CreepTile>();
         private readonly HashSet<Vector2Int> _activeCreepCells = new HashSet<Vector2Int>();
-        private DeepAbyssHive.SpatialIndex.Interfaces.ISpatialIndex _spatialIndex;
+        private ISpatialIndex _spatialIndex;
         private BuildingManager _buildingManager;
         private CreepConfigSO _config;
         
@@ -245,13 +246,13 @@ namespace DeepAbyssHive.Creep.Managers
             // 根据状态更新瓦片
             switch (tile.Status)
             {
-                case (CreepTileStatus)0:
+                case (int)CTSC.Healthy:
                     // 健康状态下不需要特殊处理
                     break;
-                case (CreepTileStatus)1:
+                case (int)CTSC.Weakened:
                     UpdateWeakenedTile(tile, deltaTime);
                     break;
-                case (CreepTileStatus)2:
+                case (int)CTSC.Collapsing:
                     UpdateCollapsingTile(tile, deltaTime);
                     break;
             }
@@ -275,7 +276,7 @@ namespace DeepAbyssHive.Creep.Managers
             tile.Health = Mathf.Max(0f, tile.Health - starvationRate * deltaTime);
             if (tile.Health <= _minDecayDensity * tile.MaxHealth)
             {
-                tile.Status = (CreepTileStatus)DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Collapsing;
+                tile.Status = (int)CTSC.Collapsing;
             }
         }
 
@@ -360,7 +361,7 @@ namespace DeepAbyssHive.Creep.Managers
                 WorldPosition = worldPos,
                 IsNutritionSource = false,
                 TileType = CreepTileType.Creep,
-                Status = DeepAbyssHive.Creep.Compat.CreepTileStatusCompat.Healthy,
+                Status = (int)CTSC.Healthy,
                 Health = 50f,
                 MaxHealth = 100f,
                 GrowthLevel = 0f,
