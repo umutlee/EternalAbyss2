@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: TerrainConfig
   m_EditorClassIdentifier: 
   modificationProcessInterval: 0.25
-  chunkSize: 64
+  chunkSize: 32
   tileSize: 1
   loadRadius: 3
   unloadRadius: 5
   noiseScale: 0.05
-  heightScale: 3
-  seed: 23456
+  heightScale: 5
+  seed: 11111
   octaves: 4
   persistence: 0.5
   lacunarity: 2

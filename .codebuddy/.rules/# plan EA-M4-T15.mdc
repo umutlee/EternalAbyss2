@@ -1,0 +1,160 @@
+description: EA-M4-T15 啟動時輸出 GameConfig 快照（Smart Console 打點） — 2025-09-13 12:21 Asia/Taipei
+globs:
+  - Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs
+alwaysApply: true
+
+# PLAN
+- 以 `RuntimeInitializeOnLoadMethod(AfterSceneLoad)` 建立啟動鉤子，不動現有 BootEnsureManagers。
+- 從 `Resources/Configs/GameConfig` 載入 GameConfig（不綁型別，僅以反射讀值）；不存在時安全略過。
+- 彙整常用欄位（useSpatialIndex、minSpacing、margin、requireCreep、snapSize、rotStep、熱鍵等），缺欄位以 `N/A` 表示。
+- 透過 Smart Console 統一 API 打一行 `[CONFIG] GameConfig snapshot → ...`；若實際專案未暴露 DLog API，僅退回 **單次** `Debug.LogWarning`，避免刷屏。
+- 僅新增 1 檔（≤200 行），零入侵、可即刻回滾。
+
+# Prerequisites
+- 檔案/資產：`Assets/Resources/Configs/GameConfig.asset`（預設名稱 `GameConfig`）。
+- Smart Console 已存在並有 `CONFIG` 分類；或允許本次在找不到 API 時進行單次 Warning 後靜默。
+
+# CHANGES
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs
+using System;
+using System.Reflection;
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Config
+{
+    /// <summary>
+    /// 啟動後輸出 GameConfig 的精簡快照（只打一行），
+    /// 所有參數皆從 Resources/Configs/GameConfig 以反射讀取；
+    /// 日誌走 Smart Console（分類：CONFIG）。若無可用 API，僅退回單次 Warning。
+    /// </summary>
+    internal static class GameConfigBootLogger
+    {
+        private static bool s_logged;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void LogOnce()
+        {
+            if (s_logged) return;
+            s_logged = true;
+
+            // 以 Object 載入，避免對 GameConfigSO 產生編譯期相依
+            var cfg = Resources.Load("Configs/GameConfig");
+            if (cfg == null)
+            {
+                SmartConsoleShim.Log("CONFIG", "GameConfig asset not found at Resources/Configs/GameConfig. Skipped startup dump.");
+                return;
+            }
+
+            string Get(object target, params string[] names)
+            {
+                var t = target.GetType();
+                foreach (var n in names)
+                {
+                    var fi = t.GetField(n, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase);
+                    if (fi != null) return Format(fi.GetValue(target));
+                    var pi = t.GetProperty(n, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase);
+                    if (pi != null && pi.CanRead) return Format(pi.GetValue(target, null));
+                }
+                return "N/A";
+            }
+
+            static string Format(object v)
+            {
+                if (v == null) return "null";
+                if (v is float f) return f.ToString("0.###");
+                if (v is double d) return d.ToString("0.###");
+                if (v is Vector2 v2) return $"{v2.x:0.###},{v2.y:0.###}";
+                if (v is Vector3 v3) return $"{v3.x:0.###},{v3.y:0.###},{v3.z:0.###}";
+                return v.ToString();
+            }
+
+            var line =
+                $"useSpatialIndex={Get(cfg, \"useSpatialIndex\")}, " +
+                $"minSpacing={Get(cfg, \"minSpacing\")}, margin={Get(cfg, \"margin\")}, " +
+                $"requireCreep={Get(cfg, \"requireCreep\")}, snapSize={Get(cfg, \"snapSize\")}, rotStep={Get(cfg, \"rotStep\")}, " +
+                $"placerToggleKey={Get(cfg, \"placerToggleKey\",\"placeToggleKey\",\"buildToggleKey\")}, " +
+                $"delKey1={Get(cfg, \"delKey1\",\"deleteKey1\")}, delKey2={Get(cfg, \"delKey2\",\"deleteKey2\")}, " +
+                $"spawnKey={Get(cfg, \"spawnKey\")}, testKey={Get(cfg, \"testKey\")}, spawnCount={Get(cfg, \"spawnCount\")}, " +
+                $"rmbLock={Get(cfg, \"rmbLock\",\"rightMouseLock\")}, " +
+                $"healthLoggingEnabled={Get(cfg, \"healthLoggingEnabled\")}, healthLogInterval={Get(cfg, \"healthLogInterval\")}, " +
+                $"unitBatchSize={Get(cfg, \"unitBatchSize\")}, unitBatchInterval={Get(cfg, \"unitBatchInterval\")}, " +
+                $"verboseLogs={Get(cfg, \"verboseLogs\")}";
+
+            SmartConsoleShim.Log("CONFIG", $"GameConfig snapshot → {line}");
+        }
+
+        /// <summary>
+        /// 以反射橋接 Smart Console，不建立編譯期相依。
+        /// 嘗試尋找：
+        /// - public static void DLog(string category, string message, params string[] tags)
+        /// - 或 public static void Log(string category, string message) on *SmartConsole* 類別
+        /// 找不到時僅 Warning 一次以避免刷屏。
+        /// </summary>
+        private static class SmartConsoleShim
+        {
+            private static Action<string,string> s_log;
+            private static bool s_warned;
+
+            public static void Log(string category, string message)
+            {
+                if (s_log == null) s_log = FindLogger();
+                if (s_log != null)
+                {
+                    s_log(category, message);
+                }
+                else if (!s_warned)
+                {
+                    s_warned = true;
+                    Debug.LogWarning($"[{category}] {message} (Smart Console logger not found; fallback once)"); // 單次退回，避免刷屏
+                }
+            }
+
+            private static Action<string,string> FindLogger()
+            {
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    Type[] types;
+                    try { types = asm.GetTypes(); }
+                    catch { continue; }
+
+                    foreach (var t in types)
+                    {
+                        if (!t.IsClass) continue;
+                        if (!t.Name.Contains("SmartConsole") && t.Name != "DLog") continue;
+
+                        var m1 = t.GetMethod("DLog", BindingFlags.Public | BindingFlags.Static);
+                        if (m1 != null)
+                        {
+                            return (c, m) => m1.Invoke(null, new object[] { c, m, null });
+                        }
+
+                        var m2 = t.GetMethod("Log", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string), typeof(string) }, null);
+                        if (m2 != null)
+                        {
+                            return (c, m) => m2.Invoke(null, new object[] { c, m });
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+    }
+}
+
+# 註解
+- 為避免破壞現有流程，本次僅新增 1 檔與啟動鉤子，不修改 BootEnsureManagers 或 Managers 結構。
+- 以反射讀取 GameConfig，欄位命名允許差異（對齊你提供的語義）。不存在者顯示 N/A，避免 NullRef。
+- 日誌統一走 Smart Console；若實專案 API 名稱不同，Shim 會嘗試多種常見簽名。找不到 API 時僅單次 Warning，避免違反「不刷屏」。
+
+# 驗收步驟
+1) 進入 Play：應先看到既有 BOOT/Managers 建立與 Terrain 載入訊息。
+2) Console 切換到 `CONFIG` 類別（或使用搜尋 `GameConfig snapshot`）。
+3) 應看到 **單一行** 類似：
+   `[CONFIG] GameConfig snapshot → useSpatialIndex=True, minSpacing=0.5, margin=0.2, requireCreep=False, snapSize=1, rotStep=15, placerToggleKey=B, delKey1=Delete, delKey2=F8, spawnKey=F6, testKey=F10, spawnCount=20, rmbLock=False, healthLoggingEnabled=True, healthLogInterval=10, unitBatchSize=64, unitBatchInterval=0.2, verboseLogs=False`
+4) 將 GameConfig 切換任何值（例如 rmbLock=True）再 Play，該行應反映新值。
+5) 若專案尚未提供 Smart Console API，應只看到 **一次** Warning，之後靜默。
+
+# 回滾指引
+- 刪除檔案：`Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs`。
+- 重新編譯即可回到變更前狀態（無其他檔案受影響）。
