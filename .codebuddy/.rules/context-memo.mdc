@@ -372,22 +372,48 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 3. **清理衝突**: 解決重複 Assembly Definition 文件問題
 4. **命名空間修復**: 修復 CreepConfigSO 等類型的命名空間引用問題
 
-### 關鍵修復
-- **CreepManager.Core.cs LoadConfiguration()**: 修復大括號錯位與 NullConfig 後備參數
-- **Assembly Definition 清理**: 移除重複文件，統一到正確目錄結構
-- **命名空間統一**: 解決 using 語句衝突和類型找不到問題
+### 關鍵修復 (2025-09-14)
+#### EA-M4-FIX-01: CreepManager.LoadConfiguration 語法修復 ✅ 已完成
+- **問題**: LoadConfiguration() 方法大括號錯位造成 CS1022 編譯錯誤
+- **解決**: 修正大括號結構，將後備參數包入 `if (_config == null)` 區塊
+- **影響文件**: `Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs`
+- **結果**: 消除語法錯誤，統一日誌訊息格式
+
+#### EA-M4-FIX-02: ISpatialIndex 別名統一與 CreepTileStatus 標準化 ✅ 已完成
+- **問題**: 混用完整限定名與別名，CreepTileStatus 枚舉來源不一致
+- **解決**: 統一使用 ISpatialIndex 別名，以 CreepTileStatusCompat 為唯一枚舉來源
+- **影響文件**: `Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs`
+- **結果**: 提升代碼一致性，避免枚舉名稱衝突
+
+#### EA-M4-T14.1: Assembly Definition 目錄結構修正 ✅ 已完成
+- **問題**: Unity 限制每個目錄只能有一個 .asmdef 文件
+- **解決**: Editor/Dev asmdef 移至各自子目錄，避免與 Runtime 衝突
+- **目標結構**:
+  - `Assets/DeepAbyssHive/DeepAbyssHive.Runtime.asmdef` (根目錄)
+  - `Assets/DeepAbyssHive/Editor/DeepAbyssHive.Editor.asmdef` (Editor 子目錄)
+  - `Assets/DeepAbyssHive/Dev/DeepAbyssHive.Dev.asmdef` (Dev 子目錄)
+- **安全機制**: 自動清理舊路徑的遺留文件
+
+#### EA-M4-T14.2: Assembly Definition 衝突稽核與清理工具 ✅ 已完成
+- **功能**: 新增 asmdef 衝突檢查與一鍵清理工具
+- **稽核機制**: 自動檢測同目錄多個 .asmdef 文件的衝突情況
+- **清理工具**: "Clean Root asmdef dups" 按鈕，安全刪除根目錄誤放的 Editor/Dev asmdef
+- **防呆設計**: 重複執行安全，提供詳細的操作日誌
 
 ### 經驗教訓
 - **過度工程化風險**: Assembly Definition 過度細分會帶來維護負擔
 - **依賴關係複雜性**: 業務模組間的相互依賴難以用 Assembly 邊界清晰分離
 - **Unity 限制**: 每個目錄只能有一個 .asmdef 文件的限制
 - **漸進式重構**: 大型架構變更需要分步驟進行，避免同時引入多個變數
+- **工具化修復**: 複雜的架構問題需要配套的檢測和修復工具
 
 ### 最終狀態
-- ✅ **零編譯錯誤**: 所有 CS 錯誤已解決
+- ✅ **零編譯錯誤**: 所有 CS 錯誤已解決，包括語法和命名空間問題
 - ✅ **統一程式集**: DeepAbyssHive.Runtime 包含所有業務邏輯
 - ✅ **Editor 分離**: DeepAbyssHive.Editor 獨立處理 Editor 工具
 - ✅ **架構簡化**: 消除循環依賴，降低維護複雜度
+- ✅ **工具完備**: 提供稽核和修復工具，防止未來重複問題
+- ✅ **代碼標準化**: 統一別名使用和枚舉來源，提升代碼品質
 
 ---
 
