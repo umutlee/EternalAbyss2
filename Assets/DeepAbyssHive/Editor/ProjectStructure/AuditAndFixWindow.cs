@@ -48,6 +48,8 @@ namespace DeepAbyssHive.EditorTools.ProjectStructure
                     FixNamespaces();
                 if (GUILayout.Button("Create/Repair asmdefs", EditorStyles.toolbarButton, GUILayout.Width(160)))
                     CreateAsmdefs();
+                if (GUILayout.Button("Clean Root asmdef dups", EditorStyles.toolbarButton, GUILayout.Width(170)))
+                    CleanRootAsmdefDuplicates();
 
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Clear Log", EditorStyles.toolbarButton, GUILayout.Width(80)))
@@ -83,6 +85,8 @@ namespace DeepAbyssHive.EditorTools.ProjectStructure
                     Append($"- Found misplaced: {from}  -> should be  {to}");
                 }
             }
+
+            AuditAsmdefConflicts();
 
             // 找出 DeepAbyssHive 以外的 DAH* cs（可能缺少 namespace）
             var allCs = Directory.GetFiles("Assets", "*.cs", SearchOption.AllDirectories)
@@ -195,6 +199,59 @@ namespace DeepAbyssHive.EditorTools.ProjectStructure
             var full = Path.GetFullPath(path);
             Directory.CreateDirectory(Path.GetDirectoryName(full));
             File.WriteAllText(full, content);
+        }
+
+        /// <summary>
+        /// 稽核：任何資料夾同時擁有多於 1 個 asmdef，視為衝突並列出。
+        /// 另外提示 Root 是否存在 Editor/Dev asmdef（應放到子資料夾）。
+        /// </summary>
+        private void AuditAsmdefConflicts()
+        {
+            var asmdefs = Directory.GetFiles("Assets/DeepAbyssHive", "*.asmdef", SearchOption.AllDirectories);
+            var groups = asmdefs.GroupBy(p => Path.GetDirectoryName(p).Replace("\\", "/"));
+            foreach (var g in groups)
+            {
+                var list = g.ToList();
+                if (list.Count > 1)
+                {
+                    Append($"[ASMDEF][WARN] Folder has {list.Count} asmdefs: {g.Key}");
+                    foreach (var f in list) Append($"   · {f}");
+                }
+            }
+
+            // 針對 Root 下誤放的 Editor/Dev asmdef 額外提醒
+            var root = "Assets/DeepAbyssHive";
+            var editorRoot = Path.Combine(root, "DeepAbyssHive.Editor.asmdef").Replace("\\", "/");
+            var devRoot    = Path.Combine(root, "DeepAbyssHive.Dev.asmdef").Replace("\\", "/");
+            if (File.Exists(editorRoot) || File.Exists(devRoot))
+            {
+                Append("[ASMDEF][HINT] Detected Editor/Dev asmdef at Root (should live in Editor/ or Dev/). You can click 'Clean Root asmdef dups'.");
+            }
+        }
+
+        /// <summary>
+        /// 清除 Root 下的 Editor/Dev asmdef（若存在），避免單資料夾多 asmdef 衝突。
+        /// </summary>
+        private void CleanRootAsmdefDuplicates()
+        {
+            var root = "Assets/DeepAbyssHive";
+            var editorRoot = Path.Combine(root, "DeepAbyssHive.Editor.asmdef").Replace("\\", "/");
+            var devRoot    = Path.Combine(root, "DeepAbyssHive.Dev.asmdef").Replace("\\", "/");
+            int removed = 0;
+            if (AssetDatabase.LoadAssetAtPath<TextAsset>(editorRoot) != null)
+            {
+                AssetDatabase.DeleteAsset(editorRoot);
+                Append($"[ASMDEF][CLEAN] Removed legacy {editorRoot}");
+                removed++;
+            }
+            if (AssetDatabase.LoadAssetAtPath<TextAsset>(devRoot) != null)
+            {
+                AssetDatabase.DeleteAsset(devRoot);
+                Append($"[ASMDEF][CLEAN] Removed legacy {devRoot}");
+                removed++;
+            }
+            if (removed == 0) Append("[ASMDEF][CLEAN] No legacy root asmdefs found.");
+            AssetDatabase.Refresh();
         }
 
         private const string RUNTIME_ASMDEF = "{\n  \"name\": \"DeepAbyssHive.Runtime\",\n  \"references\": [],\n  \"includePlatforms\": [],\n  \"excludePlatforms\": [],\n  \"allowUnsafeCode\": false,\n  \"overrideReferences\": false,\n  \"precompiledReferences\": [],\n  \"autoReferenced\": true,\n  \"defineConstraints\": [],\n  \"versionDefines\": [],\n  \"noEngineReferences\": false\n}\n";
