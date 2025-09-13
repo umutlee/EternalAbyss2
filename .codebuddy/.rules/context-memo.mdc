@@ -352,6 +352,24 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **實時調整**: 支援 Runtime 調整參數，便於性能調優
 - **驗收**: GameConfig Inspector 可調整所有相關參數，立即生效
 
+#### M4-T15: 開發工具 HUD 系統整合 ✅ 已完成 (2025-09-14)
+- **KeyHintsHUD 增強**: 新增 Building 相關熱鍵提示 (B鍵放置、Delete/X刪除)
+- **PlacementStatusHUD 優化**: 改善 HUD 顯示邏輯，避免重複顯示
+- **統一 HUD 管理**: 所有開發 HUD 組件協調顯示，避免 UI 重疊
+- **GameConfig 整合**: HUD 顯示狀態與 GameConfig 參數同步
+- **驗收**: 多個 HUD 組件同時運行無衝突，提示信息準確
+
+#### M4-T16: Health HUD 系統實現 ✅ 已完成 (2025-09-14)
+- **HealthHUD.cs**: 可拖拽 IMGUI 視窗，顯示 FPS/記憶體/單位數/建築數統計
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **位置持久化**: EditorPrefs/PlayerPrefs 記憶視窗位置，支援 Editor/Runtime 雙模式
+- **GameConfig 整合**: 讀取 healthLogEnabled/healthLogInterval 參數控制顯示
+- **Smart Console 整合**: 優先使用 Smart Console，回退到 Debug.Log
+- **Editor 菜單**: DeepAbyssHive/HUD/Toggle Health HUD 菜單項目
+- **反射統計**: 自動統計 UnitManager.ActiveUnits 和場景 Building 物件數量
+- **語法修復**: 修復 GUI.Window 中的無效十六進制數字 0xDAH001 → 0xDA0001
+- **驗收**: 可拖拽 HUD 視窗正常顯示，統計數據準確，無編譯錯誤
+
 ## M4-T14 Assembly Definition 架構重構 ✅ 已完成 (2025-09-14)
 
 ### 問題背景
