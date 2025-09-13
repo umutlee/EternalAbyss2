@@ -239,6 +239,16 @@ namespace DeepAbyssHive.Core.Logging.Editor
             _autoScroll = GUILayout.Toggle(_autoScroll, "Auto Scroll", EditorStyles.toolbarButton);
 
             GUILayout.FlexibleSpace();
+            
+            // All Logs Screen 開關移到工具欄右側
+            var newAllLogs = GUILayout.Toggle(_allLogsScreen, "All Logs", EditorStyles.toolbarButton, GUILayout.Width(80));
+            if (newAllLogs != _allLogsScreen)
+            {
+                _allLogsScreen = newAllLogs;
+                RefreshFilteredLogs();
+            }
+            
+            GUILayout.Space(8);
 
             // 搜尋框
             GUILayout.Label("Search:", GUILayout.Width(50));
@@ -260,41 +270,25 @@ namespace DeepAbyssHive.Core.Logging.Editor
         {
             EditorGUILayout.BeginVertical(GUILayout.Width(_sidebarWidth));
             
-            // All Logs Screen 開關
-            var newAllLogs = EditorGUILayout.Toggle("All Logs Screen", _allLogsScreen);
-            if (newAllLogs != _allLogsScreen)
-            {
-                _allLogsScreen = newAllLogs;
-                RefreshFilteredLogs();
-            }
-            
             EditorGUILayout.Space();
             
-            // Enable All / Disable All 按鈕
+            // Select/Unselect Categories Only 按鈕
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Enable All", EditorStyles.miniButtonLeft))
+            if (GUILayout.Button("Select All Categories", EditorStyles.miniButtonLeft))
             {
                 foreach (var key in _categoryFilters.Keys.ToList())
                 {
                     _categoryFilters[key] = true;
                 }
-                foreach (var key in _typeFilters.Keys.ToList())
-                {
-                    _typeFilters[key] = true;
-                }
                 _soloCategory = null;
                 RefreshFilteredLogs();
             }
             
-            if (GUILayout.Button("Disable All", EditorStyles.miniButtonRight))
+            if (GUILayout.Button("Unselect All Categories", EditorStyles.miniButtonRight))
             {
                 foreach (var key in _categoryFilters.Keys.ToList())
                 {
                     _categoryFilters[key] = false;
-                }
-                foreach (var key in _typeFilters.Keys.ToList())
-                {
-                    _typeFilters[key] = false;
                 }
                 _soloCategory = null;
                 RefreshFilteredLogs();
