@@ -3,6 +3,7 @@ using DeepAbyssHive.Units.Enums;
 using DeepAbyssHive.Buildings.Enums;
 using DeepAbyssHive.Creep.Enums;
 using DeepAbyssHive.Terrain.Enums;
+using DeepAbyssHive.Core.Constants;
 
 namespace DeepAbyssHive.Units.Data
 {
@@ -10,7 +11,7 @@ namespace DeepAbyssHive.Units.Data
     /// 單位靜態屬性模板（ScriptableObject）
     /// 用於定義單位的基礎屬性和成長參數
     /// </summary>
-    [CreateAssetMenu(fileName = "UnitTemplate", menuName = "DeepAbyssHive/Unit Template", order = 1)]
+    [CreateAssetMenu(fileName = "NewUnitTemplateSO", menuName = MenuPaths.Templates.UNIT_TEMPLATE)]
     public class UnitTemplateSO : ScriptableObject
     {
         [Header("基本信息")]
