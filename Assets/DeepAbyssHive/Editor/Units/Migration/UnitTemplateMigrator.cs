@@ -20,7 +20,7 @@ namespace DeepAbyssHive.EditorTools.Standards
         [MenuItem(RootMenu + "Migrate Assets — UnitTemplate → UnitTemplateSO", priority = 0)]
         public static void MigrateAssets()
         {
-            var guids = AssetDatabase.FindAssets("t:UnitTemplate");
+            var guids = AssetDatabase.FindAssets("t:UnitTemplateSO");
             if (guids == null || guids.Length == 0)
             {
                 Log("No UnitTemplate assets found.");
@@ -125,16 +125,17 @@ namespace DeepAbyssHive.EditorTools.Standards
             foreach (var f in cs)
             {
                 string txt = File.ReadAllText(f);
-                if (txt.Contains(" UnitTemplate ") || txt.Contains(": UnitTemplate") || txt.Contains("<UnitTemplate>") || txt.Contains("UnitTemplate[]"))
+                if (txt.Contains(" UnitTemplateSO ") || txt.Contains(": UnitTemplateSO") || txt.Contains("<UnitTemplateSO>") || txt.Contains("UnitTemplateSO[]"))
                     hits.Add(ToAssetPath(f));
             }
 
-            if (hits.Count == 0) { Log("No code references to 'UnitTemplate' found."); EditorUtility.DisplayDialog("Lint Code", "未發現 'UnitTemplate' 類型使用處。", "OK"); }
+            if (hits.Count == 0) { Log("No code references to 'UnitTemplateSO' found."); EditorUtility.DisplayDialog("Lint Code", "未發現 'UnitTemplateSO' 類型使用處。", "OK"); }
             else
             {
                 var report = string.Join("\n", hits);
                 Log($"Found {hits.Count} code files: \n{report}");
-                EditorUtility.DisplayDialog("Lint Code", $"共 {hits.Count} 個檔案仍使用 'UnitTemplate'（詳見 Console）。", "OK");
+                // 打開交互視窗，便於直接處理
+                LintResultsWindow.Show(hits.ToArray());
             }
         }
 
@@ -142,10 +143,10 @@ namespace DeepAbyssHive.EditorTools.Standards
         [MenuItem(RootMenu + "Remove Legacy UnitTemplate.cs (safe)", priority = 3)]
         public static bool TryRemoveLegacy()
         {
-            var guids = AssetDatabase.FindAssets("t:UnitTemplate");
+            var guids = AssetDatabase.FindAssets("t:UnitTemplateSO");
             if (guids.Length > 0)
             {
-                EditorUtility.DisplayDialog("Remove", $"尚有 {guids.Length} 個 UnitTemplate 資產，請先遷移。", "OK");
+                EditorUtility.DisplayDialog("Remove", $"尚有 {guids.Length} 個 UnitTemplateSO 資產，請先遷移。", "OK");
                 return false;
             }
 
@@ -157,18 +158,18 @@ namespace DeepAbyssHive.EditorTools.Standards
             foreach (var f in cs)
             {
                 string txt = File.ReadAllText(f);
-                if (txt.Contains(" UnitTemplate ") || txt.Contains(": UnitTemplate") || txt.Contains("<UnitTemplate>") || txt.Contains("UnitTemplate[]"))
+                if (txt.Contains(" UnitTemplateSO ") || txt.Contains(": UnitTemplateSO") || txt.Contains("<UnitTemplateSO>") || txt.Contains("UnitTemplateSO[]"))
                 {
-                    EditorUtility.DisplayDialog("Remove", "仍有程式碼使用 UnitTemplate，請先改為 UnitTemplateSO。", "OK");
+                    EditorUtility.DisplayDialog("Remove", "仍有程式碼使用 UnitTemplateSO，請先改為 UnitTemplateSO。", "OK");
                     return false;
                 }
             }
 
             // 找檔案
-            var unitTemplateFile = cs.FirstOrDefault(p => Path.GetFileName(p).Equals("UnitTemplate.cs", StringComparison.OrdinalIgnoreCase));
+            var unitTemplateFile = cs.FirstOrDefault(p => Path.GetFileName(p).Equals("UnitTemplateSO.cs", StringComparison.OrdinalIgnoreCase));
             if (string.IsNullOrEmpty(unitTemplateFile))
             {
-                EditorUtility.DisplayDialog("Remove", "找不到 UnitTemplate.cs。", "OK");
+                EditorUtility.DisplayDialog("Remove", "找不到 UnitTemplateSO.cs。", "OK");
                 return false;
             }
 
@@ -177,11 +178,11 @@ namespace DeepAbyssHive.EditorTools.Standards
             string trashFolder = "Assets/_Trash";
             if (!AssetDatabase.IsValidFolder(trashFolder))
                 AssetDatabase.CreateFolder("Assets", "_Trash");
-            string dest = AssetDatabase.GenerateUniqueAssetPath(trashFolder + "/UnitTemplate_REMOVED.cs.txt");
+            string dest = AssetDatabase.GenerateUniqueAssetPath(trashFolder + "/UnitTemplateSO_REMOVED.cs.txt");
 
             if (AssetDatabase.MoveAsset(assetPath, dest) == "")
             {
-                Log("Legacy UnitTemplate moved to: " + dest);
+                Log("Legacy UnitTemplateSO moved to: " + dest);
                 return true;
             }
             else
@@ -219,6 +220,118 @@ namespace DeepAbyssHive.EditorTools.Standards
 
         [Serializable] private class Map { public MapItem[] items; }
         [Serializable] private class MapItem { public string oldGuid; public string newGuid; public string oldPath; public string newPath; }
+
+        /// <summary>
+        /// 顯示 Lint 結果並提供安全替換工具
+        /// </summary>
+        private class LintResultsWindow : EditorWindow
+        {
+            private string[] _paths;
+            private bool[] _selected;
+            private Vector2 _scroll;
+            private int[] _previewCounts;
+            private static readonly System.Text.RegularExpressions.Regex Token = new System.Text.RegularExpressions.Regex(@"\bUnitTemplateSO\b(?!SO)");
+
+            public static void Show(string[] assetPaths)
+            {
+                var w = GetWindow<LintResultsWindow>("UnitTemplateSO Lint");
+                w.minSize = new Vector2(720, 420);
+                w._paths = assetPaths;
+                w._selected = Enumerable.Repeat(true, assetPaths.Length).ToArray();
+                w._previewCounts = assetPaths.Select(p => CountInFile(ToFullPath(p))).ToArray();
+                w.Show();
+            }
+
+            private static int CountInFile(string full)
+            {
+                try { return Token.Matches(File.ReadAllText(full)).Count; } catch { return 0; }
+            }
+
+            private static string ToFullPath(string assetPath)
+            {
+                string proj = Directory.GetParent(Application.dataPath).FullName.Replace("\\","/");
+                return Path.Combine(proj, assetPath).Replace("\\","/");
+            }
+
+            private void OnGUI()
+            {
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+                {
+                    if (GUILayout.Button("Select All", EditorStyles.toolbarButton, GUILayout.Width(90))) { for (int i=0;i<_selected.Length;i++) _selected[i]=true; }
+                    if (GUILayout.Button("None", EditorStyles.toolbarButton, GUILayout.Width(70))) { for (int i=0;i<_selected.Length;i++) _selected[i]=false; }
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("Copy Paths", EditorStyles.toolbarButton, GUILayout.Width(90))) GUIUtility.systemCopyBuffer = string.Join("\n", _paths);
+                    if (GUILayout.Button("Open Selected", EditorStyles.toolbarButton, GUILayout.Width(110))) OpenSelected();
+                }
+
+                EditorGUILayout.HelpBox("建議先將程式欄位型別改為 UnitTemplateSO，再使用 Replace 取代純型別名稱（不會影響 UnitTemplateSO）。每檔會先建立 .bak 備份。", MessageType.Info);
+
+                _scroll = EditorGUILayout.BeginScrollView(_scroll);
+                for (int i = 0; i < _paths.Length; i++)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        _selected[i] = EditorGUILayout.Toggle(_selected[i], GUILayout.Width(20));
+                        if (GUILayout.Button(_paths[i], EditorStyles.linkLabel))
+                        {
+                            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(_paths[i]);
+                            Selection.activeObject = obj;
+                            EditorGUIUtility.PingObject(obj);
+                        }
+                        GUILayout.FlexibleSpace();
+                        EditorGUILayout.LabelField($"matches: {_previewCounts[i]}", GUILayout.Width(100));
+                    }
+                }
+                EditorGUILayout.EndScrollView();
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+                    GUI.enabled = _selected.Any(b => b);
+                    if (GUILayout.Button("Replace in Selected (preview counts shown) — 確認後執行", GUILayout.Height(28)))
+                    {
+                        int sel = _selected.Count(b=>b);
+                        if (!EditorUtility.DisplayDialog("Confirm Replace", $"即將在 {sel} 個檔案中用規則：\\bUnitTemplateSO\\b(?!SO) 進行取代。\n每檔會先產生 .bak 備份。\n不可逆動作，是否繼續？", "Replace", "Cancel"))
+                            return;
+                        int files=0, reps=0;
+                        for (int i=0;i<_paths.Length;i++)
+                        {
+                            if (!_selected[i]) continue;
+                            string full = ToFullPath(_paths[i]);
+                            try
+                            {
+                                string src = File.ReadAllText(full);
+                                int before = Token.Matches(src).Count;
+                                if (before == 0) continue;
+                                File.Copy(full, full + ".bak", overwrite: true);
+                                string dst = Token.Replace(src, "UnitTemplateSO");
+                                File.WriteAllText(full, dst);
+                                files++;
+                                reps += before;
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.LogWarning("[UnitTemplateSO Lint] Replace failed: " + _paths[i] + "  " + e.Message);
+                            }
+                        }
+                        AssetDatabase.Refresh();
+                        EditorUtility.DisplayDialog("Replace Done", $"已處理檔案：{files}，替換總數：{reps}\n備份 .bak 已建立。", "OK");
+                        // 更新預覽數
+                        _previewCounts = _paths.Select(p => CountInFile(ToFullPath(p))).ToArray();
+                    }
+                    GUI.enabled = true;
+                }
+            }
+
+            private void OpenSelected()
+            {
+                foreach (var p in _paths.Where((_,i)=>_selected[i]))
+                {
+                    var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(p);
+                    AssetDatabase.OpenAsset(obj);
+                }
+            }
+        }
     }
 }
 #endif
