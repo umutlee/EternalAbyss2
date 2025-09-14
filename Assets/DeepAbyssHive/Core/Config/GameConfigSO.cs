@@ -94,6 +94,16 @@ namespace DeepAbyssHive.Core.Config
         public int batchTargetDispatchSize = 10;
         [Tooltip("分批派發間隔（秒）。每批之間的等待時間。")]
         public float batchTargetDispatchInterval = 0.1f;
+
+        #region Buildings Catalog & Selection
+        [Header("Buildings: Catalog & Selection")]
+        [Tooltip("建築循環選取：下一個")]
+        public KeyCode buildingCycleNextKey = KeyCode.Tab;
+        [Tooltip("建築循環選取：上一個（建議 Shift+Tab 之外的備用鍵，如 BackQuote）")]
+        public KeyCode buildingCyclePrevKey = KeyCode.BackQuote;
+        [Tooltip("預設的建築選單（BuildingCatalogSO 資產）")]
+        public DeepAbyssHive.Buildings.Config.BuildingCatalogSO buildingCatalog;
+        #endregion
     }
 
     /// <summary>
