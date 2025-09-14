@@ -32,7 +32,7 @@ namespace DeepAbyssHive.QA.Smoke.DevHUD
 
         private void OnGUI()
         {
-            _win = GUI.Window(0xDABBLD, _win, id =>
+            _win = GUI.Window(0xDABB1D, _win, id =>
             {
                 GUILayout.Label("Building Selection");
                 GUILayout.Label(_label);
