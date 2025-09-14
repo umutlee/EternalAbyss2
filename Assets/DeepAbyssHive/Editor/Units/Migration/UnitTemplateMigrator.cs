@@ -66,7 +66,7 @@ namespace DeepAbyssHive.EditorTools.Standards
             string mapPath = "Assets/" + MapFileName;
             if (!File.Exists(mapPath)) { EditorUtility.DisplayDialog("Rebind", "缺少映射檔。先執行遷移。", "OK"); return; }
             var map = JsonUtility.FromJson<Map>(File.ReadAllText(mapPath));
-            if (map == null || map.items == null || map.items.Length == 0) { EditorUtility.DisplayDialog("Rebind", "映射檔為空。", "OK"); return; }
+            if (map.items == null || map.items.Length == 0) { EditorUtility.DisplayDialog("Rebind", "映射檔為空。", "OK"); return; }
 
             var allGuids = AssetDatabase.FindAssets("");
             int touched = 0, properties = 0;
@@ -92,7 +92,7 @@ namespace DeepAbyssHive.EditorTools.Standards
 
                     string oldGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(oldObj));
                     var mapItem = map.items.FirstOrDefault(m => m.oldGuid == oldGuid);
-                    if (mapItem != null)
+                    if (!string.IsNullOrEmpty(mapItem.oldGuid))
                     {
                         var newObj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(mapItem.newPath);
                         sp.objectReferenceValue = newObj;
@@ -217,8 +217,8 @@ namespace DeepAbyssHive.EditorTools.Standards
             catch { Debug.Log("[UnitTemplateMigrator] " + msg); }
         }
 
-        [Serializable] private struct Map { public MapItem[] items; }
-        [Serializable] private struct MapItem { public string oldGuid; public string newGuid; public string oldPath; public string newPath; }
+        [Serializable] private class Map { public MapItem[] items; }
+        [Serializable] private class MapItem { public string oldGuid; public string newGuid; public string oldPath; public string newPath; }
     }
 }
 #endif
