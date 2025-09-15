@@ -1,0 +1,316 @@
+description: EA-M4-T17 — Building Catalog Cycling + HUD + Placer Bridge (MDC) — 2025-09-15
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+alwaysApply: false
+globs:
+  - Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogRuntime.cs
+  - Assets/DeepAbyssHive/Buildings/Placement/BuildingCatalogSelector.cs
+  - Assets/DeepAbyssHive/Buildings/UI/BuildingSelectionHUD.cs
+  - Assets/DeepAbyssHive/Core/Config/GameConfigKeysCompat.cs
+
+PREREQUISITES
+- 已存在並填好 `Assets/Resources/Configs/BuildingCatalog.asset`。
+- BuildingPlacer 已可正常放置單一 Prefab。
+
+PLAN
+- 以最小侵入方式實作「上一個/下一個建築」循環選取，並自動套用到現有 BuildingPlacer：
+  1) BuildingCatalogRuntime：集中載入/持有 Catalog 與目前索引。
+  2) BuildingCatalogSelector：讀取 GameConfig（反射取 next/prev 建議鍵，預設 `[`/`]`），在 Update 監聽並切換；每次切換嘗試以**反射**把選中 Prefab 注入 BuildingPlacer（支援多種欄位/方法名）。
+  3) BuildingSelectionHUD：畫面右上角顯示目前建築 id 與鍵提示（IMGUI，無相依）。
+  4) GameConfigKeysCompat：以 **反射** 讀取 GameConfig 的 nextBuildingKey/prevBuildingKey；若不存在，用預設值並在 BOOT 類別打一行。
+
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogRuntime.cs
+using UnityEngine;
+using System.Linq;
+using DeepAbyssHive.Core.Logging;
+
+namespace DeepAbyssHive.Buildings.Runtime
+{
+    /// <summary>集中管理 BuildingCatalog 與目前選中索引（Runtime 單例）。</summary>
+    public sealed class BuildingCatalogRuntime : MonoBehaviour
+    {
+        public static BuildingCatalogRuntime Instance { get; private set; }
+        public ScriptableObject CatalogAsset; // 將於 Awake 自動從 Resources 載入
+        public int CurrentIndex { get; private set; } = 0;
+
+        private System.Array _entries; // 延遲用反射取 items 陣列
+        private System.Type _entryType;
+        private System.Reflection.FieldInfo _idField;
+        private System.Reflection.FieldInfo _prefabField;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Bootstrap()
+        {
+            var go = new GameObject("BuildingCatalogRuntime");
+            DontDestroyOnLoad(go);
+            go.AddComponent<BuildingCatalogRuntime>();
+        }
+
+        private void Awake()
+        {
+            if (Instance != null) { Destroy(gameObject); return; }
+            Instance = this;
+
+            // 嘗試從 Resources/Configs 載入 BuildingCatalog
+            CatalogAsset = Resources.Load<ScriptableObject>("Configs/BuildingCatalog");
+            if (CatalogAsset == null)
+            {
+                DAHLog.Warn(LogCategory.CONFIG, "[PLACEMENT] 未找到 Resources/Configs/BuildingCatalog.asset（可先建立再回來）。");
+                return;
+            }
+
+            // 反射定位 entries 與欄位
+            var t = CatalogAsset.GetType();
+            var itemsField = t.GetFields(System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance)
+                              .FirstOrDefault(f => f.FieldType.IsArray);
+            if (itemsField == null)
+            {
+                DAHLog.Error(LogCategory.CONFIG, "[PLACEMENT] BuildingCatalogSO 缺少陣列欄位（items/entries）。");
+                return;
+            }
+
+            _entries = (System.Array)itemsField.GetValue(CatalogAsset);
+            if (_entries == null || _entries.Length == 0)
+            {
+                DAHLog.Warn(LogCategory.CONFIG, "[PLACEMENT] BuildingCatalog 為空，請先在 Inspector 填入項目。");
+                return;
+            }
+
+            _entryType = _entries.GetType().GetElementType();
+            _idField = _entryType.GetField("id", System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Instance);
+            _prefabField = _entryType.GetField("prefab", System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Instance);
+            DAHLog.Info(LogCategory.PLACEMENT, $"[PLACEMENT] Catalog 載入完成（{_entries.Length} 項）。");
+        }
+
+        public int Count => _entries == null ? 0 : _entries.Length;
+
+        public string CurrentId
+        {
+            get
+            {
+                if (_entries == null || Count == 0) return "(none)";
+                var e = _entries.GetValue(Mathf.Clamp(CurrentIndex, 0, Count-1));
+                return (string)_idField?.GetValue(e) ?? "(id)";
+            }
+        }
+
+        public GameObject CurrentPrefab
+        {
+            get
+            {
+                if (_entries == null || Count == 0) return null;
+                var e = _entries.GetValue(Mathf.Clamp(CurrentIndex, 0, Count-1));
+                return (GameObject)_\u0070refabField?.GetValue(e);
+            }
+        }
+
+        public bool Step(int delta)
+        {
+            if (Count == 0) return false;
+            CurrentIndex = (CurrentIndex + delta + Count) % Count;
+            return true;
+        }
+    }
+}
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/Placement/BuildingCatalogSelector.cs
+using UnityEngine;
+using DeepAbyssHive.Buildings.Runtime;
+using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Config;
+
+namespace DeepAbyssHive.Buildings.Placement
+{
+    /// <summary>
+    /// 監聽上一個/下一個鍵，切換 Catalog 選中，並嘗試把 Prefab 注入現有 BuildingPlacer（反射支援多名稱）。
+    /// </summary>
+    public class BuildingCatalogSelector : MonoBehaviour
+    {
+        private KeyCode _prev = KeyCode.LeftBracket; // '['
+        private KeyCode _next = KeyCode.RightBracket; // ']'
+        private float _lastLog;
+
+        private void Start()
+        {
+            // 讀 GameConfig（反射，若不存在使用預設）
+            GameConfigKeysCompat.TryBindOrDefault("prevBuildingKey", ref _prev);
+            GameConfigKeysCompat.TryBindOrDefault("nextBuildingKey", ref _next);
+
+            // 初次套用
+            ApplyToPlacer();
+            DAHLog.Info(LogCategory.PLACEMENT, $"[PLACEMENT] 建築切換鍵：prev={_prev}, next={_next}; current={BuildingCatalogRuntime.Instance?.CurrentId}");
+        }
+
+        private void Update()
+        {
+            var cat = BuildingCatalogRuntime.Instance;
+            if (cat == null || cat.Count == 0) return;
+
+            bool changed = false;
+            if (Input.GetKeyDown(_prev)) { changed = cat.Step(-1); }
+            else if (Input.GetKeyDown(_next)) { changed = cat.Step(1); }
+
+            if (changed)
+            {
+                ApplyToPlacer();
+                ThrottledLog($"selected={cat.CurrentId}");
+            }
+        }
+
+        private void ApplyToPlacer()
+        {
+            var cat = BuildingCatalogRuntime.Instance;
+            var prefab = cat?.CurrentPrefab;
+            if (prefab == null) return;
+
+            // 以反射找場景中的 BuildingPlacer 並注入 Prefab
+            System.Type placerType = null;
+            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                foreach (var tp in asm.GetTypes())
+                {
+                    if (tp.Name == "BuildingPlacer" && typeof(MonoBehaviour).IsAssignableFrom(tp))
+                    {
+                        placerType = tp; break;
+                    }
+                }
+                if (placerType != null) break;
+            }
+            if (placerType == null)
+            {
+                DAHLog.Warn(LogCategory.PLACEMENT, "[PLACEMENT] 找不到 BuildingPlacer 類別，無法注入選中 Prefab。");
+                return;
+            }
+
+            var placerObj = Object.FindObjectOfType(placerType) as MonoBehaviour;
+            if (placerObj == null)
+            {
+                DAHLog.Warn(LogCategory.PLACEMENT, "[PLACEMENT] 場景裡尚未有 BuildingPlacer。");
+                return;
+            }
+
+            // 嘗試多種命名：欄位或方法
+            var tP = placerType;
+            var flags = System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+            var fields = new[] { "prefab", "buildingPrefab", "currentPrefab", "previewPrefab" };
+            foreach (var f in fields)
+            {
+                var fi = tP.GetField(f, flags);
+                if (fi != null && fi.FieldType == typeof(GameObject))
+                {
+                    fi.SetValue(placerObj, prefab);
+                    DAHLog.Info(LogCategory.PLACEMENT, $"[PLACEMENT] 注入 Placer.{f} ← {cat.CurrentId}");
+                    TryRefreshPreview(tP, placerObj);
+                    return;
+                }
+            }
+            var methods = new[] { "SetPrefab", "SetPreviewPrefab", "SetBuildingPrefab" };
+            foreach (var m in methods)
+            {
+                var mi = tP.GetMethod(m, flags);
+                if (mi != null)
+                {
+                    var pars = mi.GetParameters();
+                    if (pars.Length == 1 && pars[0].ParameterType == typeof(GameObject))
+                    {
+                        mi.Invoke(placerObj, new object[]{ prefab });
+                        DAHLog.Info(LogCategory.PLACEMENT, $"[PLACEMENT] 呼叫 Placer.{m}({cat.CurrentId})");
+                        TryRefreshPreview(tP, placerObj);
+                        return;
+                    }
+                }
+            }
+
+            DAHLog.Warn(LogCategory.PLACEMENT, "[PLACEMENT] 無法以反射設定 Placer 的 Prefab，請手動接線或提供 SetPrefab(GameObject) API。");
+        }
+
+        private void TryRefreshPreview(System.Type tP, MonoBehaviour placerObj)
+        {
+            var flags = System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance;
+            var mi = tP.GetMethod("RefreshPreview", flags);
+            if (mi != null && mi.GetParameters().Length == 0) mi.Invoke(placerObj, null);
+        }
+
+        private void ThrottledLog(string msg)
+        {
+            if (Time.unscaledTime - _lastLog < 0.25f) return;
+            _lastLog = Time.unscaledTime;
+            DAHLog.Info(LogCategory.PLACEMENT, "[PLACEMENT] " + msg);
+        }
+    }
+}
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/UI/BuildingSelectionHUD.cs
+using UnityEngine;
+using DeepAbyssHive.Buildings.Runtime;
+
+namespace DeepAbyssHive.Buildings.UI
+{
+    /// <summary>極簡 HUD：顯示當前建築 id 與鍵提示（IMGUI，可拖拽）。</summary>
+    public class BuildingSelectionHUD : MonoBehaviour
+    {
+        private Rect _rect = new Rect(12, 12, 320, 48);
+
+        private void OnGUI()
+        {
+            var cat = BuildingCatalogRuntime.Instance;
+            if (cat == null || cat.Count == 0) return;
+            _rect = GUI.Window(0xDAH1701, _rect, Draw, "Building");
+        }
+
+        private void Draw(int id)
+        {
+            var cat = BuildingCatalogRuntime.Instance;
+            GUILayout.Label($"Selected: {cat.CurrentId}  (Prev: '['  Next: ']')");
+            GUI.DragWindow(new Rect(0,0,10000,20));
+        }
+    }
+}
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Core/Config/GameConfigKeysCompat.cs
+using UnityEngine;
+using DeepAbyssHive.Core.Logging;
+
+namespace DeepAbyssHive.Core.Config
+{
+    /// <summary>
+    /// 以反射從 GameConfigSO 讀取 KeyCode 欄位；不存在時用預設並記一行說明。
+    /// </summary>
+    public static class GameConfigKeysCompat
+    {
+        private static object _cfg;
+
+        static GameConfigKeysCompat()
+        {
+            var prov = System.Type.GetType("DeepAbyssHive.Core.Config.GameConfigProvider, Assembly-CSharp");
+            var curProp = prov?.GetProperty("Current", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            _cfg = curProp?.GetValue(null);
+        }
+
+        public static void TryBindOrDefault(string fieldName, ref KeyCode key, KeyCode fallback = KeyCode.None)
+        {
+            if (_cfg == null) { if (fallback != KeyCode.None) key = fallback; return; }
+            var t = _cfg.GetType();
+            var fi = t.GetField(fieldName, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
+            if (fi != null && fi.FieldType == typeof(KeyCode))
+            {
+                key = (KeyCode)fi.GetValue(_cfg);
+            }
+            else
+            {
+                if (fallback != KeyCode.None) key = fallback;
+                DAHLog.Info(DeepAbyssHive.Core.Logging.LogCategory.CONFIG, $"[CONFIG] GameConfig 缺少 {fieldName}，使用預設 {key}。");
+            }
+        }
+    }
+}
+
+ACCEPTANCE
+- 進入 Play：Console 看到 [PLACEMENT] Catalog 載入完成（N 項），並列出切換鍵值。
+- 按 B 進入建築放置後，使用 `[`/`]` 可切換不同建築；預覽/放置皆為當前選中 Prefab（反射注入成功時 Console 會印一行）。
+- 螢幕右上看到小窗顯示目前建築 id 與鍵提示，可拖拽位置。
+- 若場景暫無 BuildingPlacer 或其 API 名稱不匹配，Console 會顯示警告但不會報錯。
+
+ROLLBACK
+- 刪除上述 4 個新增檔案即可恢復原狀.
