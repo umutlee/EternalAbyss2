@@ -91,7 +91,7 @@ namespace DeepAbyssHive.EditorTools.Standards
                             filePath = filePath,
                             lineNumber = i + 1,
                             oldLine = lines[i],
-                            newLine = lines[i].Replace($'"{oldPath}"', $'"{newPath}"'),
+                            newLine = lines[i].Replace($"\"{oldPath}\"", $"\"{newPath}\""),
                             changeType = "CreateAssetMenu",
                             oldPath = oldPath,
                             newPath = newPath
@@ -112,7 +112,7 @@ namespace DeepAbyssHive.EditorTools.Standards
                             filePath = filePath,
                             lineNumber = i + 1,
                             oldLine = lines[i],
-                            newLine = lines[i].Replace($'"{oldPath}"', $'"{newPath}"'),
+                            newLine = lines[i].Replace($"\"{oldPath}\"", $"\"{newPath}\""),
                             changeType = "AddComponentMenu",
                             oldPath = oldPath,
                             newPath = newPath
