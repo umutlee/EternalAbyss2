@@ -1,0 +1,172 @@
+description: EA-M4-T17D — Unified Editor Menu (Clean hierarchy wrappers) — 2025-09-14
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+alwaysApply: false
+globs:
+  - Assets/DeepAbyssHive/Editor/Common/MenuPaths.cs
+  - Assets/DeepAbyssHive/Editor/Common/UnifiedMenus.cs
+
+PLAN
+- 新增 2 個 Editor 檔：集中定義選單路徑常數（MenuPaths）＋一組「乾淨層級」的選單包裝（UnifiedMenus）。
+- 不移除既有選單，先提供一個一致且好找的入口；之後逐步把舊選單遷到這套常數上。
+
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Editor/Common/MenuPaths.cs
+#if UNITY_EDITOR
+namespace DeepAbyssHive.EditorTools
+{
+    /// <summary>集中管理 Editor 選單路徑。所有新選單請使用這裡的常數。</summary>
+    internal static class MenuPaths
+    {
+        public const string Root        = "DeepAbyssHive/";
+        public const string Tools       = Root + "Tools/";
+        public const string Configs     = Root + "Configs/";
+        public const string Templates   = Root + "Templates/";
+        public const string Art         = Root + "Art/";
+        public const string HUD         = Root + "HUD/";
+        public const string Units       = Root + "Units/";
+        public const string Debug       = Root + "Debug/";
+    }
+}
+#endif
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Editor/Common/UnifiedMenus.cs
+#if UNITY_EDITOR
+using System;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+namespace DeepAbyssHive.EditorTools
+{
+    /// <summary>
+    /// 提供一組「乾淨層級」的選單入口，包裝既有工具。
+    /// - 不直接依賴其他 Editor 類別：採反射/檔案存在判斷，避免編譯錯誤。
+    /// - 之後逐步把舊選單遷移到 MenuPaths 常數上即可。
+    /// </summary>
+    internal static class UnifiedMenus
+    {
+        // ===== Tools =====
+        [MenuItem(MenuPaths.Tools + "Standards & Fixes", priority = 10)]
+        private static void OpenStandards()
+        {
+            // 嘗試打開 DAHStandardsWindow；找不到時提示
+            var t = Type.GetType("DeepAbyssHive.EditorTools.Standards.DAHStandardsWindow, Assembly-CSharp-Editor");
+            if (t == null) t = Type.GetType("DAHStandardsWindow");
+            if (t != null && typeof(EditorWindow).IsAssignableFrom(t))
+                EditorWindow.GetWindow(t, false, "DAH Standards");
+            else
+                EditorUtility.DisplayDialog("Standards & Fixes", "找不到 DAHStandardsWindow。\n請稍後再試或確認該檔案是否存在於 Editor/Standards。", "OK");
+        }
+
+        [MenuItem(MenuPaths.Tools + "Smart Console", priority = 11)]
+        private static void OpenSmartConsole()
+        {
+            var t = Type.GetType("DeepAbyssHive.EditorTools.Logging.SmartConsoleWindow, Assembly-CSharp-Editor");
+            if (t == null) t = Type.GetType("SmartConsoleWindow");
+            if (t != null && typeof(EditorWindow).IsAssignableFrom(t))
+                EditorWindow.GetWindow(t, false, "Smart Console");
+            else
+                EditorUtility.DisplayDialog("Smart Console", "找不到 SmartConsoleWindow。\n請確認 Editor/Logging 是否已導入。", "OK");
+        }
+
+        // ===== Configs =====
+        [MenuItem(MenuPaths.Configs + "Create or Select GameConfig", priority = 0)]
+        private static void CreateOrSelectGameConfig()
+        {
+            // 先試著呼叫既有的 GameConfigMenu；找不到則打開 Resources/Configs
+            var t = Type.GetType("DeepAbyssHive.Core.Config.Editor.GameConfigMenu, Assembly-CSharp-Editor");
+            var m = t?.GetMethod("CreateOrSelect", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            if (m != null) { m.Invoke(null, null); return; }
+            PingOrCreateFolder("Assets/Resources/Configs");
+        }
+
+        [MenuItem(MenuPaths.Configs + "Open Resources/Configs", priority = 50)]
+        private static void OpenConfigsFolder() => PingOrCreateFolder("Assets/Resources/Configs");
+
+        // ===== Templates =====
+        [MenuItem(MenuPaths.Templates + "Create UnitTemplateSO", priority = 0)]
+        private static void CreateUnitTemplateSO()
+        {
+            // 尋找 UnitTemplateSO 類型並建立資產於 Resources/Configs/UnitTemplates
+            var t = Type.GetType("DeepAbyssHive.Units.Config.UnitTemplateSO, Assembly-CSharp");
+            if (t == null) { EditorUtility.DisplayDialog("Create UnitTemplateSO", "找不到 UnitTemplateSO 腳本。", "OK"); return; }
+            var asset = ScriptableObject.CreateInstance(t);
+            var dir = "Assets/Resources/Configs/UnitTemplates";
+            EnsureFolder(dir);
+            var path = AssetDatabase.GenerateUniqueAssetPath($"{dir}/UnitTemplate.asset");
+            AssetDatabase.CreateAsset(asset, path);
+            AssetDatabase.SaveAssets();
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            Ping(path);
+        }
+
+        [MenuItem(MenuPaths.Templates + "Create BuildingCatalogSO", priority = 1)]
+        private static void CreateBuildingCatalog()
+        {
+            var t = Type.GetType("DeepAbyssHive.Buildings.Config.BuildingCatalogSO, Assembly-CSharp");
+            if (t == null) { EditorUtility.DisplayDialog("Create BuildingCatalogSO", "找不到 BuildingCatalogSO 腳本。", "OK"); return; }
+            var asset = ScriptableObject.CreateInstance(t);
+            var dir = "Assets/Resources/Configs";
+            EnsureFolder(dir);
+            var path = AssetDatabase.GenerateUniqueAssetPath($"{dir}/BuildingCatalog.asset");
+            AssetDatabase.CreateAsset(asset, path);
+            AssetDatabase.SaveAssets();
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            Ping(path);
+        }
+
+        // ===== Art / Building =====
+        [MenuItem(MenuPaths.Art + "Building/Make Prefabs From Selection", priority = 0)]
+        private static void Art_Building_MakePrefabsFromSelection()
+        {
+            // 轉呼叫 BuildingPrefabWizard（若存在）；否則提示
+            var t = Type.GetType("DeepAbyssHive.EditorTools.Buildings.BuildingPrefabWizard, Assembly-CSharp-Editor");
+            var m = t?.GetMethod("MakePrefabsFromSelection", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            if (m != null) { m.Invoke(null, null); }
+            else EditorUtility.DisplayDialog("Building Prefab Wizard", "找不到 BuildingPrefabWizard。\n請先導入 T17C 補丁。", "OK");
+        }
+
+        [MenuItem(MenuPaths.Art + "Building/Normalize Selected In Scene", priority = 1)]
+        private static void Art_Building_NormalizeInScene()
+        {
+            var t = Type.GetType("DeepAbyssHive.EditorTools.Buildings.BuildingPrefabWizard, Assembly-CSharp-Editor");
+            var m = t?.GetMethod("NormalizeSelectedInScene", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            if (m != null) { m.Invoke(null, null); }
+            else EditorUtility.DisplayDialog("Normalize", "找不到 BuildingPrefabWizard。\n請先導入 T17C 補丁。", "OK");
+        }
+
+        // ===== Helpers =====
+        private static void PingOrCreateFolder(string path)
+        {
+            EnsureFolder(path);
+            Ping(path);
+        }
+
+        private static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path)) return;
+            var parent = Path.GetDirectoryName(path).Replace("\\", "/");
+            var name = Path.GetFileName(path);
+            if (!AssetDatabase.IsValidFolder(parent)) EnsureFolder(parent);
+            AssetDatabase.CreateFolder(parent, name);
+        }
+
+        private static void Ping(string assetOrFolderPath)
+        {
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetOrFolderPath);
+            Selection.activeObject = obj;
+            EditorGUIUtility.PingObject(obj);
+        }
+    }
+}
+#endif
+
+ACCEPTANCE
+- 在 Unity 選單看到：DeepAbyssHive → Tools / Configs / Templates / Art ... 四大群組；
+- Tools → Standards & Fixes / Smart Console 能打開對應視窗（若檔存在）；
+- Configs → Create or Select GameConfig：能直接建立或選取 GameConfig（或至少打開 Resources/Configs）；
+- Templates → Create UnitTemplateSO / Create BuildingCatalogSO：會在正確資料夾建立資產並選取；
+- Art → Building → Make Prefabs From Selection / Normalize Selected In Scene：可正常呼叫我們的 T17C 精靈；
+- 不修改 Runtime，僅新增 2 個 Editor 檔。

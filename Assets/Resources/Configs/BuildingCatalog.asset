@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdb7b35139d114d13bc4135d14fb079b, type: 3}
+  m_Name: BuildingCatalog
+  m_EditorClassIdentifier: 
+  entries:
+  - id: pfb_build_modularbuildings_007
+    prefab: {fileID: 208686885986723894, guid: 6ef65525bd70d4290b208c8b6adbf784, type: 3}
+    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_010
+    prefab: {fileID: 6991181790233822140, guid: bbea34996a3a04dfa9d6b0265f17313b,
+      type: 3}
+    footprintHalfExtents: {x: 6.125, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_011
+    prefab: {fileID: 1303787660109503302, guid: 3188abe02ba66433a853f51cae4f2849,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_012
+    prefab: {fileID: 4882860717443309188, guid: 950be4843615e4d768bc648b94987926,
+      type: 3}
+    footprintHalfExtents: {x: 6.125, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_013
+    prefab: {fileID: 7972901786137824779, guid: a60f044d05ece46178231211b7ca6c3f,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_039
+    prefab: {fileID: 2163221595294564973, guid: 74f712259e0da4a04bc2f5e6a8334ca9,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 3.125, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_030
+    prefab: {fileID: 1783259908979197555, guid: d3572718625524ffeb95aabde1bc8b51,
+      type: 3}
+    footprintHalfExtents: {x: 5.25, y: 3.125, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_028
+    prefab: {fileID: 4450754467311034814, guid: 6a59445d6b004416399e52fa95032526,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 3.125, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_014
+    prefab: {fileID: 1077032233143728795, guid: 9fcf623496b154bf6b34e32967db9e93,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_modularbuildings_005
+    prefab: {fileID: 7405550572932674341, guid: 1cc1a21faad8345dabea2d1737b5242f,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
+    cost: 0
+  - id: pfb_build_mushroom_brown_01
+    prefab: {fileID: 691745730757058197, guid: 1e2ec5cfbeb38432ab19cea9ec3c11b3, type: 3}
+    footprintHalfExtents: {x: 0.217459, y: 0.176742, z: 0.2511}
+    cost: 0

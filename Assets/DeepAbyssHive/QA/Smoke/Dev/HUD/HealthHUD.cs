@@ -1,25 +1,3 @@
-description: EA-M4-T16 健康心跳 HUD（可拖拽、記憶位置、菜單/熱鍵切換；與 healthLogInterval 同步） — 2025-09-13 12:31 Asia/Taipei
-globs:
-  - Assets/QA/Smoke/Dev/HUD/HealthHUD.cs
-  - Assets/DeepAbyssHive/Editor/HUD/HealthHUDMenu.cs
-alwaysApply: true
-
-# PLAN
-- 新增 Dev HUD：以 IMGUI 繪製，視窗可拖拽，位置持久化（EditorPrefs / PlayerPrefs）。
-- 啟動：`AfterSceneLoad` 建立 `DevHUD_Health` 並 `DontDestroyOnLoad`，不動現有 Boot 繫結。
-- 讀取 GameConfig（反射）：`healthLoggingEnabled`、`healthLogInterval`、（可選）`showHealthHUD`、`healthHudToggleKey`。
-- 啟動時以 Smart Console `CONFIG` 類型輸出一行當前值（遵循「所有可調啟動一行 log」）。
-- 顯示項目：FPS、GC 記憶體(MB)、Building/Unit 數量（找不到來源則顯示 N/A）。更新頻率沿用 `healthLogInterval`。
-- 提供 Editor 選單：`DeepAbyssHive/HUD/Toggle Health HUD`；同時支援 GameConfig 熱鍵（若有）。
-- 僅新增 2 檔，≤200 行/檔；零入侵。
-
-# Prerequisites
-- `Assets/Resources/Configs/GameConfig.asset`（含 `healthLoggingEnabled`, `healthLogInterval`；可選 `showHealthHUD`, `healthHudToggleKey`）。
-- Smart Console 已存在並註冊 `HUD`、`CONFIG` 分類（若找不到 Logger，僅單次 Warning 退回）。
-
-# CHANGES
-
-WRITE_CHANGE: Assets/QA/Smoke/Dev/HUD/HealthHUD.cs
 using System;
 using System.Collections;
 using System.Reflection;
@@ -166,7 +144,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private void OnGUI()
         {
             if (!_visible) return;
-            _rect = GUI.Window(0xDAH001, _rect, DrawWindow, "Health HUD");
+            _rect = GUI.Window(0xDA0001, _rect, DrawWindow, "Health HUD");
         }
 
         private void DrawWindow(int id)
@@ -311,45 +289,3 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         }
     }
 }
-
-WRITE_CHANGE: Assets/DeepAbyssHive/Editor/HUD/HealthHUDMenu.cs
-#if UNITY_EDITOR
-using UnityEditor;
-using UnityEngine;
-
-namespace DeepAbyssHive.EditorTools.HUD
-{
-    /// <summary>Editor 菜單切換 HealthHUD 顯示；僅在 Editor 下編譯。</summary>
-    public static class HealthHUDMenu
-    {
-        [MenuItem("DeepAbyssHive/HUD/Toggle Health HUD")]	
-        private static void Toggle()
-        {
-            var t = typeof(UnityEngine.GameObject).Assembly.GetType("DeepAbyssHive.QA.Smoke.Dev.HUD.HealthHUD");
-            if (t == null) return;
-            var mi = t.GetMethod("Toggle", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            mi?.Invoke(null, null);
-        }
-    }
-}
-#endif
-
-# 註解
-- HUD 採 IMGUI，避免導入額外 UI 元素或 Prefab；每 {healthLogInterval} 秒更新一次，符合現有心跳節奏。
-- 位置保存使用 EditorPrefs（Editor）/PlayerPrefs（Runtime），鍵：`DeepAbyssHive.HealthHUD.Rect`。
-- Building 計數依 Layer 名稱為 `Building`；若專案未設 Layer 或 Prefab 未歸類，顯示 `N/A`（不會拋例外）。
-- 單次 Warning 退回策略：若 Smart Console Logger 未找到，避免刷屏。
-- 啟動配置輸出一行（分類 CONFIG）：`enabled/showHUD/interval/toggleKey`。
-
-# 驗收步驟
-1) 進入 Play：照常看到 BOOT 與 Terrain 日誌後，應自動建立 `DevHUD_Health`（Console 會有 `[HUD] HealthHUD initialized`）。
-2) 視窗顯示 FPS/Memory/Units/Buildings 與剩餘倒數；拖動位置，停止再 Play，位置應保留。
-3) Editor 選單 **DeepAbyssHive → HUD → Toggle Health HUD** 可顯示/隱藏 HUD；若 GameConfig 設了 `healthHudToggleKey`，按下也可切換。
-4) 間隔到時，數值自動更新；按 **Refresh** 立即更新；按 **Close** 隱藏（下次再 Play 仍可用選單或熱鍵叫出）。
-5) Console（分類 CONFIG）應有一行：`HealthHUD config → enabled=..., showHUD=..., interval=..., toggleKey=...`。
-
-# 回滾指引
-- 刪除檔案：
-  - `Assets/QA/Smoke/Dev/HUD/HealthHUD.cs`
-  - `Assets/DeepAbyssHive/Editor/HUD/HealthHUDMenu.cs`
-- 重新編譯即可回到變更前狀態。

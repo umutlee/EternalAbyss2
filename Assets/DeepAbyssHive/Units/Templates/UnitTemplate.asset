@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29300fdaf3e1c495597ec59876a24212, type: 3}
+  m_Name: UnitTemplate
+  m_EditorClassIdentifier: 
+  Id: 0
+  UnitType: 0
+  UnitName: 
+  Description: 
+  Level: 0
+  BaseHealth: 0
+  BaseEnergy: 0
+  BaseShield: 0
+  BaseMoveSpeed: 0
+  BaseAttackDamage: 0
+  BaseAttackRange: 0
+  BaseAttackSpeed: 0
+  BaseArmor: 0
+  HealthGrowth: 0
+  EnergyGrowth: 0
+  DamageGrowth: 0
+  ArmorGrowth: 0
+  SpeedGrowth: 0
+  PreferredEnvironment: 0
+  EnvironmentAdaptationRate: 0
+  SightRange: 0
+  DetectionRange: 0
+  HearingRange: 0
+  BuildCost: []
+  BuildTime: 0
+  SupplyUsage: 0
+  AvailableAbilities: []
+  StartingAbilities: []
+  EvolutionPaths: []
+  MaxEvolutionLevel: 0
+  PrefabPath: 
+  IconPath: 
