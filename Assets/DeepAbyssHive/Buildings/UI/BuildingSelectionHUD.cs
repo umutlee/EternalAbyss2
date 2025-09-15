@@ -18,7 +18,7 @@ namespace DeepAbyssHive.Buildings.UI
         private void Draw(int id)
         {
             var cat = BuildingCatalogRuntime.Instance;
-            GUILayout.Label($"Selected: {cat.CurrentId}  (Prev: '['  Next: ']')");
+            GUILayout.Label($"Selected: {cat.CurrentId}  (Prev: [  Next: ])");
             GUI.DragWindow(new Rect(0,0,10000,20));
         }
     }
