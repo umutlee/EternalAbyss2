@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Config
 {
@@ -23,7 +24,7 @@ namespace DeepAbyssHive.Core.Config
             var cfg = Resources.Load("Configs/GameConfig");
             if (cfg == null)
             {
-                SmartConsoleShim.Log("CONFIG", "GameConfig asset not found at Resources/Configs/GameConfig. Skipped startup dump.");
+                DAHLog.Warn(LogCategory.CONFIG, "GameConfig asset not found at Resources/Configs/GameConfig. Skipped startup dump.");
                 return;
             }
 
@@ -62,63 +63,9 @@ namespace DeepAbyssHive.Core.Config
                 $"unitBatchSize={Get(cfg, "unitBatchSize")}, unitBatchInterval={Get(cfg, "unitBatchInterval")}, " +
                 $"verboseLogs={Get(cfg, "verboseLogs")}";
 
-            SmartConsoleShim.Log("CONFIG", $"GameConfig snapshot → {line}");
+            DAHLog.Info(LogCategory.CONFIG, $"GameConfig snapshot → {line}");
         }
 
-        /// <summary>
-        /// 以反射橋接 Smart Console，不建立編譯期相依。
-        /// 嘗試尋找：
-        /// - public static void DLog(string category, string message, params string[] tags)
-        /// - 或 public static void Log(string category, string message) on *SmartConsole* 類別
-        /// 找不到時僅 Warning 一次以避免刷屏。
-        /// </summary>
-        private static class SmartConsoleShim
-        {
-            private static Action<string,string> s_log;
-            private static bool s_warned;
 
-            public static void Log(string category, string message)
-            {
-                if (s_log == null) s_log = FindLogger();
-                if (s_log != null)
-                {
-                    s_log(category, message);
-                }
-                else if (!s_warned)
-                {
-                    s_warned = true;
-                    Debug.LogWarning($"[{category}] {message} (Smart Console logger not found; fallback once)"); // 單次退回，避免刷屏
-                }
-            }
-
-            private static Action<string,string> FindLogger()
-            {
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    Type[] types;
-                    try { types = asm.GetTypes(); }
-                    catch { continue; }
-
-                    foreach (var t in types)
-                    {
-                        if (!t.IsClass) continue;
-                        if (!t.Name.Contains("SmartConsole") && t.Name != "DLog") continue;
-
-                        var m1 = t.GetMethod("DLog", BindingFlags.Public | BindingFlags.Static);
-                        if (m1 != null)
-                        {
-                            return (c, m) => m1.Invoke(null, new object[] { c, m, null });
-                        }
-
-                        var m2 = t.GetMethod("Log", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string), typeof(string) }, null);
-                        if (m2 != null)
-                        {
-                            return (c, m) => m2.Invoke(null, new object[] { c, m });
-                        }
-                    }
-                }
-                return null;
-            }
-        }
     }
 }
