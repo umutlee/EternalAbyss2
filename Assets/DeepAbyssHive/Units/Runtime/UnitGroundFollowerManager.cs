@@ -116,7 +116,8 @@ namespace DeepAbyssHive.Units.Runtime
             // 取樣地面高度
             if (TrySampleHeight(pos, out float h))
             {
-                float targetY = h + _offset;
+                // 新：加上個別單位的 footOffset（pivot→模型底部的距離）
+                float targetY = h + t.FootOffset + _offset;
                 if (Mathf.Abs(pos.y - targetY) > 0.02f)
                 {
                     pos.y = targetY;
@@ -183,9 +184,35 @@ namespace DeepAbyssHive.Units.Runtime
             foreach (var tr in set)
             {
                 if (!_units.Exists(u => u.Tr == tr))
-                    _units.Add(new Tracked { Tr = tr, NextAt = 0f, HasGround = false });
+                {
+                    var u = new Tracked { Tr = tr, NextAt = 0f, HasGround = false };
+                    u.FootOffset = ComputeFootOffset(tr); // 計算個別 offset
+                    _units.Add(u);
+                }
             }
             _units.RemoveAll(u => u == null || u.Tr == null);
+        }
+
+        /// <summary>計算 pivot 到模型/碰撞體底部的距離（世界座標）。</summary>
+        private float ComputeFootOffset(Transform tr)
+        {
+            // 1) 優先使用任何 Collider 的 bounds
+            var col = tr.GetComponentInChildren<Collider>();
+            if (col != null)
+            {
+                var b = col.bounds;
+                return Mathf.Max(0f, tr.position.y - b.min.y);
+            }
+            // 2) 退回所有 Renderer 的 bounds
+            var rends = tr.GetComponentsInChildren<Renderer>();
+            if (rends != null && rends.Length > 0)
+            {
+                var b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                return Mathf.Max(0f, tr.position.y - b.min.y);
+            }
+            // 3) 無可用資訊時，用 0.9（capsule 預設半高）作為保守值
+            return 0.9f;
         }
 
         private void ReadConfigOrDefaults()
@@ -295,6 +322,7 @@ namespace DeepAbyssHive.Units.Runtime
             public float NextAt;
             public bool HasGround;
             public Vector3 LastGround;
+            public float FootOffset; // 新增：pivot→模型/碰撞體底部的距離
         }
     }
 }

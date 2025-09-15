@@ -1,0 +1,729 @@
+description: EA-M4-XT-ConfigMenuUnifier — Unify CreateAssetMenu paths "DeepAbyssHive/Config/*" → "DeepAbyssHive/Configs/*"
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+alwaysApply: false
+globs:
+  - Assets/DeepAbyssHive/Editor/Configs/ConfigMenuUnifier.cs
+
+PLAN
+- 只新增 1 個 Editor 視窗：**ConfigMenuUnifier**。
+- 功能：Audit → 找出含有 `[CreateAssetMenu(menuName="DeepAbyssHive/Config/...")]` 的檔案；Apply → 將「Config」改為「Configs」（逐檔備份 .bak）。
+- 保守設計：只處理 `Assets/DeepAbyssHive/**.cs`，只改 `menuName="DeepAbyssHive/Config/..."` 這個精確模式；每檔建立 `.bak` 後才寫入。提供 **Restore** 把 .bak 還原。
+
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Editor/Configs/ConfigMenuUnifier.cs
+#if UNITY_EDITOR
+using System;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+
+namespace DeepAbyssHive.EditorTools.Configs
+{
+    /// <summary>
+    /// 將所有 CreateAssetMenu 的 menuName 路徑從
+    /// "DeepAbyssHive/Config/..." 統一為 "DeepAbyssHive/Configs/..."
+    /// - 只掃描 Assets/DeepAbyssHive/*.cs
+    /// - 只改符合精確模式的 menuName
+    /// - 改寫前先建立 .bak
+    /// - 提供 Restore 功能可一鍵還原
+    /// </summary>
+    public class ConfigMenuUnifier : EditorWindow
+    {
+        private const string Root = "Assets/DeepAbyssHive";
+        private static readonly Regex MenuPattern = new Regex(
+            "menuName\\s*=\\s*\"DeepAbyssHive/Config/([^\"]+)\"",
+            RegexOptions.Compiled);
+
+        private List<string> _candidates = new List<string>();
+        private Vector2 _scroll;
+
+        [MenuItem("DeepAbyssHive/Tools/Configs/Unify 'Config' Menus → 'Configs'")]
+        public static void Open()
+        {
+            var w = GetWindow<ConfigMenuUnifier>("Config Menu Unifier");
+            w.minSize = new Vector2(720, 420);
+        }
+
+        private void OnGUI()
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+            {
+                if (GUILayout.Button("Audit", EditorStyles.toolbarButton, GUILayout.Width(80)))
+                    RunAudit();
+                if (GUILayout.Button("Apply Rename", EditorStyles.toolbarButton, GUILayout.Width(110)))
+                    ApplyRename();
+                if (GUILayout.Button("Restore .bak", EditorStyles.toolbarButton, GUILayout.Width(100)))
+                    RestoreBak();
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Open Scripts Folder", EditorStyles.toolbarButton, GUILayout.Width(150)))
+                    PingFolder(Root);
+            }
+
+            EditorGUILayout.HelpBox(
+                "目的：將所有 ScriptableObject 的 CreateAssetMenu 路徑統一為「DeepAbyssHive/Configs/...」。\n" +
+                "流程：先 Audit 檢視 → Apply 會逐檔建立 .bak 並改寫 → 編譯後選單只會出現 Configs。\n" +
+                "如需回滾，按 Restore .bak 即可還原。",
+                MessageType.Info);
+
+            EditorGUILayout.LabelField($"Root = {Root}");
+            EditorGUILayout.Space();
+
+            using (var sv = new EditorGUILayout.ScrollViewScope(_scroll))
+            {
+                _scroll = sv.scrollPosition;
+                if (_candidates.Count == 0)
+                {
+                    EditorGUILayout.LabelField("尚未掃描或沒有找到需要統一的檔案。");
+                }
+                else
+                {
+                    EditorGUILayout.LabelField($"找到 {_candidates.Count} 個候選檔案：");
+                    foreach (var p in _candidates)
+                        EditorGUILayout.LabelField("• " + p);
+                }
+            }
+        }
+
+        private void RunAudit()
+        {
+            _candidates.Clear();
+            var files = Directory.GetFiles(Root, "*.cs", SearchOption.AllDirectories);
+            foreach (var f in files)
+            {
+                var text = File.ReadAllText(f);
+                if (text.Contains("CreateAssetMenu") && MenuPattern.IsMatch(text))
+                    _candidates.Add(f.Replace("\\", "/"));
+            }
+            Repaint();
+            EditorUtility.DisplayDialog("Audit", $"找到 {_candidates.Count} 個需要統一的檔案。", "OK");
+        }
+
+        private void ApplyRename()
+        {
+            if (_candidates.Count == 0)
+            {
+                if (!EditorUtility.DisplayDialog("Apply Rename", "目前清單為空，是否先進行 Audit？", "OK", "取消"))
+                    return;
+                RunAudit();
+                if (_candidates.Count == 0) return;
+            }
+
+            int changed = 0, skipped = 0, failed = 0;
+            foreach (var path in _candidates.ToList())
+            {
+                try
+                {
+                    var full = Path.GetFullPath(path);
+                    var text = File.ReadAllText(full);
+
+                    if (!MenuPattern.IsMatch(text)) { skipped++; continue; }
+
+                    var bak = full + ".bak";
+                    if (!File.Exists(bak))
+                        File.Copy(full, bak);
+
+                    var replaced = MenuPattern.Replace(text, m =>
+                    {
+                        var rest = m.Groups[1].Value;
+                        return $"menuName = \"DeepAbyssHive/Configs/{rest}\"";
+                    });
+
+                    if (replaced != text)
+                    {
+                        File.WriteAllText(full, replaced);
+                        changed++;
+                    }
+                    else skipped++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Debug.LogError($"[ConfigMenuUnifier] 變更失敗：{path}\n{ex}");
+                }
+            }
+
+            AssetDatabase.Refresh();
+            RunAudit(); // 重新掃描
+            EditorUtility.DisplayDialog("Apply Rename",
+                $"完成。\n變更：{changed}\n略過：{skipped}\n失敗：{failed}\n\n已建立 .bak，可用 Restore 還原。",
+                "OK");
+        }
+
+        private void RestoreBak()
+        {
+            var files = Directory.GetFiles(Root, "*.cs.bak", SearchOption.AllDirectories);
+            int restored = 0, failed = 0;
+            foreach (var bak in files)
+            {
+                try
+                {
+                    var orig = bak.Substring(0, bak.Length - 4);
+                    File.Copy(bak, orig, true);
+                    File.Delete(bak);
+                    restored++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Debug.LogError($"[ConfigMenuUnifier] 還原失敗：{bak}\n{ex}");
+                }
+            }
+            AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog("Restore", $"還原完成：{restored}，失敗：{failed}", "OK");
+        }
+
+        private void PingFolder(string path)
+        {
+            if (!AssetDatabase.IsValidFolder(path))
+            {
+                var parent = Path.GetDirectoryName(path)?.Replace("\\", "/");
+                var name = Path.GetFileName(path);
+                if (!string.IsNullOrEmpty(parent) && AssetDatabase.IsValidFolder(parent))
+                    AssetDatabase.CreateFolder(parent, name);
+            }
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            Selection.activeObject = obj;
+            EditorGUIUtility.PingObject(obj);
+        }
+    }
+}
+#endif
+
+ACCEPTANCE
+- 開啟：DeepAbyssHive → Tools → Configs → **Unify 'Config' Menus → 'Configs'**。
+- 點「Audit」可列出所有仍使用 `DeepAbyssHive/Config/...` 的 cs 檔。
+- 點「Apply Rename」會為每檔建立 .bak 並改寫為 `DeepAbyssHive/Configs/...`；編譯後 Unity 選單只保留 **Configs**。
+- 如需回滾，按「Restore .bak」可一鍵還原。
+
+ROLLBACK
+- 刪除 `Assets/DeepAbyssHive/Editor/Configs/ConfigMenuUnifier.cs`，或在視窗中按「Restore .bak」回復所有備份。
+
+
+
+description: EA-M4-XT-ConfigLocationEnforcer — 強制所有 Config ScriptableObjects 落在 Assets/Resources/Configs
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+alwaysApply: false
+globs:
+  - Assets/DeepAbyssHive/Editor/Configs/ConfigAssetEnforcer.cs
+
+PLAN
+- 以 Editor AssetPostprocessor 監控 ScriptableObject 的建立/移動：凡屬「配置類 SO」且不在 `Assets/Resources/Configs`，自動搬移過去。
+- 提供一鍵 **Audit & Fix**：掃描整個專案，把既有的配置 SO 一次搬到正確資料夾。
+- 可切換 **Auto Enforce**（預設 ON），避免你臨時測試時被強制移動。
+
+偵測規則（保守、不誤傷）
+- 物件是 ScriptableObject，且類名或命名空間符合以下任一：
+  - 類名以 `ConfigSO` / `CatalogSO` / `SettingsSO` 結尾；或
+  - 命名空間包含 `.Config` / `.Configs`；或
+  - 類名包含 `GameConfig` / `TerrainConfig` / `CreepConfig` / `BuildingConfig` / `UnitConfig` / `DevLogSettings`。
+
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Editor/Configs/ConfigAssetEnforcer.cs
+#if UNITY_EDITOR
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+namespace DeepAbyssHive.EditorTools.Configs
+{
+    /// <summary>
+    /// 監看配置 ScriptableObject 的建立/移動：若不在 Assets/Resources/Configs 就自動搬移。
+    /// 另提供手動「Audit & Fix」一鍵整理既有資產。
+    /// </summary>
+    public sealed class ConfigAssetEnforcer : AssetPostprocessor
+    {
+        private const string TargetDir = "Assets/Resources/Configs";
+        private const string PrefKey   = "DAH.ConfigEnforcer.Enabled";
+
+        private static bool Enabled => EditorPrefs.GetBool(PrefKey, true);
+
+        [InitializeOnLoadMethod]
+        private static void Boot()
+        {
+            EnsureFolder(TargetDir);
+        }
+
+        private static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path)) return;
+            var parent = Path.GetDirectoryName(path)?.Replace("\\", "/");
+            var name   = Path.GetFileName(path);
+            if (!string.IsNullOrEmpty(parent) && !AssetDatabase.IsValidFolder(parent))
+                EnsureFolder(parent);
+            AssetDatabase.CreateFolder(parent, name);
+        }
+
+        // 自動執行：新建 / 匯入 / 移動後被呼叫
+        static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets,
+                                           string[] movedAssets, string[] movedFromAssetPaths)
+        {
+            if (!Enabled) return;
+
+            Process(importedAssets);
+            Process(movedAssets);
+        }
+
+        private static void Process(string[] paths)
+        {
+            if (paths == null) return;
+            foreach (var p in paths)
+            {
+                if (string.IsNullOrEmpty(p) || !p.EndsWith(".asset")) continue;
+                if (p.StartsWith(TargetDir)) continue;
+
+                var obj = AssetDatabase.LoadMainAssetAtPath(p);
+                if (obj == null || !(obj is ScriptableObject)) continue;
+                if (!IsConfigSO(obj)) continue;
+
+                EnsureFolder(TargetDir);
+                var to = AssetDatabase.GenerateUniqueAssetPath((TargetDir + "/" + Path.GetFileName(p)).Replace("\\", "/"));
+                var err = AssetDatabase.MoveAsset(p, to);
+                if (!string.IsNullOrEmpty(err))
+                    Debug.LogWarning($"[CONFIGS] Move failed: {p} → {to}\n{err}");
+                else
+                    Debug.Log($"[CONFIGS] Moved {obj.GetType().Name} → {to}");
+            }
+        }
+
+        private static bool IsConfigSO(Object obj)
+        {
+            var t   = obj.GetType();
+            var ns  = t.Namespace ?? string.Empty;
+            var n   = t.Name;
+
+            if (n.EndsWith("ConfigSO") || n.EndsWith("CatalogSO") || n.EndsWith("SettingsSO"))
+                return true;
+            if (ns.Contains(".Config") || ns.EndsWith(".Configs"))
+                return true;
+            if (n.Contains("GameConfig") || n.Contains("TerrainConfig") || n.Contains("CreepConfig") ||
+                n.Contains("BuildingConfig") || n.Contains("UnitConfig") || n.Contains("DevLogSettings"))
+                return true;
+            return false;
+        }
+
+        // 手動整理：掃描整個專案把不在 Resources/Configs 的配置 SO 都搬過去
+        [MenuItem("DeepAbyssHive/Tools/Configs/Enforce Location (Audit & Fix)")]
+        public static void EnforceNow()
+        {
+            EnsureFolder(TargetDir);
+            var all = AssetDatabase.FindAssets("t:ScriptableObject")
+                                   .Select(AssetDatabase.GUIDToAssetPath)
+                                   .Where(p => p.StartsWith("Assets/"))
+                                   .ToArray();
+
+            int moved = 0, skipped = 0;
+            foreach (var p in all)
+            {
+                if (p.StartsWith(TargetDir)) { skipped++; continue; }
+                var obj = AssetDatabase.LoadMainAssetAtPath(p);
+                if (obj == null || !(obj is ScriptableObject) || !IsConfigSO(obj)) { skipped++; continue; }
+
+                var to = AssetDatabase.GenerateUniqueAssetPath((TargetDir + "/" + Path.GetFileName(p)).Replace("\\", "/"));
+                var err = AssetDatabase.MoveAsset(p, to);
+                if (string.IsNullOrEmpty(err)) moved++;
+                else Debug.LogWarning($"[CONFIGS] Move failed: {p} → {to}\n{err}");
+            }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog("DAH Configs", $"Moved: {moved}\nSkipped: {skipped}\nTarget: {TargetDir}", "OK");
+        }
+
+        // 切換自動強制
+        [MenuItem("DeepAbyssHive/Tools/Configs/Auto Enforce/Enable", true)]
+        private static bool ValidateEnable() => !Enabled;
+        [MenuItem("DeepAbyssHive/Tools/Configs/Auto Enforce/Enable")]
+        private static void EnableAuto()
+        {
+            EditorPrefs.SetBool(PrefKey, true);
+            EditorUtility.DisplayDialog("DAH Configs", "Auto enforce ENABLED", "OK");
+        }
+
+        [MenuItem("DeepAbyssHive/Tools/Configs/Auto Enforce/Disable", true)]
+        private static bool ValidateDisable() => Enabled;
+        [MenuItem("DeepAbyssHive/Tools/Configs/Auto Enforce/Disable")]
+        private static void DisableAuto()
+        {
+            EditorPrefs.SetBool(PrefKey, false);
+            EditorUtility.DisplayDialog("DAH Configs", "Auto enforce DISABLED", "OK");
+        }
+    }
+}
+#endif
+
+ACCEPTANCE
+- 在 Project 中任何地方以 CreateAssetMenu 建立我們的 Config/Catalog/Settings SO，建立後會被自動搬到 `Assets/Resources/Configs`。
+- 透過選單 **DeepAbyssHive → Tools → Configs → Enforce Location (Audit & Fix)** 可一次整理專案中所有歷史 SO。
+- 可在 **DeepAbyssHive → Tools → Configs → Auto Enforce → Enable/Disable** 開關自動強制。
+
+ROLLBACK
+- 刪除 `Assets/DeepAbyssHive/Editor/Configs/ConfigAssetEnforcer.cs` 並重新編譯即可停用；已搬移的資產不會自動移回，必要時手動移動。
+
+description: EA-M4-XT-ConfigSingletons — Create-or-Select menus + duplicate auditor (prevents multiple GameConfig)
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+alwaysApply: false
+globs:
+  - Assets/DeepAbyssHive/Editor/Configs/ConfigSingletons.cs
+
+PLAN
+- 新增單一 Editor 腳本，提供：
+  1) **Create or Select** 選單（GameConfig / TerrainConfig / CreepConfig / BuildingCatalog / DevLogSettings / UnitConfig）。
+     - 行為：先在 `Assets/Resources/Configs` 尋找該型別的資產；若已有 → 直接選取；若沒有 → 以固定檔名建立（避免重覆）。
+  2) **Find Duplicates (Singletons)** 稽核：列出專案中所有重複的單例 Config 類型，並提供一鍵選取。
+- 使用反射尋找型別（以短名匹配），避免專案內部命名空間差異導致失效。
+- 與「ConfigLocationEnforcer」相容：就算有人在別處建，也會被搬移到正確目錄；本工具確保**不會創出第二份**。
+
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Editor/Configs/ConfigSingletons.cs
+#if UNITY_EDITOR
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+
+namespace DeepAbyssHive.EditorTools.Configs
+{
+    /// <summary>
+    /// 提供「Create or Select」單一來源的 ScriptableObject 工廠，避免產生多份 GameConfig 等單例資產。
+    /// 另附「Find Duplicates」稽核，幫你找出不小心留下的副本。
+    /// </summary>
+    public static class ConfigSingletons
+    {
+        private const string TARGET_DIR = "Assets/Resources/Configs";
+
+        // 單例型別清單（短名 → 固定檔名）
+        private static readonly (string shortType, string fileName)[] Singletons = new[]
+        {
+            ("GameConfigSO",       "GameConfig.asset"),
+            ("TerrainConfigSO",    "TerrainConfig.asset"),
+            ("CreepConfigSO",      "CreepConfig.asset"),
+            ("BuildingCatalogSO",  "BuildingCatalog.asset"),
+            ("DevLogSettingsSO",   "DevLogSettings.asset"),
+            ("UnitConfigSO",       "UnitConfig.asset"),
+        };
+
+        #region Public Menus
+        [MenuItem("DeepAbyssHive/Configs/Create or Select/GameConfig")]
+        public static void CreateOrSelect_GameConfig() => CreateOrSelect("GameConfigSO", "GameConfig.asset");
+        [MenuItem("DeepAbyssHive/Configs/Create or Select/TerrainConfig")]
+        public static void CreateOrSelect_TerrainConfig() => CreateOrSelect("TerrainConfigSO", "TerrainConfig.asset");
+        [MenuItem("DeepAbyssHive/Configs/Create or Select/CreepConfig")]
+        public static void CreateOrSelect_CreepConfig() => CreateOrSelect("CreepConfigSO", "CreepConfig.asset");
+        [MenuItem("DeepAbyssHive/Configs/Create or Select/BuildingCatalog")]
+        public static void CreateOrSelect_BuildingCatalog() => CreateOrSelect("BuildingCatalogSO", "BuildingCatalog.asset");
+        [MenuItem("DeepAbyssHive/Configs/Create or Select/DevLogSettings")]
+        public static void CreateOrSelect_DevLogSettings() => CreateOrSelect("DevLogSettingsSO", "DevLogSettings.asset");
+        [MenuItem("DeepAbyssHive/Configs/Create or Select/UnitConfig")]
+        public static void CreateOrSelect_UnitConfig() => CreateOrSelect("UnitConfigSO", "UnitConfig.asset");
+
+        [MenuItem("DeepAbyssHive/Tools/Configs/Find Duplicates (Singletons)")]
+        public static void FindDuplicates() => AuditDuplicates();
+        #endregion
+
+        private static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path)) return;
+            var parent = Path.GetDirectoryName(path)?.Replace("\\", "/");
+            var name   = Path.GetFileName(path);
+            if (!string.IsNullOrEmpty(parent) && !AssetDatabase.IsValidFolder(parent))
+                EnsureFolder(parent);
+            AssetDatabase.CreateFolder(parent, name);
+        }
+
+        private static void CreateOrSelect(string shortType, string fileName)
+        {
+            var type = FindRuntimeType(shortType);
+            if (type == null)
+            {
+                EditorUtility.DisplayDialog("Config", $"找不到型別：{shortType}\n請確認腳本存在且名稱正確。", "OK");
+                return;
+            }
+
+            EnsureFolder(TARGET_DIR);
+
+            // 先從正確目錄找
+            var canonicalPath = $"{TARGET_DIR}/{fileName}";
+            var asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(canonicalPath);
+            if (asset == null)
+            {
+                // 沒有 → 檢查是否有同型別其他檔案（任意路徑）
+                var guids = AssetDatabase.FindAssets($"t:{type.Name}");
+                foreach (var g in guids)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(g);
+                    var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+                    if (obj != null && obj.GetType() == type)
+                    {
+                        // 有其他副本 → 提示並選擇將此副本搬為主檔 or 建立新主檔
+                        int choice = EditorUtility.DisplayDialogComplex("Duplicate Found",
+                            $"偵測到已存在 {type.Name}：\n{path}\n\n你要把它搬到 {canonicalPath} 並作為主檔嗎？",
+                            "搬過去並設為主檔", "建立新主檔", "取消");
+                        if (choice == 0)
+                        {
+                            EnsureFolder(TARGET_DIR);
+                            var err = AssetDatabase.MoveAsset(path, canonicalPath);
+                            if (!string.IsNullOrEmpty(err))
+                                EditorUtility.DisplayDialog("Move Failed", err, "OK");
+                            asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(canonicalPath);
+                        }
+                        else if (choice == 1)
+                        {
+                            // 建立新主檔
+                            asset = CreateNewAsset(type, canonicalPath);
+                        }
+                        else return;
+
+                        break;
+                    }
+                }
+
+                // 完全沒找到 → 直接建立
+                if (asset == null)
+                    asset = CreateNewAsset(type, canonicalPath);
+            }
+
+            // 選取並聚焦
+            Selection.activeObject = asset;
+            EditorGUIUtility.PingObject(asset);
+        }
+
+        private static UnityEngine.Object CreateNewAsset(Type type, string path)
+        {
+            var inst = ScriptableObject.CreateInstance(type);
+            AssetDatabase.CreateAsset(inst, path);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[CONFIGS] Created {type.Name} at {path}");
+            return AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+        }
+
+        private static void AuditDuplicates()
+        {
+            var report = new System.Text.StringBuilder();
+            int dupCount = 0;
+
+            foreach (var (shortType, fileName) in Singletons)
+            {
+                var type = FindRuntimeType(shortType);
+                if (type == null) continue;
+
+                var guids = AssetDatabase.FindAssets($"t:{type.Name}");
+                var list = guids.Select(AssetDatabase.GUIDToAssetPath).ToList();
+                if (list.Count > 1)
+                {
+                    dupCount += list.Count - 1;
+                    report.AppendLine($"[{shortType}] found {list.Count}:");
+                    foreach (var p in list) report.AppendLine("  • " + p);
+                    report.AppendLine($"  → 建議保留：{TARGET_DIR}/{fileName}\n");
+                }
+            }
+
+            if (dupCount == 0)
+                EditorUtility.DisplayDialog("Duplicates", "未發現單例 Config 的重覆資產。", "OK");
+            else
+            {
+                var txt = report.ToString();
+                Debug.LogWarning("[CONFIGS] Duplicates found:\n" + txt);
+                EditorUtility.DisplayDialog("Duplicates", $"發現 {dupCount} 個重覆項，詳見 Console。", "OK");
+            }
+        }
+
+        private static Type FindRuntimeType(string shortName)
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    var t = asm.GetTypes().FirstOrDefault(tp => tp.Name == shortName && typeof(ScriptableObject).IsAssignableFrom(tp));
+                    if (t != null) return t;
+                }
+                catch { }
+            }
+            return null;
+        }
+    }
+}
+#endif
+
+ACCEPTANCE
+- 使用選單 **DeepAbyssHive → Configs → Create or Select → GameConfig**：若已有就選取該資產；若沒有就於 `Assets/Resources/Configs/GameConfig.asset` 建立。
+- 若專案裡存在同型別的其他副本，會跳出對話框讓你選「搬到正確位置作為主檔」或「建立新主檔」。
+- 使用 **DeepAbyssHive → Tools → Configs → Find Duplicates (Singletons)** 可列出所有重覆的單例 Config 類型。
+- 與先前的 **ConfigLocationEnforcer** 相容：就算有人在別處建，也會被搬到正確位置；透過本工具可避免創出第二份主檔。
+
+ROLLBACK
+- 刪除 `Assets/DeepAbyssHive/Editor/Configs/ConfigSingletons.cs` 後重新編譯即可移除本功能。
+
+
+description: EA-M4-XT-GameConfigLoadLock — 固定載入策略（優先 Resources/Configs/GameConfig.asset） + Provider 綁定
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+alwaysApply: false
+globs:
+  - Assets/DeepAbyssHive/Core/Config/GameConfigLoadLock.cs
+
+PREREQUISITES
+- 專案已有 GameConfigSO（建議用「Create or Select → GameConfig」建立於 Assets/Resources/Configs/GameConfig.asset）。
+- 現有讀取端多半透過 GameConfigProvider.Current 取得設定。
+
+PLAN
+- 新增 Runtime 啟動鉤子：優先從 **Resources/Configs/GameConfig.asset** 載入；若缺，回退到 `Resources/Configs` 目錄內第一個 *GameConfig* 類型。
+- 以 **反射** 綁定到 `DeepAbyssHive.Core.Config.GameConfigProvider.Current`（支援 setter / 靜態欄位 / SetCurrent(...) 方法）。
+- 提供 Editor 菜單「Rebind」方便在編輯器中手動重綁與驗證。
+
+CHANGES
+WRITE_CHANGE: Assets/DeepAbyssHive/Core/Config/GameConfigLoadLock.cs
+using System;
+using System.Linq;
+using System.Reflection;
+using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+using DeepAbyssHive.Core.Logging;
+
+namespace DeepAbyssHive.Core.Config
+{
+    /// <summary>
+    /// 鎖定 GameConfig 的載入策略：
+    /// 1) 優先從固定路徑 Resources/Configs/GameConfig.asset 載入；
+    /// 2) 次選 Resources/Configs 下第一個名稱含 "GameConfig" 的 ScriptableObject；
+    /// 3) 成功後嘗試綁定到 GameConfigProvider.Current（以反射支援不同實作）。
+    /// </summary>
+    public static class GameConfigLoadLock
+    {
+        private const string FIXED_PATH = "Configs/GameConfig"; // Resources 相對路徑
+        private static bool _boundOnce;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void AutoBindOnLoad()
+        {
+            TryBindProvider(out var where);
+            if (!string.IsNullOrEmpty(where))
+                DAHLog.Info(LogCategory.CONFIG, $"[CONFIG] GameConfig bound via {where}");
+            else
+                DAHLog.Warn(LogCategory.CONFIG, "[CONFIG] GameConfig not found. 建議執行：DeepAbyssHive → Configs → Create or Select → GameConfig");
+        }
+
+        /// <summary>嘗試載入並綁定到 Provider；回傳綁定來源描述字串（null 代表失敗）。</summary>
+        public static string TryBindProvider(out string where)
+        {
+            where = null;
+            var cfg = LoadFixed(out var origin) ?? LoadFallback(out origin);
+            if (cfg == null) return null;
+
+            if (BindToProvider(cfg))
+            {
+                where = origin;
+                _boundOnce = true;
+            }
+            return where;
+        }
+
+        private static ScriptableObject LoadFixed(out string origin)
+        {
+            origin = null;
+            var obj = Resources.Load(FIXED_PATH) as ScriptableObject;
+            if (obj != null) { origin = $"Resources/{FIXED_PATH}.asset"; return obj; }
+            return null;
+        }
+
+        private static ScriptableObject LoadFallback(out string origin)
+        {
+            origin = null;
+            // 僅掃描 Configs 目錄以避免全專案掃資源造成負擔
+            var arr = Resources.LoadAll("Configs", typeof(ScriptableObject));
+            var pick = arr.FirstOrDefault(o => o != null && o.name.IndexOf("GameConfig", StringComparison.OrdinalIgnoreCase) >= 0)
+                       as ScriptableObject;
+            if (pick != null) { origin = $"Resources/Configs/{pick.name}.asset"; return pick; }
+            return null;
+        }
+
+        private static bool BindToProvider(ScriptableObject cfg)
+        {
+            // 尋找 Provider 類型
+            var provType = Type.GetType("DeepAbyssHive.Core.Config.GameConfigProvider, Assembly-CSharp");
+            if (provType == null)
+                provType = AppDomain.CurrentDomain.GetAssemblies()
+                          .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
+                          .FirstOrDefault(t => t.Name == "GameConfigProvider");
+
+            if (provType == null)
+            {
+                DAHLog.Warn(LogCategory.CONFIG, "[CONFIG] 找不到 GameConfigProvider 類別，僅完成資源載入，無法對外供應 Current。");
+                return false;
+            }
+
+            const BindingFlags S = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+            // 1) 嘗試屬性 setter
+            var prop = provType.GetProperty("Current", S);
+            if (prop != null && prop.CanWrite && (prop.PropertyType == cfg.GetType() || prop.PropertyType.IsAssignableFrom(cfg.GetType())))
+            {
+                prop.SetValue(null, cfg);
+                return true;
+            }
+
+            // 2) 嘗試已知欄位
+            var fields = new[] { "Current", "_current", "s_current" };
+            foreach (var f in fields)
+            {
+                var fi = provType.GetField(f, S);
+                if (fi != null && (fi.FieldType == cfg.GetType() || fi.FieldType.IsAssignableFrom(cfg.GetType())))
+                {
+                    fi.SetValue(null, cfg);
+                    return true;
+                }
+            }
+
+            // 3) 嘗試 SetCurrent(cfg) / Initialize(cfg) / Init(cfg)
+            var methods = new[] { "SetCurrent", "Initialize", "Init" };
+            foreach (var m in methods)
+            {
+                var mi = provType.GetMethod(m, S);
+                if (mi != null)
+                {
+                    var ps = mi.GetParameters();
+                    if (ps.Length == 1 && (ps[0].ParameterType == cfg.GetType() || ps[0].ParameterType.IsAssignableFrom(cfg.GetType())))
+                    {
+                        mi.Invoke(null, new object[] { cfg });
+                        return true;
+                    }
+                }
+            }
+
+            DAHLog.Warn(LogCategory.CONFIG, "[CONFIG] 找到 GameConfig 但無法綁定到 Provider（缺 setter/欄位/方法）。");
+            return false;
+        }
+
+#if UNITY_EDITOR
+        [MenuItem("DeepAbyssHive/Configs/Rebind GameConfig (Fixed Path)")]
+        private static void RebindMenu()
+        {
+            var result = TryBindProvider(out var where);
+            if (!string.IsNullOrEmpty(result))
+                EditorUtility.DisplayDialog("GameConfig", $"綁定成功：{where}", "OK");
+            else
+                EditorUtility.DisplayDialog("GameConfig", "綁定失敗，請確認 Resources/Configs 下已有 GameConfig.asset。", "OK");
+        }
+#endif
+    }
+}
+
+ACCEPTANCE
+- 進入 Play 模式時 Console 出現：`[CONFIG] GameConfig bound via Resources/Configs/GameConfig.asset`（或 fallback 路徑）。
+- 刪除固定檔名後，若 `Resources/Configs` 內尚有其他 GameConfig 資產，仍可看到 fallback 綁定訊息；否則得到缺失警告。
+- 在 Editor 菜單 **DeepAbyssHive → Configs → Rebind GameConfig (Fixed Path)** 可手動觸發與驗證。
+
+ROLLBACK
+- 刪除 `Assets/DeepAbyssHive/Core/Config/GameConfigLoadLock.cs` 後重新編譯即可移除本載入策略鎖定（不影響既有資產）。
+
+

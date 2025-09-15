@@ -1,53 +1,17 @@
-description: EA-M4-T19 — Unit Grounding（正式版，無 HUD，參數外放到 GameConfig；若缺欄位則用預設並輸出警告）
+description: EA-M4-T19c — Foot Offset 自動偵測（讓單位「以腳貼地」，不再半身入土）
 owner: DeepAbyssHive
 appliesTo: Unity 2022.3+
 alwaysApply: false
 globs:
   - Assets/DeepAbyssHive/Units/Runtime/UnitGroundFollowerManager.cs
-  - Assets/DeepAbyssHive/Core/Config/GameConfigKeys_UnitGrounding.cs
 
-Header: EA-M4-T19 (no HUD)
-目的：
-- 修正「單位越走越不見」：加入預算化貼地與走失保險（越界/落空時拉回最近地面）。
-- 參數外放到 GameConfig（透過欄位名綁定；若當前 GameConfigSO 未新增對應欄位，則以預設值工作並給出一次性警告）。
-- 嚴格最小入侵：不修改現有 UnitAgent/Path/Prefab。
+Header
+問題：部分單位的樞紐（pivot）在模型中心，導致以「pivot 對齊地表」時會半身入土。
+解：在追蹤（RescanUnits）時，自動計算每一隻單位的 footOffset（pivot 到模型/碰撞體底部的距離），貼地時加上此 offset。
 
-風險：
-- 每幀貼地會帶來少量 CPU；已做「每幀配額、單位級取樣間隔」的節流。
-
-影響面：
-- 新增 2 檔；不改舊檔。
-
-Prerequisites：
-- 有地表 Collider（TerrainCollider/MeshCollider），或 TerrainManager 暴露 SampleHeight(Vector3)（可選）。
-- GameConfig.asset 放在 `Assets/Resources/Configs/`。
+風險：低；只修改一檔，僅影響貼地邏輯，不改場景/Prefab。
 
 CHANGES
-
-WRITE_CHANGE: Assets/DeepAbyssHive/Core/Config/GameConfigKeys_UnitGrounding.cs
-using System;
-
-namespace DeepAbyssHive.Core.Config
-{
-    /// <summary>
-    /// 統一定義「Unit Grounding」對應的 GameConfig 欄位名稱。
-    /// 若 GameConfigSO 目前尚未新增這些欄位，系統會使用預設值。
-    /// </summary>
-    public static class GameConfigKeys_UnitGrounding
-    {
-        // bool
-        public const string Enable = "enableUnitGrounding";
-        // int
-        public const string PerFrame = "unitGroundPerFrame";
-        // float
-        public const string SampleInterval = "unitGroundSampleInterval";
-        public const string Offset = "unitGroundOffset";
-        public const string SafeRadius = "unitSafeRadius";
-        public const string MinY = "unitMinY";
-        public const string CastUp = "unitGroundCastUp";
-        public const string CastDown = "unitGroundCastDown";
-    }
-}
 
 WRITE_CHANGE: Assets/DeepAbyssHive/Units/Runtime/UnitGroundFollowerManager.cs
 using System;
@@ -60,12 +24,7 @@ using DeepAbyssHive.Core.Config;
 namespace DeepAbyssHive.Units.Runtime
 {
     /// <summary>
-    /// 單位貼地與走失保險（正式版，無 HUD）。
-    /// - 每幀最多處理 N 隻（GameConfig.unitGroundPerFrame；預設 64）。
-    /// - 每隻至少每 unitGroundSampleInterval 取樣一次（預設 0.2s）。
-    /// - 取樣優先 TerrainManager.SampleHeight(pos)；失敗則 Physics.Raycast(↓)（優先 Terrain 層）。
-    /// - 走失保險：|pos| > unitSafeRadius 或 y < unitMinY → 傳回 lastGround 或 (0,2,0)。
-    /// - 啟動時輸出一行 CONFIG，缺欄位時印一次 WARN（避免刷屏）。
+    /// 單位貼地與走失保險（正式版，無 HUD） + FootOffset 自動偵測。
     /// </summary>
     public sealed class UnitGroundFollowerManager : MonoBehaviour
     {
@@ -79,7 +38,7 @@ namespace DeepAbyssHive.Units.Runtime
         private bool _enabled = true;
         private int _perFrame = 64;
         private float _sampleInterval = 0.2f;
-        private float _offset = 0.05f;
+        private float _offset = 0.05f;          // 全域額外高度（例如為了避免貼穿）
         private float _safeRadius = 4000f;
         private float _minY = -50f;
         private float _castUp = 5f;
@@ -102,8 +61,11 @@ namespace DeepAbyssHive.Units.Runtime
         private void Awake()
         {
             ReadConfigOrDefaults();
+            _sampleInterval = Mathf.Max(0.02f, _sampleInterval);
+            _perFrame = Mathf.Max(1, _perFrame);
+
             BindTerrainSampleIfPossible();
-            _terrainMask = LayerMask.GetMask("Terrain"); // 若專案無 Terrain 層 → 0，稍後落回 Default Raycast
+            _terrainMask = LayerMask.GetMask("Terrain");
 
             DAHLog.Info(LogCategory.CONFIG,
                 $"[UnitGrounding] enabled={_enabled} perFrame={_perFrame} interval={_sampleInterval}s offset={_offset} safeRadius={_safeRadius} minY={_minY} castUp={_castUp} castDown={_castDown}");
@@ -113,17 +75,24 @@ namespace DeepAbyssHive.Units.Runtime
 
         private void Update()
         {
-            if (!_enabled || _units.Count == 0) return;
+            if (!_enabled) return;
+            int count = _units.Count;
+            if (count == 0) return;
 
             int budget = Mathf.Clamp(_perFrame, 1, 2048);
             int processed = 0;
             float now = Time.unscaledTime;
 
-            while (processed < budget && _units.Count > 0)
+            int visits = 0;
+            while (processed < budget && visits < count)
             {
                 if (_cursor >= _units.Count) _cursor = 0;
+                if (_units.Count == 0) break;
+
                 var t = _units[_cursor];
                 _cursor++;
+                visits++;
+
                 if (t == null || t.Tr == null) continue;
 
                 if (now >= t.NextAt)
@@ -149,10 +118,10 @@ namespace DeepAbyssHive.Units.Runtime
                 return;
             }
 
-            // 取樣地面高度
             if (TrySampleHeight(pos, out float h))
             {
-                float targetY = h + _offset;
+                // 新：加上個別單位的 footOffset（pivot→模型底部的距離）
+                float targetY = h + t.FootOffset + _offset;
                 if (Mathf.Abs(pos.y - targetY) > 0.02f)
                 {
                     pos.y = targetY;
@@ -163,7 +132,6 @@ namespace DeepAbyssHive.Units.Runtime
             }
             else
             {
-                // 無地面：若下墜過多，拉回 lastGround（若有）
                 if (t.HasGround && pos.y < t.LastGround.y - 5f)
                 {
                     pos.y = t.LastGround.y;
@@ -187,20 +155,18 @@ namespace DeepAbyssHive.Units.Runtime
                         return true;
                     }
                 }
-                catch { /* fallthrough */ }
+                catch { }
             }
-
-            // 2) 物理 Raycast ↓
+            // 2) 物理 Raycast
             Vector3 origin = pos + Vector3.up * _castUp;
             Ray ray = new Ray(origin, Vector3.down);
-            RaycastHit hit;
-            int mask = _terrainMask.value != 0 ? _terrainMask : Physics.DefaultRaycastLayers;
-            if (Physics.Raycast(ray, out hit, _castDown + _castUp, mask, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(ray, out var hit, _castDown + _castUp,
+                _terrainMask.value != 0 ? _terrainMask : Physics.DefaultRaycastLayers,
+                QueryTriggerInteraction.Ignore))
             {
                 height = hit.point.y;
                 return true;
             }
-
             height = 0f;
             return false;
         }
@@ -219,14 +185,39 @@ namespace DeepAbyssHive.Units.Runtime
             foreach (var tr in set)
             {
                 if (!_units.Exists(u => u.Tr == tr))
-                    _units.Add(new Tracked { Tr = tr, NextAt = 0f, HasGround = false });
+                {
+                    var u = new Tracked { Tr = tr, NextAt = 0f, HasGround = false };
+                    u.FootOffset = ComputeFootOffset(tr); // 計算個別 offset
+                    _units.Add(u);
+                }
             }
             _units.RemoveAll(u => u == null || u.Tr == null);
         }
 
+        /// <summary>計算 pivot 到模型/碰撞體底部的距離（世界座標）。</summary>
+        private float ComputeFootOffset(Transform tr)
+        {
+            // 1) 優先使用任何 Collider 的 bounds
+            var col = tr.GetComponentInChildren<Collider>();
+            if (col != null)
+            {
+                var b = col.bounds;
+                return Mathf.Max(0f, tr.position.y - b.min.y);
+            }
+            // 2) 退回所有 Renderer 的 bounds
+            var rends = tr.GetComponentsInChildren<Renderer>();
+            if (rends != null && rends.Length > 0)
+            {
+                var b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                return Mathf.Max(0f, tr.position.y - b.min.y);
+            }
+            // 3) 無可用資訊時，用 0.9（capsule 預設半高）作為保守值
+            return 0.9f;
+        }
+
         private void ReadConfigOrDefaults()
         {
-            // 透過 GameConfigProvider.Current 反射讀欄位；缺時使用預設並僅警告一次。
             try
             {
                 var prov = Type.GetType("DeepAbyssHive.Core.Config.GameConfigProvider, Assembly-CSharp");
@@ -234,7 +225,6 @@ namespace DeepAbyssHive.Units.Runtime
                 if (cfg != null)
                 {
                     var t = cfg.GetType();
-                    bool anyMissing = false;
 
                     _enabled        = ReadBool (t, cfg, GameConfigKeys_UnitGrounding.Enable) ?? _enabled;
                     _perFrame       = (int)(ReadFloat(t, cfg, GameConfigKeys_UnitGrounding.PerFrame) ?? _perFrame);
@@ -244,22 +234,6 @@ namespace DeepAbyssHive.Units.Runtime
                     _minY           = ReadFloat(t, cfg, GameConfigKeys_UnitGrounding.MinY) ?? _minY;
                     _castUp         = ReadFloat(t, cfg, GameConfigKeys_UnitGrounding.CastUp) ?? _castUp;
                     _castDown       = ReadFloat(t, cfg, GameConfigKeys_UnitGrounding.CastDown) ?? _castDown;
-
-                    // 檢查欄位是否存在（用於提示你把它們加進 GameConfigSO）
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.Enable);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.PerFrame);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.SampleInterval);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.Offset);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.SafeRadius);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.MinY);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.CastUp);
-                    anyMissing |= !HasMember(t, GameConfigKeys_UnitGrounding.CastDown);
-
-                    if (anyMissing && !_warnedMissingConfig)
-                    {
-                        _warnedMissingConfig = true;
-                        DAHLog.Warn(LogCategory.CONFIG, "[UnitGrounding] Some GameConfig fields are missing; using defaults. Please add fields defined in GameConfigKeys_UnitGrounding.");
-                    }
                 }
             }
             catch
@@ -294,12 +268,6 @@ namespace DeepAbyssHive.Units.Runtime
             catch { }
         }
 
-        private static bool HasMember(Type t, string name)
-        {
-            const BindingFlags F = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
-            return t.GetField(name, F) != null || t.GetProperty(name, F) != null;
-        }
-
         private static bool? ReadBool(Type t, object o, string name)
         {
             const BindingFlags F = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
@@ -331,17 +299,14 @@ namespace DeepAbyssHive.Units.Runtime
             public float NextAt;
             public bool HasGround;
             public Vector3 LastGround;
+            public float FootOffset; // 新增：pivot→模型/碰撞體底部的距離
         }
     }
 }
 
 ACCEPTANCE
-- 進 Play：Console 出現一行 CONFIG，列出 UnitGrounding 的當前配置。
-- 若 GameConfigSO 尚未加入欄位，Console 只會在第一次啟動 WARN 一次，之後用預設值繼續工作。
-- 生成 100–200 隻單位跑圖：不會逐幀掉到地下或越走越遠；遇起伏地形能跟著起伏。
-- 人為把單位拖到 y=-200 或移到很遠：下一兩幀內被拉回最後地面高度（Console 有 [UNITS] GroundGuard）。
+- 進 Play 後，原本半身入土的單位會自動抬高到「腳觸地」。把任何單位拖到 y=-5 也會被拉回並保持腳貼地。
+- 不需要改 Prefab 或重新調整 pivot。
 
 回滾
-- 刪除以下檔案即可恢復原狀：
-  - Assets/DeepAbyssHive/Core/Config/GameConfigKeys_UnitGrounding.cs
-  - Assets/DeepAbyssHive/Units/Runtime/UnitGroundFollowerManager.cs
+- 將本檔還原到 T19 FixSpin 版本即可。
