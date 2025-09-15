@@ -21,10 +21,26 @@ MonoBehaviour:
   placementSmokeKey: 288
   buildingDeleteKey1: 127
   buildingDeleteKey2: 289
+  buildPlacerToggleKey: 98
   devUnitsSpawnKey: 287
   devUnitsTestKey: 291
   devSpawnCount: 20
+  devVerboseLogs: 0
   rmbLocksCursor: 0
+  unitDynCheckInterval: 0.5
+  unitDynRepathCooldown: 1
+  unitObstacleProbeRadius: 0.35
+  unitObstacleProbeExtra: 0.5
+  buildingWatcherInterval: 0.25
+  buildingWatcherPadRadius: 0.5
+  healthLogEnabled: 1
+  healthLogInterval: 10
+  pathJobsPerFrame: 8
   creepSpeedMul: 1.25
   offCreepSpeedMul: 1
   creepSampleInterval: 0.25
+  batchTargetDispatchSize: 10
+  batchTargetDispatchInterval: 0.1
+  buildingCycleNextKey: 9
+  buildingCyclePrevKey: 96
+  buildingCatalog: {fileID: 11400000, guid: 100b9786f97e047ecaaaaa5142dd6bd3, type: 2}

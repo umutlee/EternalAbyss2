@@ -2,22 +2,23 @@ using System;
 using System.Collections;
 using System.Reflection;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
+using QA.Smoke.Dev;
 
 namespace DeepAbyssHive.QA.Smoke.Dev.HUD
 {
     /// <summary>
     /// 以 IMGUI 顯示健康心跳資訊：FPS、記憶體、Units/Buildings 數量。
-    /// - 位置可拖拽並持久化（EditorPrefs/PlayerPrefs）。
+    /// - 位置可拖拽並持久化（使用 HudDragUtil）。
     /// - 頻率沿用 GameConfig.healthLogInterval。
     /// - 可由 GameConfig.healthHudToggleKey（字串對應 KeyCode）或 Editor 選單切換顯示。
-    /// - 日誌分類：HUD（一般訊息）、CONFIG（啟動值輸出）。
+    /// - 使用統一的 DAHLog 日誌系統。
     /// </summary>
     public sealed class HealthHUD : MonoBehaviour
     {
-        private const string RectPrefKey = "DeepAbyssHive.HealthHUD.Rect";
         private static HealthHUD s_instance;
 
-        private Rect _rect = new Rect(20, 200, 300, 140);
+        private Rect _rect;
         private bool _visible = true;
         private float _interval = 10f;
         private KeyCode? _toggleKey = null;
@@ -40,14 +41,14 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
 
         private void Awake()
         {
-            LoadRect();
+            _rect = HudDragUtil.GetRect("HUD.Health", new Rect(20, 200, 300, 140));
             ReadConfig(out var enabled, out var showHUD, out var interval, out var key);
             _visible = showHUD ?? enabled ?? true;
             _interval = Mathf.Max(0.5f, interval ?? 10f);
             _toggleKey = key;
 
-            SmartConsoleShim.Log("CONFIG", $"HealthHUD config → enabled={enabled}, showHUD={showHUD}, interval={_interval}, toggleKey={_toggleKey}");
-            SmartConsoleShim.Log("HUD", "HealthHUD initialized");
+            DAHLog.Info(LogCategory.CONFIG, $"HealthHUD config → enabled={enabled}, showHUD={showHUD}, interval={_interval}, toggleKey={_toggleKey}");
+            DAHLog.Info(LogCategory.DEV, "HealthHUD initialized");
             StartCoroutine(Heartbeat());
         }
 
@@ -144,67 +145,28 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private void OnGUI()
         {
             if (!_visible) return;
-            _rect = GUI.Window(0xDA0001, _rect, DrawWindow, "Health HUD");
-        }
+            
+            _rect = HudDragUtil.DraggableWindow("HUD.Health", _rect, "Health HUD", () =>
+            {
+                GUILayout.Label($"FPS: {_fps}");
+                GUILayout.Label($"Memory (MB): {_mem}");
+                GUILayout.Label($"Units: {_units}  |  Buildings: {_buildings}");
+                var remain = Mathf.Max(0f, _nextAt - Time.realtimeSinceStartup);
+                GUILayout.Label($"Next update in: {remain:0.0}s");
 
-        private void DrawWindow(int id)
-        {
-            GUILayout.Label($"FPS: {_fps}");
-            GUILayout.Label($"Memory (MB): {_mem}");
-            GUILayout.Label($"Units: {_units}  |  Buildings: {_buildings}");
-            var remain = Mathf.Max(0f, _nextAt - Time.realtimeSinceStartup);
-            GUILayout.Label($"Next update in: {remain:0.0}s");
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Refresh")) RefreshStats();
-            if (GUILayout.Button("Close")) { _visible = false; SaveRect(); }
-            GUILayout.EndHorizontal();
-
-            GUI.DragWindow(new Rect(0, 0, 10000, 20));
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Refresh")) RefreshStats();
+                if (GUILayout.Button("Close")) { _visible = false; }
+                GUILayout.EndHorizontal();
+            });
         }
 
         public static void Toggle()
         {
             if (s_instance == null) return;
             s_instance._visible = !s_instance._visible;
-            SmartConsoleShim.Log("HUD", $"HealthHUD visible = {s_instance._visible}");
+            DAHLog.Info(LogCategory.DEV, $"HealthHUD visible = {s_instance._visible}");
             if (s_instance._visible) s_instance.RefreshStats();
-            s_instance.SaveRect();
-        }
-
-        private void OnDisable() => SaveRect();
-        private void OnDestroy() => SaveRect();
-
-        private void LoadRect()
-        {
-#if UNITY_EDITOR
-            string s = UnityEditor.EditorPrefs.GetString(RectPrefKey, string.Empty);
-#else
-            string s = PlayerPrefs.GetString(RectPrefKey, string.Empty);
-#endif
-            if (!string.IsNullOrEmpty(s))
-            {
-                var parts = s.Split(',');
-                if (parts.Length == 4 &&
-                    float.TryParse(parts[0], out var x) &&
-                    float.TryParse(parts[1], out var y) &&
-                    float.TryParse(parts[2], out var w) &&
-                    float.TryParse(parts[3], out var h))
-                {
-                    _rect = new Rect(x, y, w, h);
-                }
-            }
-        }
-
-        private void SaveRect()
-        {
-            string s = $"{_rect.x:F0},{_rect.y:F0},{_rect.width:F0},{_rect.height:F0}";
-#if UNITY_EDITOR
-            UnityEditor.EditorPrefs.SetString(RectPrefKey, s);
-#else
-            PlayerPrefs.SetString(RectPrefKey, s);
-            PlayerPrefs.Save();
-#endif
         }
 
         private static void ReadConfig(out bool? enabled, out bool? showHUD, out float? interval, out KeyCode? key)
@@ -258,22 +220,6 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             return null;
         }
 
-        /// <summary>Smart Console 輕量橋接。</summary>
-        private static class SmartConsoleShim
-        {
-            private static Action<string,string> s_log;
-            private static bool s_warned;
-            public static void Log(string category, string message)
-            {
-                if (s_log == null) s_log = FindLogger();
-                if (s_log != null) s_log(category, message);
-                else if (!s_warned) { s_warned = true; Debug.LogWarning($"[{category}] {message} (Smart Console logger not found; fallback once)"); }
-            }
-            private static Action<string,string> FindLogger()
-            {
-                // 直接使用Debug.Log避免反射遞歸問題
-                return (c,m) => Debug.Log($"[{c}] {m}");
-            }
-        }
+
     }
 }

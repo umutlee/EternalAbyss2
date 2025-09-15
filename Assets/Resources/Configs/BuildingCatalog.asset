@@ -13,6 +13,11 @@ MonoBehaviour:
   m_Name: BuildingCatalog
   m_EditorClassIdentifier: 
   entries:
+  - id: pfb_build_modularbuildings_005
+    prefab: {fileID: 7405550572932674341, guid: 1cc1a21faad8345dabea2d1737b5242f,
+      type: 3}
+    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
+    cost: 0
   - id: pfb_build_modularbuildings_007
     prefab: {fileID: 208686885986723894, guid: 6ef65525bd70d4290b208c8b6adbf784, type: 3}
     footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
@@ -56,13 +61,4 @@ MonoBehaviour:
     prefab: {fileID: 1077032233143728795, guid: 9fcf623496b154bf6b34e32967db9e93,
       type: 3}
     footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
-    cost: 0
-  - id: pfb_build_modularbuildings_005
-    prefab: {fileID: 7405550572932674341, guid: 1cc1a21faad8345dabea2d1737b5242f,
-      type: 3}
-    footprintHalfExtents: {x: 5, y: 1.0625, z: 5}
-    cost: 0
-  - id: pfb_build_mushroom_brown_01
-    prefab: {fileID: 691745730757058197, guid: 1e2ec5cfbeb38432ab19cea9ec3c11b3, type: 3}
-    footprintHalfExtents: {x: 0.217459, y: 0.176742, z: 0.2511}
     cost: 0
