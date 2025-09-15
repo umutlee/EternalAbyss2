@@ -11,7 +11,7 @@ namespace DeepAbyssHive.Units.Data
     /// 單位靜態屬性模板（ScriptableObject）
     /// 用於定義單位的基礎屬性和成長參數
     /// </summary>
-    [CreateAssetMenu(fileName = "NewUnitTemplateSO", menuName = MenuPaths.Templates.UNIT_TEMPLATE)]
+    [CreateAssetMenu(fileName = "NewUnitTemplateSO", menuName = "DeepAbyssHive/Templates/Unit Template SO")]
     public class UnitTemplateSO : ScriptableObject
     {
         [Header("基本信息")]

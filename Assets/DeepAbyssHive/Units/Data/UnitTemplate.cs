@@ -7,7 +7,7 @@ namespace DeepAbyssHive.Units.Data
     /// 单位模板数据 - 用于定义单位的基础属性和配置
     /// </summary>
     [CreateAssetMenu(fileName = "New Unit Template", menuName = "DeepAbyssHive/Templates/Unit Template")]
-    public class UnitTemplateSO : ScriptableObject
+    public class UnitTemplate : ScriptableObject
     {
         [Header("基础信息")]
         [SerializeField] private string _unitName = "新单位";
