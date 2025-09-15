@@ -12,7 +12,7 @@ namespace DeepAbyssHive.Buildings.UI
         {
             var cat = BuildingCatalogRuntime.Instance;
             if (cat == null || cat.Count == 0) return;
-            _rect = GUI.Window(0xDAH1701, _rect, Draw, "Building");
+            _rect = GUI.Window(0x1701, _rect, Draw, "Building");
         }
 
         private void Draw(int id)
