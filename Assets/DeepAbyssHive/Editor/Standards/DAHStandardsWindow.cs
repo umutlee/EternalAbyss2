@@ -62,8 +62,16 @@ namespace DeepAbyssHive.EditorTools.Standards
             EditorGUILayout.HelpBox("將所有 [CreateAssetMenu] 統一改為使用常數：\nConfigs → MenuPaths.Configs + \"...\"\nTemplates → MenuPaths.Templates + \"...\"", MessageType.None);
             if (GUILayout.Button("Scan & Fix Menus (Preview → Confirm)"))
             {
-                var changed = Standards.CreateAssetMenuRewriter.RewriteAll(showPreview: true);
-                Append($"Menus fixed. filesChanged={changed.files}, replacements={changed.places}");
+                var (scanned, changes) = CreateAssetMenuRewriter.ScanForChanges();
+                if (changes.Count > 0)
+                {
+                    int applied = CreateAssetMenuRewriter.ApplyChanges(changes);
+                    Append($"Menus fixed. scanned={scanned}, applied={applied}");
+                }
+                else
+                {
+                    Append($"No menu changes needed. scanned={scanned}");
+                }
             }
 
             EditorGUILayout.Space(8);

@@ -184,7 +184,7 @@ namespace DeepAbyssHive.EditorTools.Buildings
             // 嘗試走 DAH 結構化日誌；失敗則退回 Unity Console
             try
             {
-                DeepAbyssHive.Core.Logging.DAHLog.Info(DeepAbyssHive.Core.Logging.LogCategory.BUILDING, msg);
+                DeepAbyssHive.Core.Logging.DAHLog.Info(DeepAbyssHive.Core.Logging.LogCategory.BUILDINGS, msg);
             }
             catch
             {

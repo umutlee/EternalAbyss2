@@ -142,22 +142,22 @@ namespace DeepAbyssHive.EditorTools.Standards
                 // CreateAssetMenu 路徑標準化
                 if (oldPath.Contains("Config") && (oldPath.Contains("SO") || oldPath.Contains("Settings")))
                 {
-                    // 配置類型 → MenuPaths.Config.ROOT
-                    if (oldPath.Contains("Game")) return MenuPaths.Config.GAME_CONFIG;
-                    if (oldPath.Contains("Creep")) return MenuPaths.Config.CREEP_CONFIG;
-                    if (oldPath.Contains("Terrain")) return MenuPaths.Config.TERRAIN_CONFIG;
-                    if (oldPath.Contains("DevLog")) return MenuPaths.Config.DEVLOG_SETTINGS;
-                    return MenuPaths.Config.ROOT;
+                    // 配置類型 → DeepAbyssHive/Configs/
+                    if (oldPath.Contains("Game")) return "DeepAbyssHive/Configs/Game Config";
+                    if (oldPath.Contains("Creep")) return "DeepAbyssHive/Configs/Creep Config";
+                    if (oldPath.Contains("Terrain")) return "DeepAbyssHive/Configs/Terrain Config";
+                    if (oldPath.Contains("DevLog")) return "DeepAbyssHive/Configs/DevLog Settings";
+                    return "DeepAbyssHive/Configs/";
                 }
                 else if (oldPath.Contains("Template"))
                 {
-                    // 模板類型 → MenuPaths.Templates.ROOT
-                    if (oldPath.Contains("Unit")) return MenuPaths.Templates.UNIT_TEMPLATE;
-                    return MenuPaths.Templates.ROOT;
+                    // 模板類型 → DeepAbyssHive/Templates/
+                    if (oldPath.Contains("Unit")) return "DeepAbyssHive/Templates/Unit Template";
+                    return "DeepAbyssHive/Templates/";
                 }
                 else if (oldPath.Contains("Catalog"))
                 {
-                    return MenuPaths.Config.BUILDING_CATALOG;
+                    return "DeepAbyssHive/Configs/Building Catalog";
                 }
             }
             else
@@ -165,11 +165,11 @@ namespace DeepAbyssHive.EditorTools.Standards
                 // AddComponentMenu 路徑標準化
                 if (oldPath.Contains("Dev") || oldPath.Contains("Debug"))
                 {
-                    return MenuPaths.Dev.ROOT;
+                    return "DeepAbyssHive/Dev/";
                 }
                 else if (oldPath.Contains("HUD"))
                 {
-                    return MenuPaths.Dev.HUD;
+                    return "DeepAbyssHive/Dev/HUD";
                 }
             }
 

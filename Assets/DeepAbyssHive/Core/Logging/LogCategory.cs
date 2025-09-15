@@ -12,6 +12,7 @@ namespace DeepAbyssHive.Core.Logging
         TERRAIN,        // 地形系統
         UNITS,          // 單位系統
         BUILDINGS,      // 建築系統
+        BUILDING,       // 建築相關（別名）
         PATHFINDING,    // 路徑規劃
         UI,             // 使用者介面
         DEV,            // 開發工具
