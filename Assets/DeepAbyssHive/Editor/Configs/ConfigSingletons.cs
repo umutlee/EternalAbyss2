@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.EditorTools.Configs
 {
@@ -118,7 +119,7 @@ namespace DeepAbyssHive.EditorTools.Configs
             AssetDatabase.CreateAsset(inst, path);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[CONFIGS] Created {type.Name} at {path}");
+            DAHLog.Info(LogCategory.CONFIG, $"[CONFIGS] Created {type.Name} at {path}");
             return AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
         }
 
@@ -148,7 +149,7 @@ namespace DeepAbyssHive.EditorTools.Configs
             else
             {
                 var txt = report.ToString();
-                Debug.LogWarning("[CONFIGS] Duplicates found:\n" + txt);
+                DAHLog.Warn(LogCategory.CONFIG, "[CONFIGS] Duplicates found:\n" + txt);
                 EditorUtility.DisplayDialog("Duplicates", $"發現 {dupCount} 個重覆項，詳見 Console。", "OK");
             }
         }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.EditorTools.Configs
 {
@@ -59,9 +60,9 @@ namespace DeepAbyssHive.EditorTools.Configs
                 var to = AssetDatabase.GenerateUniqueAssetPath((TargetDir + "/" + Path.GetFileName(p)).Replace("\\", "/"));
                 var err = AssetDatabase.MoveAsset(p, to);
                 if (!string.IsNullOrEmpty(err))
-                    Debug.LogWarning($"[CONFIGS] Move failed: {p} → {to}\n{err}");
+                    DAHLog.Warn(LogCategory.CONFIG, $"[CONFIGS] Move failed: {p} → {to}\n{err}");
                 else
-                    Debug.Log($"[CONFIGS] Moved {obj.GetType().Name} → {to}");
+                    DAHLog.Info(LogCategory.CONFIG, $"[CONFIGS] Moved {obj.GetType().Name} → {to}");
             }
         }
 
@@ -101,7 +102,7 @@ namespace DeepAbyssHive.EditorTools.Configs
                 var to = AssetDatabase.GenerateUniqueAssetPath((TargetDir + "/" + Path.GetFileName(p)).Replace("\\", "/"));
                 var err = AssetDatabase.MoveAsset(p, to);
                 if (string.IsNullOrEmpty(err)) moved++;
-                else Debug.LogWarning($"[CONFIGS] Move failed: {p} → {to}\n{err}");
+                else DAHLog.Warn(LogCategory.CONFIG, $"[CONFIGS] Move failed: {p} → {to}\n{err}");
             }
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

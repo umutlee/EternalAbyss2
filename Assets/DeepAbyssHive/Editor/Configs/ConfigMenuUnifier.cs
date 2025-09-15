@@ -6,6 +6,8 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.EditorTools.Configs
 {
@@ -128,7 +130,7 @@ namespace DeepAbyssHive.EditorTools.Configs
                 catch (Exception ex)
                 {
                     failed++;
-                    Debug.LogError($"[ConfigMenuUnifier] 變更失敗：{path}\n{ex}");
+                    DAHLog.Error(LogCategory.CONFIG, $"[ConfigMenuUnifier] 變更失敗：{path}\n{ex}");
                 }
             }
 
@@ -155,7 +157,7 @@ namespace DeepAbyssHive.EditorTools.Configs
                 catch (Exception ex)
                 {
                     failed++;
-                    Debug.LogError($"[ConfigMenuUnifier] 還原失敗：{bak}\n{ex}");
+                    DAHLog.Error(LogCategory.CONFIG, $"[ConfigMenuUnifier] 還原失敗：{bak}\n{ex}");
                 }
             }
             AssetDatabase.Refresh();
