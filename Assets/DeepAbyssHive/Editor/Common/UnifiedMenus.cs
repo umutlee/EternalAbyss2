@@ -15,17 +15,7 @@ namespace DeepAbyssHive.EditorTools
     internal static class UnifiedMenus
     {
         // ===== Tools =====
-        [MenuItem(MenuPaths.Tools + "Standards & Fixes", priority = 10)]
-        private static void OpenStandards()
-        {
-            // 嘗試打開 DAHStandardsWindow；找不到時提示
-            var t = Type.GetType("DeepAbyssHive.EditorTools.Standards.DAHStandardsWindow, Assembly-CSharp-Editor");
-            if (t == null) t = Type.GetType("DAHStandardsWindow");
-            if (t != null && typeof(EditorWindow).IsAssignableFrom(t))
-                EditorWindow.GetWindow(t, false, "DAH Standards");
-            else
-                EditorUtility.DisplayDialog("Standards & Fixes", "找不到 DAHStandardsWindow。\n請稍後再試或確認該檔案是否存在於 Editor/Standards。", "OK");
-        }
+        // Standards & Fixes菜單已在DAHStandardsWindow.cs中定義，避免重複
 
         [MenuItem(MenuPaths.Tools + "Smart Console", priority = 11)]
         private static void OpenSmartConsole()
@@ -39,15 +29,7 @@ namespace DeepAbyssHive.EditorTools
         }
 
         // ===== Configs =====
-        [MenuItem(MenuPaths.Configs + "Create or Select GameConfig", priority = 0)]
-        private static void CreateOrSelectGameConfig()
-        {
-            // 先試著呼叫既有的 GameConfigMenu；找不到則打開 Resources/Configs
-            var t = Type.GetType("DeepAbyssHive.Core.Config.Editor.GameConfigMenu, Assembly-CSharp-Editor");
-            var m = t?.GetMethod("CreateOrSelect", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-            if (m != null) { m.Invoke(null, null); return; }
-            PingOrCreateFolder("Assets/Resources/Configs");
-        }
+        // GameConfig菜單已在GameConfigMenu.cs中定義，避免重複
 
         [MenuItem(MenuPaths.Configs + "Open Resources/Configs", priority = 50)]
         private static void OpenConfigsFolder() => PingOrCreateFolder("Assets/Resources/Configs");
