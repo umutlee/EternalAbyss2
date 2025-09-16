@@ -306,9 +306,13 @@ namespace DeepAbyssHive.Buildings.Runtime
             }
             
             // 嘗試刷新預覽
-            TryInvokeMethod(placer, t, "RefreshPreview") ||
-            TryInvokeMethod(placer, t, "RebuildPreview") ||
-            TryInvokeMethod(placer, t, "RecreatePreview");
+            if (!TryInvokeMethod(placer, t, "RefreshPreview"))
+            {
+                if (!TryInvokeMethod(placer, t, "RebuildPreview"))
+                {
+                    TryInvokeMethod(placer, t, "RecreatePreview");
+                }
+            }
         }
         
         private static Component FindPlacerStatic()
