@@ -1,0 +1,185 @@
+description: EA-M4-T17f-h3 — BuildingCatalogBinder.Inject 相容修補（支援 placePrefab 等多名稱 + 一次性診斷）
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+root: Assets/DeepAbyssHive
+alwaysApply: false
+tags: [M4, Buildings, Placement, Catalog, Fix]
+
+PLAN
+- 你目前的 Binder 在 Start() 內呼叫 InjectToBuildingPlacer()，只嘗試 `prefabToPlace` 欄位，導致 Warning 與預覽不切換。
+- 本修補擴充 InjectToBuildingPlacer() 與 ApplyPrefabToPlacer() 的設置邏輯：同時嘗試多個「常見名稱」；命中即套用；若皆失敗則列印一次診斷清單（prefab/preview 相關成員）。
+- 僅改一檔：BuildingCatalogBinder.cs（小變更，非重構）。
+
+PREREQUISITES
+- 場景中有 BuildingPlacer（類名包含 "BuildingPlacer" 的元件）。
+- Resources/Configs/BuildingCatalog.asset 存在且已綁到 GameConfig 或由 Binder 尋得。
+
+CHANGES
+
+MODIFY_CHANGE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+@@
+-        private void InjectToBuildingPlacer()
+-        {
+-            var placer = FindPlacerStatic();
+-            if (placer == null)
+-            {
+-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] 場景中找不到 BuildingPlacer");
+-                return;
+-            }
+-            // 舊版僅嘗試這個欄位 → 失敗就直接 Warning
+-            if (!TrySetField(placer, "prefabToPlace", GetPrefabAt(_catalog, _index)))
+-            {
+-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] BuildingPlacer 中未找到 prefabToPlace 欄位");
+-            }
+-            // 嘗試刷新預覽（舊版名稱有限）
+-            TryInvoke(placer, "RefreshPreview");
+-        }
++        private void InjectToBuildingPlacer()
++        {
++            var placer = FindPlacerStatic();
++            if (placer == null)
++            {
++                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] BuildingPlacer not found in scene");
++                return;
++            }
++
++            var prefab = GetPrefabAt(_catalog, _index);
++
++            // 1) 嘗試方法 / 欄位 / 屬性多名稱（命中任意一個即成功）
++            if (!TrySetAnyPrefab(placer, prefab))
++            {
++                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] no known prefab setter on BuildingPlacer (tried multiple names)");
++                PrintPrefabMembersOnce(placer);
++            }
++
++            // 2) 嘗試刷新預覽（常見名稱擴充）
++            if (!(TryInvoke(placer, "RefreshPreview") ||
++                  TryInvoke(placer, "RebuildPreview") ||
++                  TryInvoke(placer, "RecreatePreview") ||
++                  TryInvoke(placer, "UpdatePreview") ||
++                  TryInvoke(placer, "BuildPreview") ||
++                  TryInvoke(placer, "CreatePreview")))
++            {
++                PrintPreviewMethodsOnce(placer);
++            }
++        }
+@@
+-        public static void ApplyPrefabToPlacer(GameObject prefab, string id = null, int index = -1)
+-        {
+-            var placer = FindPlacerStatic();
+-            if (placer == null)
+-            {
+-                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: BuildingPlacer not found.");
+-                return;
+-            }
+-            if (prefab == null)
+-            {
+-                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: prefab is null.");
+-                return;
+-            }
+-
+-            // 舊版：有限名稱
+-            if (TryInvoke(placer, "SetPreviewPrefab", prefab)) { /* ok */ }
+-            else if (TrySetField(placer, "previewPrefab", prefab) ||
+-                     TrySetField(placer, "currentPrefab", prefab) ||
+-                     TrySetField(placer, "prefab", prefab) ||
+-                     TrySetProp (placer, "PreviewPrefab", prefab) ||
+-                     TrySetProp (placer, "CurrentPrefab", prefab) ||
+-                     TrySetProp (placer, "Prefab", prefab)) { /* ok */ }
+-            else if (TryInvoke(placer, "SetPrefab", prefab) ||
+-                     TryInvoke(placer, "SetBuildingPrefab", prefab)) { /* ok */ }
+-            else
+-            {
+-                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: no known setter on BuildingPlacer.");
+-            }
+-
+-            TryInvoke(placer, "RefreshPreview");
+-        }
++        public static void ApplyPrefabToPlacer(GameObject prefab, string id = null, int index = -1)
++        {
++            var placer = FindPlacerStatic();
++            if (placer == null)
++            {
++                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: BuildingPlacer not found.");
++                return;
++            }
++            if (prefab == null)
++            {
++                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: prefab is null.");
++                return;
++            }
++
++            if (!TrySetAnyPrefab(placer, prefab))
++            {
++                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: no known setter on BuildingPlacer.");
++                PrintPrefabMembersOnce(placer);
++            }
++
++            // 嘗試更廣的刷新名稱
++            if (!(TryInvoke(placer, "RefreshPreview") ||
++                  TryInvoke(placer, "RebuildPreview") ||
++                  TryInvoke(placer, "RecreatePreview") ||
++                  TryInvoke(placer, "UpdatePreview") ||
++                  TryInvoke(placer, "BuildPreview") ||
++                  TryInvoke(placer, "CreatePreview")))
++            {
++                PrintPreviewMethodsOnce(placer);
++            }
++        }
+@@
++        /// <summary>嘗試把 prefab 套到 Placer：優先方法、次欄位、再屬性（支援多種常見名稱）。</summary>
++        private static bool TrySetAnyPrefab(Component placer, GameObject prefab)
++        {
++            // 方法名（常見）
++            string[] ms = { "SetPreviewPrefab", "SetPrefab", "SetBuildingPrefab", "ApplyPrefab", "SetCurrentPrefab" };
++            foreach (var m in ms) if (TryInvoke(placer, m, prefab)) { DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Setter(Method) = {m}"); return true; }
++
++            // 欄位名（包含你的 placePrefab）
++            string[] fs = { "previewPrefab","currentPrefab","prefab","prefabToPlace","buildingPrefab","placePrefab","prefabToBuild" };
++            foreach (var f in fs) if (TrySetField(placer, f, prefab)) { DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Setter(Field)  = {f}"); return true; }
++
++            // 屬性名
++            string[] ps = { "PreviewPrefab","CurrentPrefab","Prefab","PrefabToPlace","BuildingPrefab" };
++            foreach (var p in ps) if (TrySetProp(placer, p, prefab)) { DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Setter(Prop)   = {p}"); return true; }
++
++            return false;
++        }
++
++        private static bool _printedMembers, _printedPreviewMethods;
++        private static void PrintPrefabMembersOnce(Component placer)
++        {
++            if (_printedMembers || placer == null) return;
++            _printedMembers = true;
++            var t = placer.GetType();
++            var fields = t.GetFields(BF);
++            var props  = t.GetProperties(BF);
++            var fList = new System.Collections.Generic.List<string>();
++            foreach (var f in fields) if (f.FieldType == typeof(GameObject) && f.Name.IndexOf("prefab", StringComparison.OrdinalIgnoreCase) >= 0) fList.Add(f.Name);
++            var pList = new System.Collections.Generic.List<string>();
++            foreach (var p in props) if (p.PropertyType == typeof(GameObject) && p.Name.IndexOf("prefab", StringComparison.OrdinalIgnoreCase) >= 0) pList.Add(p.Name);
++            DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Placer prefab-like fields: {string.Join(", ", fList)}; props: {string.Join(", ", pList)}");
++        }
++        private static void PrintPreviewMethodsOnce(Component placer)
++        {
++            if (_printedPreviewMethods || placer == null) return;
++            _printedPreviewMethods = true;
++            var t = placer.GetType();
++            var methods = t.GetMethods(BF);
++            var names = new System.Collections.Generic.List<string>();
++            foreach (var m in methods) if (m.Name.IndexOf("preview", StringComparison.OrdinalIgnoreCase) >= 0) names.Add(m.Name);
++            DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Placer preview-like methods: {string.Join(", ", names)}");
++        }
+
+NOTES
+- 關鍵改動：`InjectToBuildingPlacer()` 與 `ApplyPrefabToPlacer()` 都改用 `TrySetAnyPrefab()`；嘗試多名稱（含 `placePrefab`）。
+- 找不到 setter/refresh 時，會「只列印一次」診斷，避免刷屏。
+- 使用既有輔助 API：`TryInvoke/TrySetField/TrySetProp` 與常見 `BF` 常數。若你的類別名不同，只要包含 "BuildingPlacer" 亦會被搜尋到。
+
+ACCEPTANCE
+1) 進 Play，按 Tab/` 切換建築；Console 看到：
+   - `[SERVICE] [CatalogBinder] Setter(Field)  = placePrefab`（或其他命中名稱）；
+   - 不再出現「未找到 prefabToPlace 欄位」。預覽模型會跟著切換。
+2) 若 Placer 在 Start/Update 覆寫預覽，切換後 0.1s/0.5s 內仍會被修正（由外部 ApplyPrefabToPlacer() 橋接流程完成）。
+
+ROLLBACK
+- 還原 `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs` 至變更前版本即可。

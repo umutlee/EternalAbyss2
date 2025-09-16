@@ -557,7 +557,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   unitPrefab: {fileID: 1776854994}
-  fallbackSpawnCount: 50
+  fallbackSpawnCount: 20
   spawnScatterRadius: 2
   spawnKeyFallback: 290
   spawnKeyAltFallback: 287
