@@ -134,36 +134,38 @@ namespace DeepAbyssHive.Buildings.Runtime
         /// </summary>
         private void InjectToBuildingPlacer()
         {
-            // 尋找場景中的 BuildingPlacer（可能在 QA/Smoke/Dev 或其他位置）
-            var placers = FindObjectsOfType<MonoBehaviour>();
-            
-            foreach (var placer in placers)
+            var placer = FindPlacerStatic();
+            if (placer == null)
             {
-                if (placer.GetType().Name == "BuildingPlacer")
-                {
-                    _buildingPlacer = placer;
-                    break;
-                }
-            }
-            
-            if (_buildingPlacer == null)
-            {
-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] 場景中未找到 BuildingPlacer 組件");
+                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] BuildingPlacer not found in scene");
                 return;
             }
-            
-            // 通過反射獲取 prefabToPlace 欄位
-            var placerType = _buildingPlacer.GetType();
-            _prefabToPlaceField = placerType.GetField("prefabToPlace", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            
-            if (_prefabToPlaceField == null)
+
+            _buildingPlacer = placer;
+            var prefab = GetCurrentBuilding();
+            if (prefab == null) return;
+
+            // 1) 嘗試方法 / 欄位 / 屬性多名稱（命中任意一個即成功）
+            if (!TrySetAnyPrefab(placer, prefab))
             {
-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] BuildingPlacer 中未找到 prefabToPlace 欄位");
+                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] no known prefab setter on BuildingPlacer (tried multiple names)");
+                PrintPrefabMembersOnce(placer);
                 return;
+            }
+
+            // 2) 嘗試刷新預覽（常見名稱擴充）
+            if (!(TryInvokeMethod(placer, placer.GetType(), "RefreshPreview") ||
+                  TryInvokeMethod(placer, placer.GetType(), "RebuildPreview") ||
+                  TryInvokeMethod(placer, placer.GetType(), "RecreatePreview") ||
+                  TryInvokeMethod(placer, placer.GetType(), "UpdatePreview") ||
+                  TryInvokeMethod(placer, placer.GetType(), "BuildPreview") ||
+                  TryInvokeMethod(placer, placer.GetType(), "CreatePreview")))
+            {
+                PrintPreviewMethodsOnce(placer);
             }
             
             _isInjected = true;
-            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已成功注入到 {_buildingPlacer.name} 的 BuildingPlacer 組件");
+            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已成功注入到 {placer.name} 的 BuildingPlacer 組件");
         }
 
         /// <summary>
