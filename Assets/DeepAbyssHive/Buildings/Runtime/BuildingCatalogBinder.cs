@@ -263,56 +263,85 @@ namespace DeepAbyssHive.Buildings.Runtime
             var placer = FindPlacerStatic();
             if (placer == null)
             {
-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] ApplyPrefabToPlacer: 未找到 BuildingPlacer");
+                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: BuildingPlacer not found.");
                 return;
             }
             if (prefab == null)
             {
-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] ApplyPrefabToPlacer: prefab 為空");
+                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: prefab is null.");
                 return;
             }
-            
+
+            // 1) 嘗試常見 setter / 欄位 / 屬性（包含相容名稱）
+            if (!TrySetAnyPrefab(placer, prefab))
+            {
+                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] ApplyPrefabToPlacer: no known setter on BuildingPlacer.");
+                PrintPrefabMembersOnce(placer);
+            }
+
+            // 刪除既有預覽實例（若有），迫使 Placer 重建
             var t = placer.GetType();
-            bool success = false;
-            
-            // 嘗試多種設置方式
-            if (TrySetField(placer, t, "prefabToPlace", prefab) ||
-                TrySetField(placer, t, "previewPrefab", prefab) ||
-                TrySetField(placer, t, "currentPrefab", prefab) ||
-                TrySetField(placer, t, "prefab", prefab) ||
-                TrySetProperty(placer, t, "PrefabToPlace", prefab) ||
-                TrySetProperty(placer, t, "PreviewPrefab", prefab) ||
-                TrySetProperty(placer, t, "CurrentPrefab", prefab) ||
-                TrySetProperty(placer, t, "Prefab", prefab))
+            var pi = t.GetField("previewInstance", BF) ?? t.GetField("_previewInstance", BF) ?? t.GetField("previewGO", BF) ?? t.GetField("_previewGO", BF) ?? t.GetField("_preview", BF) ?? t.GetField("previewObject", BF);
+            var go = pi?.GetValue(placer) as GameObject;
+            if (go != null) { try { GameObject.Destroy(go); } catch { } }
+
+            // 2) 嘗試刷新預覽（擴充命名）
+            if (!(TryInvokeMethod(placer, t, "RefreshPreview") ||
+                  TryInvokeMethod(placer, t, "RebuildPreview") ||
+                  TryInvokeMethod(placer, t, "RecreatePreview") ||
+                  TryInvokeMethod(placer, t, "UpdatePreview") ||
+                  TryInvokeMethod(placer, t, "BuildPreview") ||
+                  TryInvokeMethod(placer, t, "CreatePreview")))
             {
-                success = true;
+                // 列印一次診斷資訊，協助對應名稱
+                PrintPreviewMethodsOnce(placer);
             }
-            
-            // 嘗試方法調用
-            if (TryInvokeMethod(placer, t, "SetPreviewPrefab", prefab) ||
-                TryInvokeMethod(placer, t, "SetPrefab", prefab) ||
-                TryInvokeMethod(placer, t, "SetBuildingPrefab", prefab))
-            {
-                success = true;
-            }
-            
-            if (!success)
-            {
-                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] ApplyPrefabToPlacer: 無法找到合適的設置方法");
-            }
-            else
-            {
-                DAHLog.Dev(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已設置 prefab：{prefab.name}");
-            }
-            
-            // 嘗試刷新預覽
-            if (!TryInvokeMethod(placer, t, "RefreshPreview"))
-            {
-                if (!TryInvokeMethod(placer, t, "RebuildPreview"))
-                {
-                    TryInvokeMethod(placer, t, "RecreatePreview");
-                }
-            }
+        }
+        
+        /// <summary>
+        /// 嘗試以各種常見名稱，把 prefab 套到 Placer。
+        /// 依序偏好：方法 → 欄位 → 屬性。命中一個即回 true。
+        /// </summary>
+        private static bool TrySetAnyPrefab(Component placer, GameObject prefab)
+        {
+            // 方法
+            var methodNames = new[]{ "SetPreviewPrefab", "SetPrefab", "SetBuildingPrefab", "ApplyPrefab", "SetCurrentPrefab" };
+            foreach (var m in methodNames) if (TryInvokeMethod(placer, placer.GetType(), m, prefab)) { DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Setter(Method) = {m}"); return true; }
+
+            // 欄位（相容名稱擴充）
+            var fieldNames = new[]{ "previewPrefab","currentPrefab","prefab","prefabToPlace","buildingPrefab","placePrefab","prefabToBuild" };
+            foreach (var f in fieldNames) if (TrySetField(placer, placer.GetType(), f, prefab)) { DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Setter(Field)  = {f}"); return true; }
+
+            // 屬性
+            var propNames  = new[]{ "PreviewPrefab","CurrentPrefab","Prefab","PrefabToPlace","BuildingPrefab" };
+            foreach (var p in propNames) if (TrySetProperty(placer, placer.GetType(), p, prefab)) { DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Setter(Prop)   = {p}"); return true; }
+
+            return false;
+        }
+
+        private static bool _printedMembers, _printedPreviewMethods;
+        private static void PrintPrefabMembersOnce(Component placer)
+        {
+            if (_printedMembers || placer == null) return;
+            _printedMembers = true;
+            var t = placer.GetType();
+            var fields = t.GetFields(BF);
+            var props  = t.GetProperties(BF);
+            System.Collections.Generic.List<string> fList = new System.Collections.Generic.List<string>();
+            foreach (var f in fields) if (f.FieldType == typeof(GameObject) && f.Name.IndexOf("prefab", StringComparison.OrdinalIgnoreCase) >= 0) fList.Add(f.Name);
+            System.Collections.Generic.List<string> pList = new System.Collections.Generic.List<string>();
+            foreach (var p in props) if (p.PropertyType == typeof(GameObject) && p.Name.IndexOf("prefab", StringComparison.OrdinalIgnoreCase) >= 0) pList.Add(p.Name);
+            DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Placer prefab-like fields: {string.Join(", ", fList)}; props: {string.Join(", ", pList)}");
+        }
+        private static void PrintPreviewMethodsOnce(Component placer)
+        {
+            if (_printedPreviewMethods || placer == null) return;
+            _printedPreviewMethods = true;
+            var t = placer.GetType();
+            var methods = t.GetMethods(BF);
+            System.Collections.Generic.List<string> names = new System.Collections.Generic.List<string>();
+            foreach (var m in methods) if (m.Name.IndexOf("preview", StringComparison.OrdinalIgnoreCase) >= 0) names.Add(m.Name);
+            DAHLog.Info(LogCategory.SERVICE, $"[CatalogBinder] Placer preview-like methods: {string.Join(", ", names)}");
         }
         
         private static Component FindPlacerStatic()
@@ -370,6 +399,8 @@ namespace DeepAbyssHive.Buildings.Runtime
             catch { }
             return false;
         }
+        
+        private const BindingFlags BF = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
         
         #endregion
     }
