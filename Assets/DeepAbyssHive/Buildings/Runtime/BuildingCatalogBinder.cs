@@ -1,4 +1,6 @@
 using UnityEngine;
+using System;
+using System.Collections;
 using System.Reflection;
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Core.Logging;
@@ -165,18 +167,61 @@ namespace DeepAbyssHive.Buildings.Runtime
         }
 
         /// <summary>
-        /// 同步當前建築到 BuildingPlacer 的預覽
+        /// 同步當前建築到 BuildingPlacer 的預覽（強化版：多路設置+延遲驗證）
         /// </summary>
         private void SyncPreviewToPlacer()
         {
-            if (!_isInjected || _prefabToPlaceField == null) return;
+            if (!_isInjected) return;
             
             var currentBuilding = GetCurrentBuilding();
             if (currentBuilding != null)
             {
-                _prefabToPlaceField.SetValue(_buildingPlacer, currentBuilding);
-                DAHLog.Dev(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已同步預覽：{currentBuilding.name}");
+                ApplyPrefabToPlacer(currentBuilding, null, _currentIndex);
+                
+                // 延遲驗證：應對某些 Placer 在 Start/Update 內重置的情況
+                StartCoroutine(DelayedVerify(currentBuilding, 0.1f));
+                StartCoroutine(DelayedVerify(currentBuilding, 0.5f));
             }
+        }
+        
+        /// <summary>
+        /// 延遲驗證預覽是否正確，不正確則重新設置
+        /// </summary>
+        private IEnumerator DelayedVerify(GameObject expectedPrefab, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (!IsPlacerUsing(expectedPrefab))
+            {
+                DAHLog.Warn(LogCategory.SERVICE, $"[BuildingCatalogBinder] 預覽不同步，重新設置：{expectedPrefab.name}");
+                ApplyPrefabToPlacer(expectedPrefab, null, -1);
+            }
+        }
+        
+        /// <summary>
+        /// 檢查 Placer 是否正在使用指定的 prefab
+        /// </summary>
+        private bool IsPlacerUsing(GameObject prefab)
+        {
+            if (_buildingPlacer == null || prefab == null) return false;
+            
+            var t = _buildingPlacer.GetType();
+            // 檢查各種可能的欄位名
+            var fields = new[] { "prefabToPlace", "previewPrefab", "currentPrefab", "prefab" };
+            foreach (var fieldName in fields)
+            {
+                var f = t.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (f != null && ReferenceEquals(f.GetValue(_buildingPlacer), prefab)) return true;
+            }
+            
+            // 檢查屬性
+            var props = new[] { "PrefabToPlace", "PreviewPrefab", "CurrentPrefab", "Prefab" };
+            foreach (var propName in props)
+            {
+                var p = t.GetProperty(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (p != null && ReferenceEquals(p.GetValue(_buildingPlacer, null), prefab)) return true;
+            }
+            
+            return false;
         }
 
         #endregion
@@ -206,6 +251,122 @@ namespace DeepAbyssHive.Buildings.Runtime
             DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] 自動啟動完成");
         }
 
+        #endregion
+        
+        #region Static API
+        
+        /// <summary>
+        /// 靜態 API：直接設置指定 prefab 到場景中的 BuildingPlacer
+        /// </summary>
+        public static void ApplyPrefabToPlacer(GameObject prefab, string id = null, int index = -1)
+        {
+            var placer = FindPlacerStatic();
+            if (placer == null)
+            {
+                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] ApplyPrefabToPlacer: 未找到 BuildingPlacer");
+                return;
+            }
+            if (prefab == null)
+            {
+                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] ApplyPrefabToPlacer: prefab 為空");
+                return;
+            }
+            
+            var t = placer.GetType();
+            bool success = false;
+            
+            // 嘗試多種設置方式
+            if (TrySetField(placer, t, "prefabToPlace", prefab) ||
+                TrySetField(placer, t, "previewPrefab", prefab) ||
+                TrySetField(placer, t, "currentPrefab", prefab) ||
+                TrySetField(placer, t, "prefab", prefab) ||
+                TrySetProperty(placer, t, "PrefabToPlace", prefab) ||
+                TrySetProperty(placer, t, "PreviewPrefab", prefab) ||
+                TrySetProperty(placer, t, "CurrentPrefab", prefab) ||
+                TrySetProperty(placer, t, "Prefab", prefab))
+            {
+                success = true;
+            }
+            
+            // 嘗試方法調用
+            if (TryInvokeMethod(placer, t, "SetPreviewPrefab", prefab) ||
+                TryInvokeMethod(placer, t, "SetPrefab", prefab) ||
+                TryInvokeMethod(placer, t, "SetBuildingPrefab", prefab))
+            {
+                success = true;
+            }
+            
+            if (!success)
+            {
+                DAHLog.Warn(LogCategory.SERVICE, "[BuildingCatalogBinder] ApplyPrefabToPlacer: 無法找到合適的設置方法");
+            }
+            else
+            {
+                DAHLog.Dev(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已設置 prefab：{prefab.name}");
+            }
+            
+            // 嘗試刷新預覽
+            TryInvokeMethod(placer, t, "RefreshPreview") ||
+            TryInvokeMethod(placer, t, "RebuildPreview") ||
+            TryInvokeMethod(placer, t, "RecreatePreview");
+        }
+        
+        private static Component FindPlacerStatic()
+        {
+            var placers = FindObjectsOfType<MonoBehaviour>();
+            foreach (var placer in placers)
+            {
+                if (placer.GetType().Name == "BuildingPlacer")
+                    return placer;
+            }
+            return null;
+        }
+        
+        private static bool TrySetField(Component target, Type type, string fieldName, object value)
+        {
+            try
+            {
+                var field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field != null)
+                {
+                    field.SetValue(target, value);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+        
+        private static bool TrySetProperty(Component target, Type type, string propName, object value)
+        {
+            try
+            {
+                var prop = type.GetProperty(propName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (prop != null && prop.CanWrite)
+                {
+                    prop.SetValue(target, value, null);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+        
+        private static bool TryInvokeMethod(Component target, Type type, string methodName, params object[] args)
+        {
+            try
+            {
+                var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (method != null)
+                {
+                    method.Invoke(target, args);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+        
         #endregion
     }
 }
