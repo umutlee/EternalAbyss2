@@ -352,24 +352,6 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **實時調整**: 支援 Runtime 調整參數，便於性能調優
 - **驗收**: GameConfig Inspector 可調整所有相關參數，立即生效
 
-#### M4-T15: 開發工具 HUD 系統整合 ✅ 已完成 (2025-09-14)
-- **KeyHintsHUD 增強**: 新增 Building 相關熱鍵提示 (B鍵放置、Delete/X刪除)
-- **PlacementStatusHUD 優化**: 改善 HUD 顯示邏輯，避免重複顯示
-- **統一 HUD 管理**: 所有開發 HUD 組件協調顯示，避免 UI 重疊
-- **GameConfig 整合**: HUD 顯示狀態與 GameConfig 參數同步
-- **驗收**: 多個 HUD 組件同時運行無衝突，提示信息準確
-
-#### M4-T16: Health HUD 系統實現 ✅ 已完成 (2025-09-14)
-- **HealthHUD.cs**: 可拖拽 IMGUI 視窗，顯示 FPS/記憶體/單位數/建築數統計
-- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
-- **位置持久化**: EditorPrefs/PlayerPrefs 記憶視窗位置，支援 Editor/Runtime 雙模式
-- **GameConfig 整合**: 讀取 healthLogEnabled/healthLogInterval 參數控制顯示
-- **Smart Console 整合**: 優先使用 Smart Console，回退到 Debug.Log
-- **Editor 菜單**: DeepAbyssHive/HUD/Toggle Health HUD 菜單項目
-- **反射統計**: 自動統計 UnitManager.ActiveUnits 和場景 Building 物件數量
-- **語法修復**: 修復 GUI.Window 中的無效十六進制數字 0xDAH001 → 0xDA0001
-- **驗收**: 可拖拽 HUD 視窗正常顯示，統計數據準確，無編譯錯誤
-
 ## M4-T14 Assembly Definition 架構重構 ✅ 已完成 (2025-09-14)
 
 ### 問題背景
@@ -433,6 +415,78 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - ✅ **工具完備**: 提供稽核和修復工具，防止未來重複問題
 - ✅ **代碼標準化**: 統一別名使用和枚舉來源，提升代碼品質
 
+#### M4-T15: 開發工具 HUD 系統整合 ✅ 已完成 (2025-09-14)
+- **KeyHintsHUD 增強**: 新增 Building 相關熱鍵提示 (B鍵放置、Delete/X刪除)
+- **PlacementStatusHUD 優化**: 改善 HUD 顯示邏輯，避免重複顯示
+- **統一 HUD 管理**: 所有開發 HUD 組件協調顯示，避免 UI 重疊
+- **GameConfig 整合**: HUD 顯示狀態與 GameConfig 參數同步
+- **驗收**: 多個 HUD 組件同時運行無衝突，提示信息準確
+
+#### M4-T16: Health HUD 系統實現 ✅ 已完成 (2025-09-14)
+- **HealthHUD.cs**: 可拖拽 IMGUI 視窗，顯示 FPS/記憶體/單位數/建築數統計
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **位置持久化**: EditorPrefs/PlayerPrefs 記憶視窗位置，支援 Editor/Runtime 雙模式
+- **GameConfig 整合**: 讀取 healthLogEnabled/healthLogInterval 參數控制顯示
+- **Smart Console 整合**: 優先使用 Smart Console，回退到 Debug.Log
+- **Editor 菜單**: DeepAbyssHive/HUD/Toggle Health HUD 菜單項目
+- **反射統計**: 自動統計 UnitManager.ActiveUnits 和場景 Building 物件數量
+- **語法修復**: 修復 GUI.Window 中的無效十六進制數字 0xDAH001 → 0xDA0001
+- **驗收**: 可拖拽 HUD 視窗正常顯示，統計數據準確，無編譯錯誤
+
+#### M4-T17: 建築目錄循環選取系統 ✅ 已完成 (2025-09-15)
+- **BuildingCycler.cs**: Runtime 單例管理器，支援建築目錄循環選取
+- **反射注入**: 自動注入到 BuildingPlacer，無需手動配置
+- **HUD 顯示**: 實時顯示當前選中建築名稱和索引
+- **GameConfig 整合**: buildingCycleKey 熱鍵配置 (預設 Tab)
+- **智能回退**: 支援 Inspector 後備熱鍵設置
+- **驗收**: Tab 鍵循環選取建築，HUD 顯示當前選項
+
+#### M4-T17f: 建築預覽同步修復 ✅ 已完成 (2025-09-16)
+- **BuildingCatalogBinder.cs**: 修復 Tab/BackQuote 切換建築時預覽模型不同步問題
+- **反射注入**: 自動找到 BuildingPlacer 並注入 SetSelectedBuilding 方法
+- **GameConfig 整合**: buildingCycleNextKey/buildingCyclePrevKey 熱鍵配置
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **最小侵入**: 不修改現有文件，避免與 BuildingSelectionProvider 衝突
+- **驗收**: Tab/BackQuote 切換建築時預覽模型正確同步更新
+
+#### M4-T17X: 統一標準化工具包 ✅ 已完成 (2025-09-14)
+- **MenuPaths.cs**: 中央常數管理，統一所有 Editor 菜單路徑
+- **CreateAssetMenuRewriter.cs**: 自動重寫 CreateAssetMenu 屬性，確保命名一致
+- **AssetPathEnforcer.cs**: 強制資產路徑規範，自動移動到正確位置
+- **UnitTemplateMigrator.cs**: 精確 Lint + Rebind 防呆機制，支援選擇性替換
+- **BuildingPrefabWizard.cs**: 批量建築 Prefab 生成工具，支援居中、貼地、碰撞器
+- **UnifiedEditorMenu.cs**: 統一選單系統，集中管理選單層級結構
+- **驗收**: 所有 Editor 工具統一命名為 DeepAbyssHive，路徑規範化
+
+#### M4-T18: 單位貼地系統 ✅ 已完成 (2025-09-15)
+- **UnitGroundFollower.cs**: 可選的單位地面貼附功能
+- **平滑貼地**: 支援平滑插值和坡面對齊
+- **GameConfig 外放**: groundFollowEnabled/groundSampleInterval/groundLerpSpeed 參數
+- **性能優化**: 預算化取樣，避免每幀大量 Raycast
+- **驗收**: 單位能平滑貼附地面，支援坡面行走
+
+#### M4-T19: Unit Grounding 正式版 ✅ 已完成 (2025-09-15)
+- **UnitGroundFollowerManager.cs**: 預算化貼地與走失保險機制
+- **走失保險**: 單位超出地圖邊界時自動傳送回安全位置
+- **參數外放**: unitGroundingEnabled/maxUnitsPerFrame/groundCheckRadius/lostUnitTeleportY
+- **無限迴圈修復**: 加入 visits 計數器限制最大遍歷次數
+- **驗收**: 修正單位越走越不見問題，加入預算化貼地與走失保險機制
+
+#### M4-T19c: Foot Offset 自動偵測 ✅ 已完成 (2025-09-15)
+- **自動計算**: 透過自動計算每個單位的 footOffset (pivot 到模型底部距離)
+- **腳貼地效果**: 實現腳貼地效果，解決單位半身入土問題
+- **Renderer 邊界**: 使用 Renderer.bounds 自動偵測模型底部
+- **UnitAgent 整合**: footOffset 參數整合到 UnitAgent 系統
+- **驗收**: 單位腳部正確貼地，無半身入土現象
+
+#### M4-XT: 四合一配置管理工具包 ✅ 已完成 (2025-09-15)
+- **ConfigMenuUnifier.cs**: 菜單統一工具，確保配置菜單命名一致
+- **ConfigAssetEnforcer.cs**: 位置強制工具，自動檢查和創建缺失配置
+- **ConfigSingletons.cs**: 單例管理工具，防止配置重複實例化
+- **GameConfigLoadLock.cs**: 載入策略鎖定，確保配置載入順序正確
+- **DAHLog 整合**: 所有配置工具統一使用 DAHLog.Info/Warn/Error 日誌系統
+- **驗收**: 配置系統管理工具完備，支援統一日誌和錯誤處理
+
 ---
 
 ## MVP 各個里程碑完成總結
@@ -451,6 +505,17 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **API 擴展**: 有向碰撞檢測、雙版本 API、完全向後兼容  
 ✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
 ✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
+
+## M4 階段完成總結 ✅ 大部分完成 (2025-09-15)
+✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
+✅ **Assembly Definition 重構**: 統一程式集架構，解決循環依賴問題  
+✅ **DAHLog 統一日誌**: 全專案 Debug.Log 遷移，支援分類過濾  
+✅ **開發工具 HUD**: Health HUD、Key Hints HUD、統一 HUD 管理  
+✅ **建築循環選取**: Tab 鍵循環選取建築，HUD 實時顯示  
+✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
+✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
+✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
+⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)
 
 
 

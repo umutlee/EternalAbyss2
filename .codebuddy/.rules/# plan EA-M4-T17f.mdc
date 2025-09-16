@@ -1,0 +1,283 @@
+description: EA-M4-T17f — Catalog 驅動的建築預覽切換修正（Tab/BackQuote 切換時，預覽模型同步變更）
+owner: DeepAbyssHive
+appliesTo: Unity 2022.3+
+root: Assets/DeepAbyssHive
+alwaysApply: false
+tags: [M4, Buildings, Placement, Catalog, MDC]
+
+PLAN
+- 問題：按 Tab/BackQuote 切換建築時僅索引/Console 改變，但場景中的預覽仍是同一個 prefab。
+- 最小解：新增 1 檔 `BuildingCatalogBinder.cs`（Runtime 自動啟動），監聽切換按鍵，從 GameConfig 的 BuildingCatalog 取當前選擇，透過反射把 prefab 指回場景中的 BuildingPlacer（支援多種命名），並呼叫 Refresh 類方法（若存在）。
+- 不改既有檔案；找不到目標欄位/方法時輸出 [PLACEMENT] 警告一次。
+
+PREREQUISITES
+- 已存在 `Resources/Configs/GameConfig.asset`，並填入：
+  - Building Catalog（含 ≥1 筆 item，且每筆有 prefab）
+  - Building Cycle Next/Prev Keys（預設 Tab / BackQuote）
+- 場景中存在 BuildingPlacer（名稱含 "BuildingPlacer" 的元件）。
+
+CHANGES
+
+WRITE_CHANGE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+using System;
+using System.Reflection;
+using UnityEngine;
+using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Config;
+
+namespace DeepAbyssHive.Buildings.Runtime
+{
+    /// <summary>
+    /// Catalog 與 BuildingPlacer 的橋接器：確保按鍵切換時，預覽模型也跟著換。
+    /// - 自動啟動（RuntimeInitializeOnLoadMethod）。
+    /// - 讀取 GameConfig（buildingCatalog、buildingCycleNextKey、buildingCyclePrevKey、buildingSelectedIndex）。
+    /// - 綁定場景中的 BuildingPlacer，嘗試下列 API：
+    ///   欄位：previewPrefab / currentPrefab / prefab
+    ///   方法：SetPreviewPrefab(GameObject) / SetPrefab(GameObject) / SetBuildingPrefab(GameObject)
+    ///   刷新：RefreshPreview() / RebuildPreview() / RecreatePreview()
+    /// </summary>
+    public sealed class BuildingCatalogBinder : MonoBehaviour
+    {
+        private ScriptableObject _catalog;
+        private int _index;
+        private int _count;
+        private GameObject _currentPrefab;
+        private Component _placer;
+
+        private KeyCode _nextKey = KeyCode.Tab;
+        private KeyCode _prevKey = KeyCode.BackQuote;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Bootstrap()
+        {
+            var go = new GameObject("BuildingCatalogBinder");
+            DontDestroyOnLoad(go);
+            go.AddComponent<BuildingCatalogBinder>();
+        }
+
+        private void Awake()
+        {
+            ResolveConfig();
+            FindPlacer();
+            ApplySelection(force: true);
+        }
+
+        private void Update()
+        {
+            if (_count <= 0) return;
+
+            if (Input.GetKeyDown(_nextKey))
+            {
+                _index = (_index + 1) % _count;
+                DAHLog.Info(LogCategory.PLACEMENT, $"[Catalog] Next → idx={_index}");
+                ApplySelection(force: true);
+            }
+            else if (Input.GetKeyDown(_prevKey))
+            {
+                _index = (_index - 1 + _count) % _count;
+                DAHLog.Info(LogCategory.PLACEMENT, $"[Catalog] Prev → idx={_index}");
+                ApplySelection(force: true);
+            }
+        }
+
+        private void ResolveConfig()
+        {
+            var prov = Type.GetType("DeepAbyssHive.Core.Config.GameConfigProvider, Assembly-CSharp");
+            var cfg = prov?.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+            if (cfg == null)
+            {
+                DAHLog.Warn(LogCategory.CONFIG, "[CatalogBinder] GameConfig not found; using defaults.");
+                return;
+            }
+
+            var t = cfg.GetType();
+            _catalog = ReadSO(t, cfg, "buildingCatalog", "BuildingCatalog");
+            _nextKey = ReadKey(t, cfg, "buildingCycleNextKey", KeyCode.Tab);
+            _prevKey = ReadKey(t, cfg, "buildingCyclePrevKey", KeyCode.BackQuote);
+            _index   = ReadInt(t, cfg, "buildingSelectedIndex", 0);
+
+            _count = GetCatalogCount(_catalog);
+            if (_count <= 0)
+            {
+                DAHLog.Warn(LogCategory.CONFIG, "[CatalogBinder] BuildingCatalog is empty or null.");
+            }
+            else
+            {
+                _index = Mathf.Clamp(_index, 0, _count - 1);
+            }
+
+            DAHLog.Info(LogCategory.CONFIG, $"[CatalogBinder] next={_nextKey} prev={_prevKey} index={_index} count={_count}");
+        }
+
+        private void FindPlacer()
+        {
+            foreach (var c in GameObject.FindObjectsByType<Component>(FindObjectsSortMode.None))
+            {
+                if (c == null) continue;
+                var n = c.GetType().Name;
+                if (n.IndexOf("BuildingPlacer", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    _placer = c;
+                    break;
+                }
+            }
+            if (_placer == null)
+                DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] BuildingPlacer not found in scene. Catalog cycling will log only.");
+        }
+
+        private void ApplySelection(bool force)
+        {
+            if (_count <= 0) return;
+            var prefab = GetPrefabAt(_catalog, _index);
+            if (!force && prefab == _currentPrefab) return;
+            _currentPrefab = prefab;
+
+            if (_placer == null) return;
+
+            if (TryInvoke(_placer, "SetPreviewPrefab", prefab)) { AfterSwap(); return; }
+            if (TrySetField(_placer, "previewPrefab", prefab) ||
+                TrySetField(_placer, "currentPrefab", prefab) ||
+                TrySetField(_placer, "prefab", prefab))
+            {
+                AfterSwap();
+                return;
+            }
+            if (TryInvoke(_placer, "SetPrefab", prefab) ||
+                TryInvoke(_placer, "SetBuildingPrefab", prefab))
+            {
+                AfterSwap();
+                return;
+            }
+
+            DAHLog.Warn(LogCategory.PLACEMENT, "[CatalogBinder] Unable to bind prefab to BuildingPlacer (no known field/method).");
+        }
+
+        private void AfterSwap()
+        {
+            TryInvoke(_placer, "RefreshPreview");
+            TryInvoke(_placer, "RebuildPreview");
+            TryInvoke(_placer, "RecreatePreview");
+
+            try
+            {
+                var prov = Type.GetType("DeepAbyssHive.Core.Config.GameConfigProvider, Assembly-CSharp");
+                var cfg = prov?.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+                var t = cfg?.GetType();
+                var f = t?.GetField("buildingSelectedIndex", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                f?.SetValue(cfg, _index);
+            }
+            catch { }
+
+            DAHLog.Info(LogCategory.PLACEMENT, $"[CatalogBinder] Bound prefab = {(_currentPrefab ? _currentPrefab.name : "<null>")}");
+        }
+
+        // ---------- Catalog helpers ----------
+        private static int GetCatalogCount(ScriptableObject cat)
+        {
+            if (cat == null) return 0;
+            var t = cat.GetType();
+            var fi = t.GetField("items", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                  ?? t.GetField("entries", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+            if (fi != null && typeof(System.Collections.IList).IsAssignableFrom(fi.FieldType))
+            {
+                var list = fi.GetValue(cat) as System.Collections.IList;
+                return list?.Count ?? 0;
+            }
+            return 0;
+        }
+
+        private static GameObject GetPrefabAt(ScriptableObject cat, int index)
+        {
+            if (cat == null) return null;
+            var t = cat.GetType();
+            var fi = t.GetField("items", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                  ?? t.GetField("entries", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+            if (fi == null) return null;
+            var list = fi.GetValue(cat) as System.Collections.IList;
+            if (list == null || index < 0 || index >= list.Count) return null;
+            var item = list[index];
+            if (item == null) return null;
+
+            var pi = item.GetType().GetField("prefab", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                  ?? item.GetType().GetField("go", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                  ?? item.GetType().GetField("gameObject", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+            return pi != null ? (pi.GetValue(item) as GameObject) : null;
+        }
+
+        // ---------- reflection helpers ----------
+        private static bool TryInvoke(Component target, string method, GameObject arg = null)
+        {
+            var mi = target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (mi == null) return false;
+            var ps = mi.GetParameters();
+            try
+            {
+                if (ps.Length == 0) { mi.Invoke(target, null); return true; }
+                if (ps.Length == 1 && ps[0].ParameterType == typeof(GameObject)) { mi.Invoke(target, new object[] { arg }); return true; }
+            }
+            catch { }
+            return false;
+        }
+
+        private static bool TrySetField(Component target, string field, GameObject value)
+        {
+            var fi = target.GetType().GetField(field, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (fi == null) return false;
+            if (!fi.FieldType.IsAssignableFrom(typeof(GameObject))) return false;
+            try { fi.SetValue(target, value); return true; } catch { return false; }
+        }
+
+        private static ScriptableObject ReadSO(Type t, object o, params string[] names)
+        {
+            const BindingFlags F = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
+            foreach (var n in names)
+            {
+                var f = t.GetField(n, F);
+                if (f != null && typeof(ScriptableObject).IsAssignableFrom(f.FieldType)) return (ScriptableObject)f.GetValue(o);
+                var p = t.GetProperty(n, F);
+                if (p != null && typeof(ScriptableObject).IsAssignableFrom(p.PropertyType)) return (ScriptableObject)p.GetValue(o, null);
+            }
+            return null;
+        }
+        private static int ReadInt(Type t, object o, string name, int def)
+        {
+            const BindingFlags F = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
+            var f = t.GetField(name, F);
+            if (f != null && (f.FieldType == typeof(int))) return (int)f.GetValue(o);
+            var p = t.GetProperty(name, F);
+            if (p != null && (p.PropertyType == typeof(int))) return (int)p.GetValue(o, null);
+            return def;
+        }
+        private static KeyCode ReadKey(Type t, object o, string name, KeyCode def)
+        {
+            const BindingFlags F = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
+            var f = t.GetField(name, F);
+            if (f != null)
+            {
+                var ft = f.FieldType;
+                if (ft == typeof(KeyCode)) return (KeyCode)f.GetValue(o);
+                if (ft == typeof(string) && Enum.TryParse<KeyCode>((string)f.GetValue(o), true, out var kf)) return kf;
+            }
+            var p = t.GetProperty(name, F);
+            if (p != null)
+            {
+                var pt = p.PropertyType;
+                if (pt == typeof(KeyCode)) return (KeyCode)p.GetValue(o, null);
+                if (pt == typeof(string) && Enum.TryParse<KeyCode>((string)p.GetValue(o, null), true, out var kp)) return kp;
+            }
+            return def;
+        }
+    }
+}
+
+NOTES
+- 這是「過渡綁定器」。未來若要拿掉反射，可以在 BuildingPlacer 本體加一個 OnCatalogSelectionChanged(prefab) 事件接口，直接由 Placer 負責重建預覽。
+- 日誌分類使用 CONFIG 與 PLACEMENT。請確保 Smart Console 已註冊這兩類。
+
+ACCEPTANCE
+1) GameConfig.asset 已指向 BuildingCatalog，切換鍵 Tab/BackQuote。
+2) 進 Play，按切換鍵時 Console 顯示 idx 並且 **畫面預覽同步換模型**。
+3) 放置仍沿用既有規則（layer / spacing / creep / spatial index）。
+
+ROLLBACK
+- 刪除：Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs

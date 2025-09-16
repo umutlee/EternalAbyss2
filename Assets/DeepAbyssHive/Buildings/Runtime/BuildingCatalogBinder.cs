@@ -28,10 +28,10 @@ namespace DeepAbyssHive.Buildings.Runtime
             LoadCatalogFromConfig();
             InjectToBuildingPlacer();
             
-            if (_catalog != null && _catalog.buildings.Length > 0)
+            if (_catalog != null && _catalog.Count > 0)
             {
                 SyncPreviewToPlacer();
-                DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.buildings.Length} 個建築，當前索引：{_currentIndex}");
+                DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}");
             }
             else
             {
@@ -41,7 +41,7 @@ namespace DeepAbyssHive.Buildings.Runtime
 
         private void Update()
         {
-            if (!_isInjected || _catalog == null || _catalog.buildings.Length == 0) return;
+            if (!_isInjected || _catalog == null || _catalog.Count == 0) return;
 
             var config = GameConfigProvider.Current;
             
@@ -67,13 +67,13 @@ namespace DeepAbyssHive.Buildings.Runtime
         /// </summary>
         public void CycleNext()
         {
-            if (_catalog == null || _catalog.buildings.Length == 0) return;
+            if (_catalog == null || _catalog.Count == 0) return;
             
-            _currentIndex = (_currentIndex + 1) % _catalog.buildings.Length;
+            _currentIndex = (_currentIndex + 1) % _catalog.Count;
             SyncPreviewToPlacer();
             
-            var currentBuilding = _catalog.buildings[_currentIndex];
-            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 切換到下一個：[{_currentIndex}] {currentBuilding.name}");
+            var currentEntry = _catalog.Get(_currentIndex);
+            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 切換到下一個：[{_currentIndex}] {currentEntry.prefab.name}");
         }
 
         /// <summary>
@@ -81,13 +81,13 @@ namespace DeepAbyssHive.Buildings.Runtime
         /// </summary>
         public void CyclePrev()
         {
-            if (_catalog == null || _catalog.buildings.Length == 0) return;
+            if (_catalog == null || _catalog.Count == 0) return;
             
-            _currentIndex = (_currentIndex - 1 + _catalog.buildings.Length) % _catalog.buildings.Length;
+            _currentIndex = (_currentIndex - 1 + _catalog.Count) % _catalog.Count;
             SyncPreviewToPlacer();
             
-            var currentBuilding = _catalog.buildings[_currentIndex];
-            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 切換到上一個：[{_currentIndex}] {currentBuilding.name}");
+            var currentEntry = _catalog.Get(_currentIndex);
+            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 切換到上一個：[{_currentIndex}] {currentEntry.prefab.name}");
         }
 
         /// <summary>
@@ -95,10 +95,11 @@ namespace DeepAbyssHive.Buildings.Runtime
         /// </summary>
         public GameObject GetCurrentBuilding()
         {
-            if (_catalog == null || _catalog.buildings.Length == 0 || _currentIndex < 0 || _currentIndex >= _catalog.buildings.Length)
+            if (_catalog == null || _catalog.Count == 0 || _currentIndex < 0 || _currentIndex >= _catalog.Count)
                 return null;
                 
-            return _catalog.buildings[_currentIndex];
+            var entry = _catalog.Get(_currentIndex);
+            return entry?.prefab;
         }
 
         #endregion
@@ -120,9 +121,9 @@ namespace DeepAbyssHive.Buildings.Runtime
             }
             
             // 確保索引有效
-            if (_catalog.buildings.Length > 0)
+            if (_catalog.Count > 0)
             {
-                _currentIndex = Mathf.Clamp(_currentIndex, 0, _catalog.buildings.Length - 1);
+                _currentIndex = Mathf.Clamp(_currentIndex, 0, _catalog.Count - 1);
             }
         }
 
@@ -174,7 +175,7 @@ namespace DeepAbyssHive.Buildings.Runtime
             if (currentBuilding != null)
             {
                 _prefabToPlaceField.SetValue(_buildingPlacer, currentBuilding);
-                DAHLog.Debug(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已同步預覽：{currentBuilding.name}");
+                DAHLog.Dev(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已同步預覽：{currentBuilding.name}");
             }
         }
 
@@ -191,7 +192,7 @@ namespace DeepAbyssHive.Buildings.Runtime
             // 檢查是否已存在
             if (FindObjectOfType<BuildingCatalogBinder>() != null)
             {
-                DAHLog.Debug(LogCategory.SERVICE, "[BuildingCatalogBinder] 場景中已存在實例，跳過自動創建");
+                DAHLog.Dev(LogCategory.SERVICE, "[BuildingCatalogBinder] 場景中已存在實例，跳過自動創建");
                 return;
             }
             
