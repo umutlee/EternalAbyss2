@@ -69,7 +69,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private void OnGUI()
         {
             if (!_visible || _count == 0) return;
-            _rect = GUI.Window(0xDA17_0001, _rect, DrawWindow, "Building Catalog");
+            _rect = GUI.Window(0x17001, _rect, DrawWindow, "Building Catalog");
         }
 
         private void DrawWindow(int id)
