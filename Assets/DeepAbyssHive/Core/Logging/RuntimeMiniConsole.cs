@@ -47,7 +47,7 @@ namespace DeepAbyssHive.Dev.Logging
             if (!_visible && !_pinned) return; // 未釘選且未顯示 → 不畫
 
             // 視窗
-            _rect = GUI.Window(0xDA_MINI, _rect, DrawWindow, _settings != null ? $"MiniConsole (≥{_settings.overlayMinLevel})" : "MiniConsole");
+            _rect = GUI.Window(0xDA11CE, _rect, DrawWindow, _settings != null ? $"MiniConsole (≥{_settings.overlayMinLevel})" : "MiniConsole");
             // 夾在螢幕範圍內
             _rect.x = Mathf.Clamp(_rect.x, 0, Screen.width - _rect.width);
             _rect.y = Mathf.Clamp(_rect.y, 0, Screen.height - _rect.height);

@@ -1,0 +1,135 @@
+description: "全域 Placement 日誌節流：自訂 LogHandler 只針對 [PLACEMENT]/Placer 相關訊息進行取樣，解決按 B 後 Console 洗版"
+globs: ["Assets/DeepAbyssHive/Core/Logging/**", "Assets/DeepAbyssHive/Common/Placement/**"]
+alwaysApply: true
+
+# PLAN
+- 新增單檔 `Assets/DeepAbyssHive/Core/Logging/PlacementLogSampler.cs`，不改既有發訊點。
+- 以 `Debug.unityLogger.logHandler = new SamplingLogHandler(original)` 方式全域節流。
+- 僅針對訊息字串包含 `PLACEMENT` / `Placement` / `Placer` 的 Log 做節流；其它不動。
+- 節流間隔與開關來自 GameConfig（若存在）：
+  - `placementTraceIntervalMs`（預設 250）
+  - `verboseLogs`（若為 True，則不節流）。
+- 啟動時以 `CONFIG` 類別打印一行目前設定。
+
+# CHANGES
+WRITE_CHANGE: "Assets/DeepAbyssHive/Core/Logging/PlacementLogSampler.cs"
+---
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Logging
+{
+    /// <summary>
+    /// 全域 Placement 日誌節流器。
+    /// - 僅節流包含關鍵詞 (PLACEMENT / Placement / Placer) 的訊息。
+    /// - 以訊息前 96 字為 key 進行時間窗抑制。
+    /// </summary>
+    internal static class PlacementLogSampler
+    {
+        private static ILogHandler _original;
+        private static SamplingLogHandler _handler;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Init()
+        {
+            _original = Debug.unityLogger.logHandler;
+            _handler = new SamplingLogHandler(_original);
+            Debug.unityLogger.logHandler = _handler;
+
+            // 配置總覽
+            var (enabled, intervalMs) = GetConfig();
+            DLog("CONFIG", $"PlacementLogSampler: enabled={enabled}; intervalMs={intervalMs}");
+        }
+
+        private static (bool enabled, int intervalMs) GetConfig()
+        {
+            bool verbose = false;
+            int interval = 250; // default
+            try
+            {
+                var cfg = Resources.Load<ScriptableObject>("Configs/GameConfig");
+                if (cfg != null)
+                {
+                    var t = cfg.GetType();
+                    var verboseF = t.GetField("verboseLogs");
+                    if (verboseF != null) verbose = Convert.ToBoolean(verboseF.GetValue(cfg));
+                    var intF = t.GetField("placementTraceIntervalMs") ?? t.GetField("placementLogIntervalMs");
+                    if (intF != null) interval = Mathf.Max(0, Convert.ToInt32(intF.GetValue(cfg)));
+                }
+            }
+            catch { /* ignore */ }
+
+            bool enabled = !verbose && interval > 0;
+            if (_handler != null)
+            {
+                _handler.Enabled = enabled;
+                _handler.IntervalMs = interval;
+            }
+            return (enabled, interval);
+        }
+
+        /// <summary>結構化日誌橋接。若無 SmartConsole.DLog，走 Debug.Log。</summary>
+        private static void DLog(string category, string message)
+        {
+            try
+            {
+                var sc = Type.GetType("SmartConsole"); // 若有全域靜態類可直接使用
+                var m = sc?.GetMethod("DLog", System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Static);
+                if (m != null) { m.Invoke(null, new object[]{category, message}); return; }
+            } catch { /* fallback */ }
+            Debug.Log($"[{category}] {message}");
+        }
+
+        private class SamplingLogHandler : ILogHandler
+        {
+            private readonly ILogHandler _inner;
+            private readonly Dictionary<string, float> _last = new Dictionary<string, float>(256);
+            public bool Enabled = true;
+            public int IntervalMs = 250;
+
+            public SamplingLogHandler(ILogHandler inner) { _inner = inner; }
+
+            public void LogFormat(LogType logType, UnityEngine.Object context, string format, params object[] args)
+            {
+                string msg = args == null || args.Length == 0 ? format : string.Format(format, args);
+                if (ShouldSuppress(msg)) return;
+                _inner.LogFormat(logType, context, format, args);
+            }
+
+            public void LogException(Exception exception, UnityEngine.Object context)
+            {
+                _inner.LogException(exception, context);
+            }
+
+            private bool ShouldSuppress(string msg)
+            {
+                if (!Enabled) return false;
+                if (string.IsNullOrEmpty(msg)) return false;
+                // 關鍵詞判斷
+                if (!(msg.Contains("PLACEMENT") || msg.Contains("Placement") || msg.Contains("Placer"))) return false;
+                // 取前 96 字作為 key
+                string key = msg.Length <= 96 ? msg : msg.Substring(0, 96);
+                float now = Time.realtimeSinceStartup;
+                if (_last.TryGetValue(key, out var t0))
+                {
+                    if ((now - t0) * 1000f < IntervalMs) return true; // 抑制
+                    _last[key] = now;
+                    return false;
+                }
+                _last[key] = now;
+                return false;
+            }
+        }
+    }
+}
+---
+
+# 驗收步驟
+- 進 Play，按 **B** 進入建築放置：
+  - Console 不再洗版（相同/相似的 PLACEMENT 訊息會被時間窗抑制）。
+  - 若 `GameConfig.verboseLogs=True`，則不節流（研發可切換）。
+  - 調整 `GameConfig.placementTraceIntervalMs` 可即時改變節流間隔（需要重新 Play）。
+
+# 回滾
+- 刪除 `Assets/DeepAbyssHive/Core/Logging/PlacementLogSampler.cs`。

@@ -389,6 +389,14 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - ✅ **Editor 分離**: DeepAbyssHive.Editor 獨立處理 Editor 工具
 - ✅ **架構簡化**: 消除循環依賴，降低維護複雜度
 
+#### M4-T17f: 建築預覽同步修復 ✅ 已完成 (2025-09-16)
+- **BuildingCatalogBinder.cs**: 修復 Tab/BackQuote 切換建築時預覽模型不同步問題
+- **反射注入**: 自動找到 BuildingPlacer 並注入 SetSelectedBuilding 方法
+- **GameConfig 整合**: buildingCycleNextKey/buildingCyclePrevKey 熱鍵配置
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **最小侵入**: 不修改現有文件，避免與 BuildingSelectionProvider 衝突
+- **驗收**: Tab/BackQuote 切換建築時預覽模型正確同步更新
+
 ---
 
 ## MVP 各個里程碑完成總結
@@ -406,7 +414,19 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **開發工具**: SMOKE 測試擴充、刪除工具、狀態 HUD、Editor 菜單  
 ✅ **API 擴展**: 有向碰撞檢測、雙版本 API、完全向後兼容  
 ✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
-✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
+✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制
+
+## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
+✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
+✅ **Assembly Definition 重構**: 統一程式集架構，解決循環依賴問題  
+✅ **DAHLog 統一日誌**: 全專案 Debug.Log 遷移，支援分類過濾  
+✅ **開發工具 HUD**: Health HUD、Key Hints HUD、統一 HUD 管理  
+✅ **建築循環選取**: Tab 鍵循環選取建築，HUD 實時顯示  
+✅ **建築預覽同步**: Tab/BackQuote 切換建築時預覽模型正確同步更新  
+✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
+✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
+✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
+⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)  
 
 
 
