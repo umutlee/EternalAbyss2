@@ -21,6 +21,12 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private Rect _rect = new Rect(12, 12, 640, 120);
         private bool _visible = true;
         private KeyCode _toggle = KeyCode.F8;
+        
+        // 允許拖曳/調整大小
+        private bool _resizing;
+        private Vector2 _resizeStartMouse;
+        private Rect _resizeStartRect;
+        private Vector2 _scroll;
 
         // Catalog 緩存
         private UnityEngine.Object _catalogAsset;
@@ -69,16 +75,57 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private void OnGUI()
         {
             if (!_visible || _count == 0) return;
+            
+            // 顯示主視窗
             _rect = GUI.Window(0x17001, _rect, DrawWindow, "Building Catalog");
+
+            // 右下角 resize handle（12x12）
+            var handle = new Rect(_rect.xMax - 14, _rect.yMax - 14, 12, 12);
+            var e = Event.current;
+#if UNITY_EDITOR
+            UnityEditor.EditorGUIUtility.AddCursorRect(handle, UnityEditor.MouseCursor.ResizeUpLeft);
+#endif
+            if (e.type == EventType.MouseDown && handle.Contains(e.mousePosition))
+            {
+                _resizing = true;
+                _resizeStartMouse = e.mousePosition;
+                _resizeStartRect = _rect;
+                e.Use();
+            }
+            if (_resizing && e.type == EventType.MouseDrag)
+            {
+                var delta = e.mousePosition - _resizeStartMouse;
+                _rect.width = Mathf.Max(260f, _resizeStartRect.width + delta.x);
+                _rect.height = Mathf.Max(120f, _resizeStartRect.height + delta.y);
+                e.Use();
+            }
+            if (_resizing && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
+            {
+                _resizing = false;
+                SaveRect();
+                e.Use();
+            }
+
+            // 夾在螢幕範圍內
+            _rect.x = Mathf.Clamp(_rect.x, 0, Screen.width - _rect.width);
+            _rect.y = Mathf.Clamp(_rect.y, 0, Screen.height - _rect.height);
         }
 
         private void DrawWindow(int id)
         {
             if (_ids == null) return;
 
-            GUILayout.BeginVertical();
+            // 讓上方 20px 成為拖曳列（避免只能拖一次的問題）
+            var dragBar = new Rect(0, 0, _rect.width, 20);
+            GUI.DragWindow(dragBar);
+
+            GUILayout.Space(2);
             GUILayout.Label("Click a building to select. (Tab/BackQuote hotkeys still work)");
 
+            // 動態高度：扣掉標題/邊距後的剩餘空間，至少 64px
+            float contentH = Mathf.Max(64f, _rect.height - 46f);
+            _scroll = GUILayout.BeginScrollView(_scroll, false, false, GUILayout.Height(contentH));
+            
             // 水平列
             var style = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8,8,6,6)};
             GUILayout.BeginHorizontal();
@@ -93,6 +140,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                 GUI.enabled = true;
             }
             GUILayout.EndHorizontal();
+            GUILayout.EndScrollView();
 
             // 當前
             string curName = (_current >= 0 && _current < _ids.Length) ? _ids[_current] : "(none)";
@@ -107,8 +155,10 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (GUILayout.Button("Close", GUILayout.Width(72), GUILayout.Height(22))) { _visible = false; SaveRect(); }
             GUILayout.EndHorizontal();
 
-            GUI.DragWindow(new Rect(0,0,10000,20));
-            GUILayout.EndVertical();
+            // 底部畫一個簡單的 ↘ 提示
+            var bottom = GUILayoutUtility.GetRect(16, 12);
+            var hint = new Rect(_rect.width - 18, bottom.yMin, 14, 12);
+            GUI.Label(hint, "↘");
         }
 
         private GUIStyle Mini()
