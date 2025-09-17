@@ -19,6 +19,7 @@ namespace DeepAbyssHive.Core.Logging.Editor
         {
             var window = GetWindow<SmartConsole>("Smart Console");
             window.Show();
+            window.Focus();
         }
 
         // 日誌條目
@@ -58,6 +59,7 @@ namespace DeepAbyssHive.Core.Logging.Editor
         private bool _allLogsScreen = false;          // 顯示全部（忽略分類/型別/solo 過濾，但仍套用 Search）
         private float _sidebarWidth = 180f;           // 左側面板寬度
         private Vector2 _sidebarScroll;               // 左側面板滾動
+        private bool _isPinned = true;                // Pin 狀態，預設為 true
 
         void OnEnable()
         {
@@ -78,6 +80,15 @@ namespace DeepAbyssHive.Core.Logging.Editor
             Application.logMessageReceived += OnLogMessageReceived;
             
             RefreshFilteredLogs();
+        }
+        
+        void OnLostFocus()
+        {
+            // 如果 pin 住了，重新獲得焦點
+            if (_isPinned)
+            {
+                Focus();
+            }
         }
 
         void OnDisable()
@@ -218,11 +229,26 @@ namespace DeepAbyssHive.Core.Logging.Editor
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
+            // Pin 按鈕
+            var pinColor = _isPinned ? Color.yellow : Color.white;
+            GUI.backgroundColor = pinColor;
+            if (GUILayout.Button(_isPinned ? "📌" : "📌", EditorStyles.toolbarButton, GUILayout.Width(30)))
+            {
+                _isPinned = !_isPinned;
+            }
+            GUI.backgroundColor = Color.white;
+            
             // 清除按鈕
             if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(50)))
             {
                 _allLogs.Clear();
                 RefreshFilteredLogs();
+            }
+            
+            // 關閉按鈕
+            if (GUILayout.Button("✕", EditorStyles.toolbarButton, GUILayout.Width(25)))
+            {
+                Close();
             }
 
             GUILayout.Space(10);
