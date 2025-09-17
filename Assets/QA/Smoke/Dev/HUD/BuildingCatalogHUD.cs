@@ -18,7 +18,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private const string PrefKeyRect = "DAH.BuildingCatalogHUD.Rect";
         private static BuildingCatalogHUD s_instance;
 
-        private Rect _rect = new Rect(12, 12, 640, 120);
+        private Rect _rect = new Rect(12, 12, 640, 200);
         private bool _visible = true;
         private KeyCode _toggle = KeyCode.F8;
         
@@ -95,8 +95,8 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (_resizing && e.type == EventType.MouseDrag)
             {
                 var delta = e.mousePosition - _resizeStartMouse;
-                _rect.width = Mathf.Max(260f, _resizeStartRect.width + delta.x);
-                _rect.height = Mathf.Max(120f, _resizeStartRect.height + delta.y);
+                _rect.width = Mathf.Max(400f, _resizeStartRect.width + delta.x);
+                _rect.height = Mathf.Max(180f, _resizeStartRect.height + delta.y);
                 e.Use();
             }
             if (_resizing && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
@@ -107,8 +107,15 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             }
 
             // 夾在螢幕範圍內
+            var oldRect = _rect;
             _rect.x = Mathf.Clamp(_rect.x, 0, Screen.width - _rect.width);
             _rect.y = Mathf.Clamp(_rect.y, 0, Screen.height - _rect.height);
+            
+            // 如果位置改變了，保存
+            if (oldRect.x != _rect.x || oldRect.y != _rect.y || oldRect.width != _rect.width || oldRect.height != _rect.height)
+            {
+                SaveRect();
+            }
         }
 
         private void DrawWindow(int id)
@@ -116,15 +123,14 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (_ids == null) return;
 
             // 讓上方 20px 成為拖曳列（避免只能拖一次的問題）
-            var dragBar = new Rect(0, 0, _rect.width, 20);
-            GUI.DragWindow(dragBar);
+            GUI.DragWindow(new Rect(0, 0, _rect.width, 20));
 
             GUILayout.Space(2);
             GUILayout.Label("Click a building to select. (Tab/BackQuote hotkeys still work)");
 
             // 動態高度：扣掉標題/邊距後的剩餘空間，至少 64px
-            float contentH = Mathf.Max(64f, _rect.height - 46f);
-            _scroll = GUILayout.BeginScrollView(_scroll, false, false, GUILayout.Height(contentH));
+            float contentH = Mathf.Max(64f, _rect.height - 120f);
+            _scroll = GUILayout.BeginScrollView(_scroll, true, true, GUILayout.Height(contentH));
             
             // 水平列
             var style = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8,8,6,6)};
