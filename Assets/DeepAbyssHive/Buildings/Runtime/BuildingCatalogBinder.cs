@@ -185,11 +185,10 @@ namespace DeepAbyssHive.Buildings.Runtime
             var currentBuilding = GetCurrentBuilding();
             if (currentBuilding != null)
             {
-                ApplyPrefabToPlacer(currentBuilding, null, _currentIndex);
+                TryApplyPrefabToPlacer(currentBuilding, null, _currentIndex);
                 
                 // 延遲驗證：應對某些 Placer 在 Start/Update 內重置的情況
-                StartCoroutine(DelayedVerify(currentBuilding, 0.1f));
-                StartCoroutine(DelayedVerify(currentBuilding, 0.5f));
+                StartCoroutine(DelayedVerify(currentBuilding, currentBuilding.name, _currentIndex));
             }
         }
         
@@ -219,7 +218,7 @@ namespace DeepAbyssHive.Buildings.Runtime
             DeepAbyssHive.Core.Logging.DAHLog.Warn(DeepAbyssHive.Core.Logging.LogCategory.SERVICE,
                 $"[BuildingCatalogBinder] 預覽不同步，重新設置：{expectedName}");
 
-            TrySetAnyPrefab(_buildingPlacer, expectedPrefab);
+            TryApplyPrefabToPlacer(expectedPrefab, expectedName, catalogIndex);
             _resetsThisSelection++;
         }
         
@@ -324,7 +323,7 @@ namespace DeepAbyssHive.Buildings.Runtime
             }
         }
 
-        void ApplyPrefabToPlacer(GameObject prefab, string name, int index)
+        void TryApplyPrefabToPlacer(GameObject prefab, string name, int index)
         {
             // 原本邏輯（透過反射把 prefab 指到 BuildingPlacer）保持不變：
             TrySetAnyPrefab(_buildingPlacer, prefab);

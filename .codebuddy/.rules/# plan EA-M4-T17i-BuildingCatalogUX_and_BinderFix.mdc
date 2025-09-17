@@ -1,3 +1,115 @@
+description: EA-M4-T17i — Catalog HUD UX + Binder Verify Throttle Fix（可拖拽 HUD、Catalog 綁定防刷） — 2025-09-17
+globs:
+  - Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+  - Assets/QA/Smoke/Dev/HUD/BuildingCatalogHUD_IMGUI.cs
+alwaysApply: true
+
+PLAN
+- 修正 Catalog 綁定器：只在放置模式時驗證；加入 2s 節流與最多 3 次重試；Prefab 名稱比對忽略大小寫與 "(Clone)" 後綴，避免「預覽不同步」刷屏。
+- 新增可拖拽的 Catalog HUD（IMGUI）：列出 BuildingCatalogSO 內容，支援滑動條；位置持久化；可點擊切換、支援 Tab / BackQuote（`）熱鍵。
+- 不改動 GameConfig；HUD 會自動尋找 Binder 與 Catalog。
+
+PREREQUISITES
+- 場景中已有 BuildingPlacer、BuildingCatalogBinder（掛在任一物件上）。
+- 已建立 BuildingCatalogSO 並填好清單。
+- Smart Console 類別：SERVICE / HUD / PLACEMENT 已註冊（若無，照舊輸出 Unity 日誌也可運行）。
+
+CHANGES
+
+# ========== PATCH 1/2: BuildingCatalogBinder.cs（增量修正） ==========
+REGEX_REPLACE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+pattern: "(class\\s+BuildingCatalogBinder\\s*:\\s*MonoBehaviour\\s*\\{)"
+replace: "\\g<1>\\n        // --- T17i fields: verify throttle & state ---\\n        private float _verifyCooldownSec = 2f;\\n        private float _lastVerifyAt = -999f;\\n        private int _resetsThisSelection = 0;\\n        private int _maxResets = 3;\\n        private string _lastSetName = null;\\n"
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+pattern: "void\\s+ApplyPrefabToPlacer\\s*\\(\\s*GameObject\\s*prefab\\s*,\\s*string\\s*name\\s*,\\s*int\\s*index\\s*\\)\\s*\\{[\\s\\S]*?\\n\\s*\\}"
+replace: @"void ApplyPrefabToPlacer(GameObject prefab, string name, int index)
+        {
+            // 原本邏輯（透過反射把 prefab 指到 BuildingPlacer）保持不變：
+            TrySetAnyPrefab(_placer, prefab);
+
+            // T17i：記錄狀態，重置統計
+            _lastSetName = name;
+            _resetsThisSelection = 0;
+            _lastVerifyAt = -999f;
+        }"
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+pattern: "IEnumerator\\s+DelayedVerify\\s*\\([\\s\\S]*?\\)\\s*\\{[\\s\\S]*?\\n\\s*\\}"
+replace: @"IEnumerator DelayedVerify(GameObject expectedPrefab, string expectedName, int catalogIndex)
+        {
+            // 初次延後一幀，讓預覽建立
+            yield return null;
+
+            // 若目前不在放置模式，不驗證（避免非放置時刷屏）
+            if (!IsPlacingMode()) yield break;
+
+            // 節流：至少間隔 _verifyCooldownSec 秒才驗證
+            if (Time.realtimeSinceStartup - _lastVerifyAt < _verifyCooldownSec)
+                yield break;
+
+            _lastVerifyAt = Time.realtimeSinceStartup;
+
+            // 讀現在 Placer 上的 prefab 名稱
+            string current = GetCurrentPlacerPrefabName(_placer);
+            if (SamePrefabName(current, expectedName))
+                yield break; // 已一致，不需處理
+
+            // 嘗試重設，但限制最多重試次數，避免無限循環
+            if (_resetsThisSelection >= _maxResets)
+                yield break;
+
+            DeepAbyssHive.Core.Logging.DAHLog.Warn(DeepAbyssHive.Core.Logging.LogCategory.SERVICE,
+                $"[BuildingCatalogBinder] 預覽不同步，重新設置：{expectedName}");
+
+            TrySetAnyPrefab(_placer, expectedPrefab);
+            _resetsThisSelection++;
+        }"
+
+REGEX_REPLACE: Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs
+pattern: "\\}\\s*//\\s*class\\s*BuildingCatalogBinder\\s*\\}\\s*$"
+replace: @"
+        // 以反射讀取 BuildingPlacer 的『目前預覽 Prefab 名稱』
+        private string GetCurrentPlacerPrefabName(Component placer)
+        {
+            if (placer == null) return null;
+            // 常見欄位/屬性名：prefabToPlace/placePrefab/previewPrefab
+            foreach (var n in new[] { ""prefabToPlace"", ""placePrefab"", ""previewPrefab"" })
+            {
+                var f = placer.GetType().GetField(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (f != null && f.GetValue(placer) is GameObject go && go != null) return go.name;
+                var p = placer.GetType().GetProperty(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (p != null && p.GetValue(placer) is GameObject gop && gop != null) return gop.name;
+            }
+            return null;
+        }
+
+        private bool IsPlacingMode()
+        {
+            if (_placer == null) return false;
+            // 應付多版本：isPlacing / isPlacingMode / IsPlacing / IsPlacingMode
+            foreach (var n in new[] { ""isPlacing"", ""isPlacingMode"", ""IsPlacing"", ""IsPlacingMode"" })
+            {
+                var f = _placer.GetType().GetField(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (f != null && f.FieldType == typeof(bool)) return (bool)f.GetValue(_placer);
+                var p = _placer.GetType().GetProperty(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (p != null && p.PropertyType == typeof(bool)) return (bool)p.GetValue(_placer, null);
+            }
+            // 若無旗標，保守視為 true（沿用舊版行為）
+            return true;
+        }
+
+        private static bool SamePrefabName(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+            string norm(string s) => s.Replace(""(Clone)"", string.Empty).Trim().ToLowerInvariant();
+            return norm(a) == norm(b);
+        }
+    } // class BuildingCatalogBinder
+}"
+
+# ========== PATCH 2/2: 新增可拖拽 Catalog HUD ==========
+WRITE_CHANGE: Assets/QA/Smoke/Dev/HUD/BuildingCatalogHUD_IMGUI.cs
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -52,7 +164,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         {
             if (!_visible || _catalog == null || _entries == null) return;
             KeepInsideScreen();
-            _rect = GUI.Window(0xDA171, _rect, DrawWindow, "Building Catalog");
+            _rect = GUI.Window(0xDA17i, _rect, DrawWindow, "Building Catalog");
         }
 
         private void DrawWindow(int id)
@@ -199,3 +311,16 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         }
     }
 }
+
+NOTES
+- 若仍有零星「預覽不同步」：多半是 BuildingPlacer 內部在每幀覆寫 prefab，請暫時關閉該段或告訴我欄位名，我再把它列入白名單。
+- HUD 不依賴 GameConfig；若你想加入切換鍵，可在之後把顯示開關綁到 GameConfig 參數。
+
+ACCEPTANCE
+- Play → 先按 B，再按 Tab / ` 切換：預覽與實例應一致，Console 不再連續刷 Warning。
+- HUD 可拖拽且位置記憶；視窗不會超出畫面。
+- 長時間切換（>30 次）不會降到 < 20 FPS；無明顯 GC 峰值。
+
+ROLLBACK
+- 刪除：Assets/QA/Smoke/Dev/HUD/BuildingCatalogHUD_IMGUI.cs
+- 還原：Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs 到先前版本（或從版本控管復原）。 
