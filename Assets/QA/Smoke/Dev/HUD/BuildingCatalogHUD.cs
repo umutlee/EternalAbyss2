@@ -122,8 +122,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         {
             if (_ids == null) return;
 
-            // 讓上方 20px 成為拖曳列（避免只能拖一次的問題）
-            GUI.DragWindow(new Rect(0, 0, _rect.width, 20));
+            GUILayout.BeginVertical();
 
             GUILayout.Space(2);
             GUILayout.Label("Click a building to select. (Tab/BackQuote hotkeys still work)");
@@ -133,7 +132,11 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             _scroll = GUILayout.BeginScrollView(_scroll, true, true, GUILayout.Height(contentH));
             
             // 網格列（每行 5 個按鈕）
-            var style = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleCenter, padding = new RectOffset(4,4,4,4)};
+            var normalStyle = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleCenter, padding = new RectOffset(4,4,4,4)};
+            var selectedStyle = new GUIStyle(normalStyle);
+            selectedStyle.normal.background = selectedStyle.active.background;
+            selectedStyle.normal.textColor = Color.black;
+            
             int cols = 5;
             for (int row = 0; row < Mathf.CeilToInt((float)_ids.Length / cols); row++)
             {
@@ -144,6 +147,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                     if (i >= _ids.Length) break;
                     
                     bool isCurrent = (i == _current);
+                    var style = isCurrent ? selectedStyle : normalStyle;
                     var color = isCurrent ? Color.yellow : Color.white;
                     GUI.backgroundColor = color;
                     
@@ -174,6 +178,11 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             var bottom = GUILayoutUtility.GetRect(16, 12);
             var hint = new Rect(_rect.width - 18, bottom.yMin, 14, 12);
             GUI.Label(hint, "↘");
+            
+            GUILayout.EndVertical();
+            
+            // 讓整個視窗都可以拖曳（除了按鈕區域）
+            GUI.DragWindow();
         }
 
         private GUIStyle Mini()
@@ -203,6 +212,9 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (m != null) { m.Invoke(null, new object[]{ prefab, _ids[index], index }); }
             else { TryApplyToPlacer(prefab); }
 
+            // 自動進入放置模式（類似按 B 鍵）
+            TryEnterPlacingMode();
+
             Log("PLACEMENT", $"Select → idx={index:00}, id={_ids[index]}, prefab={prefab.name}");
         }
 
@@ -213,7 +225,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                 var placer = FindObjectOfTypeByNameContains("BuildingPlacer");
                 if (placer == null) { Log("PLACEMENT", "No BuildingPlacer found in scene."); return; }
                 var t = placer.GetType();
-                var f = t.GetField("previewPrefab") ?? t.GetField("currentPrefab") ?? t.GetField("prefab");
+                var f = t.GetField("previewPrefab") ?? t.GetField("currentPrefab") ?? t.GetField("prefab") ?? t.GetField("placePrefab");
                 var p = t.GetProperty("PreviewPrefab") ?? t.GetProperty("CurrentPrefab") ?? t.GetProperty("Prefab");
                 if (f != null) f.SetValue(placer, prefab);
                 else if (p != null && p.CanWrite) p.SetValue(placer, prefab);
@@ -223,6 +235,47 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             catch (Exception e)
             {
                 Log("PLACEMENT", "Apply to placer failed: " + e.Message);
+            }
+        }
+
+        private void TryEnterPlacingMode()
+        {
+            try
+            {
+                var placer = FindObjectOfTypeByNameContains("BuildingPlacer");
+                if (placer == null) return;
+                var t = placer.GetType();
+                
+                // 嘗試設置 isPlacing = true
+                var isPlacingField = t.GetField("isPlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                if (isPlacingField != null && isPlacingField.FieldType == typeof(bool))
+                {
+                    isPlacingField.SetValue(placer, true);
+                }
+                
+                // 嘗試調用 TogglePlacing() 或類似方法
+                var toggleMethod = t.GetMethod("TogglePlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                                ?? t.GetMethod("StartPlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                                ?? t.GetMethod("EnterPlacingMode", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                
+                // 只有在當前不是放置模式時才調用 toggle
+                if (toggleMethod != null)
+                {
+                    bool currentlyPlacing = false;
+                    if (isPlacingField != null)
+                    {
+                        currentlyPlacing = (bool)isPlacingField.GetValue(placer);
+                    }
+                    
+                    if (!currentlyPlacing)
+                    {
+                        toggleMethod.Invoke(placer, null);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log("PLACEMENT", "Enter placing mode failed: " + e.Message);
             }
         }
 
