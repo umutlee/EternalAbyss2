@@ -1,5 +1,6 @@
 using UnityEngine;
 using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Services.Config;
 
 namespace DeepAbyssHive.Core.Boot
 {
@@ -27,6 +28,10 @@ namespace DeepAbyssHive.Core.Boot
                 DAHLog.Info(LogCategory.MANAGER, "[BOOT] Created 'Managers' root and marked DontDestroyOnLoad.");
             }
             DontDestroyOnLoad(root);
+
+            // 1.5) 開機摘要與配置審計（不中斷遊戲流程）
+            ConfigAuditor.PrintGameConfigSummary();
+            ConfigAuditor.RunOnce();
 
             // 2) 確保四個 Manager 存在（直接 typeof 省去反射與字串）
             EnsureComponent<DeepAbyssHive.Creep.Managers.CreepManager>(root, "[BOOT] Added {0} to 'Managers'.");
