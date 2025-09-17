@@ -245,9 +245,15 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             showHud = null; toggleKey = null; catalog = null;
             var cfg = Resources.Load("Configs/GameConfig"); if (cfg == null) return;
             var t = cfg.GetType();
-            showHud = ReadBool(t, cfg, "showBuildingHUD", "buildingHudVisible");
-            var keyStr = ReadString(t, cfg, "buildingHudToggleKey", "buildingHUDKey");
-            if (!string.IsNullOrEmpty(keyStr) && Enum.TryParse<KeyCode>(keyStr, true, out var key)) toggleKey = key;
+            showHud = ReadBool(t, cfg, "showBuildingHUD", "buildingHudVisible", "showBuildingHud");
+            
+            // 優先讀取 KeyCode 欄位，回退到字串解析
+            var keyCode = ReadKeyCode(t, cfg, "buildingHudToggleKey", "buildingHUDKey");
+            if (keyCode.HasValue) { toggleKey = keyCode; }
+            else { 
+                var keyStr = ReadString(t, cfg, "buildingHudToggleKey", "buildingHUDKey");
+                if (!string.IsNullOrEmpty(keyStr) && Enum.TryParse<KeyCode>(keyStr, true, out var key)) toggleKey = key;
+            }
             catalog = ReadObject(t, cfg, "buildingCatalog", "BuildingCatalog") as UnityEngine.Object;
         }
 
@@ -273,6 +279,18 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             }
             return null;
         }
+        private static KeyCode? ReadKeyCode(Type t, object o, params string[] names)
+        {
+            foreach (var n in names)
+            {
+                var fi = t.GetField(n, BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase);
+                if (fi != null && fi.FieldType == typeof(KeyCode)) return (KeyCode)fi.GetValue(o);
+                var pi = t.GetProperty(n, BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase);
+                if (pi != null && pi.PropertyType == typeof(KeyCode)) return (KeyCode)pi.GetValue(o, null);
+            }
+            return null;
+        }
+        
         private static UnityEngine.Object ReadObject(Type t, object o, params string[] names)
         {
             foreach (var n in names)
