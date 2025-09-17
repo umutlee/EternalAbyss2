@@ -77,8 +77,8 @@ namespace DeepAbyssHive.Dev
 
             // 旋轉（Shift 變成 15° 微調）＋滑鼠滾輪也可旋轉
             float step = Input.GetKey(KeyCode.LeftShift) ? 15f : rotateStep;
-            if (Input.GetKeyDown(rotateCCWKey)) { rotation *= Quaternion.Euler(0, -step, 0); Debug.Log($"[Placer] Rotate -{step}"); }
-            if (Input.GetKeyDown(rotateCWKey))  { rotation *= Quaternion.Euler(0,  step, 0); Debug.Log($"[Placer] Rotate +{step}"); }
+            if (Input.GetKeyDown(rotateCCWKey)) { rotation *= Quaternion.Euler(0, -step, 0); }
+            if (Input.GetKeyDown(rotateCWKey))  { rotation *= Quaternion.Euler(0,  step, 0); }
             float wheel = Input.mouseScrollDelta.y;
             if (Mathf.Abs(wheel) > 0.01f)       { rotation *= Quaternion.Euler(0, wheel * step, 0); }
 
@@ -126,7 +126,6 @@ namespace DeepAbyssHive.Dev
             if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(cancelKeyPrimary) || Input.GetKeyDown(cancelKeyAlt))
             {
                 CancelPlacing();
-                Debug.Log("[Placer] Cancel placing");
             }
         }
 
