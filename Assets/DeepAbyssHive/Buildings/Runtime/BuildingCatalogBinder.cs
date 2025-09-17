@@ -14,6 +14,13 @@ namespace DeepAbyssHive.Buildings.Runtime
     /// </summary>
     public class BuildingCatalogBinder : MonoBehaviour
     {
+        // --- T17i fields: verify throttle & state ---
+        private float _verifyCooldownSec = 2f;
+        private float _lastVerifyAt = -999f;
+        private int _resetsThisSelection = 0;
+        private int _maxResets = 3;
+        private string _lastSetName = null;
+
         [Header("Runtime State")]
         [SerializeField] private int _currentIndex = 0;
         [SerializeField] private BuildingCatalogSO _catalog;
@@ -186,17 +193,34 @@ namespace DeepAbyssHive.Buildings.Runtime
             }
         }
         
-        /// <summary>
-        /// 延遲驗證預覽是否正確，不正確則重新設置
-        /// </summary>
-        private IEnumerator DelayedVerify(GameObject expectedPrefab, float delay)
+        IEnumerator DelayedVerify(GameObject expectedPrefab, string expectedName, int catalogIndex)
         {
-            yield return new WaitForSeconds(delay);
-            if (!IsPlacerUsing(expectedPrefab))
-            {
-                DAHLog.Warn(LogCategory.SERVICE, $"[BuildingCatalogBinder] 預覽不同步，重新設置：{expectedPrefab.name}");
-                ApplyPrefabToPlacer(expectedPrefab, null, -1);
-            }
+            // 初次延後一幀，讓預覽建立
+            yield return null;
+
+            // 若目前不在放置模式，不驗證（避免非放置時刷屏）
+            if (!IsPlacingMode()) yield break;
+
+            // 節流：至少間隔 _verifyCooldownSec 秒才驗證
+            if (Time.realtimeSinceStartup - _lastVerifyAt < _verifyCooldownSec)
+                yield break;
+
+            _lastVerifyAt = Time.realtimeSinceStartup;
+
+            // 讀現在 Placer 上的 prefab 名稱
+            string current = GetCurrentPlacerPrefabName(_buildingPlacer);
+            if (SamePrefabName(current, expectedName))
+                yield break; // 已一致，不需處理
+
+            // 嘗試重設，但限制最多重試次數，避免無限循環
+            if (_resetsThisSelection >= _maxResets)
+                yield break;
+
+            DeepAbyssHive.Core.Logging.DAHLog.Warn(DeepAbyssHive.Core.Logging.LogCategory.SERVICE,
+                $"[BuildingCatalogBinder] 預覽不同步，重新設置：{expectedName}");
+
+            TrySetAnyPrefab(_buildingPlacer, expectedPrefab);
+            _resetsThisSelection++;
         }
         
         /// <summary>
@@ -260,7 +284,7 @@ namespace DeepAbyssHive.Buildings.Runtime
         /// <summary>
         /// 靜態 API：直接設置指定 prefab 到場景中的 BuildingPlacer
         /// </summary>
-        public static void ApplyPrefabToPlacer(GameObject prefab, string id = null, int index = -1)
+        public static void ApplyPrefabToPlacer(GameObject prefab, string name = null, int index = -1)
         {
             var placer = FindPlacerStatic();
             if (placer == null)
@@ -298,6 +322,17 @@ namespace DeepAbyssHive.Buildings.Runtime
                 // 列印一次診斷資訊，協助對應名稱
                 PrintPreviewMethodsOnce(placer);
             }
+        }
+
+        void ApplyPrefabToPlacer(GameObject prefab, string name, int index)
+        {
+            // 原本邏輯（透過反射把 prefab 指到 BuildingPlacer）保持不變：
+            TrySetAnyPrefab(_buildingPlacer, prefab);
+
+            // T17i：記錄狀態，重置統計
+            _lastSetName = name;
+            _resetsThisSelection = 0;
+            _lastVerifyAt = -999f;
         }
         
         /// <summary>
@@ -405,5 +440,42 @@ namespace DeepAbyssHive.Buildings.Runtime
         private const BindingFlags BF = BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.IgnoreCase;
         
         #endregion
-    }
+
+        // 以反射讀取 BuildingPlacer 的『目前預覽 Prefab 名稱』
+        private string GetCurrentPlacerPrefabName(Component placer)
+        {
+            if (placer == null) return null;
+            // 常見欄位/屬性名：prefabToPlace/placePrefab/previewPrefab
+            foreach (var n in new[] { "prefabToPlace", "placePrefab", "previewPrefab" })
+            {
+                var f = placer.GetType().GetField(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (f != null && f.GetValue(placer) is GameObject go && go != null) return go.name;
+                var p = placer.GetType().GetProperty(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (p != null && p.GetValue(placer) is GameObject gop && gop != null) return gop.name;
+            }
+            return null;
+        }
+
+        private bool IsPlacingMode()
+        {
+            if (_buildingPlacer == null) return false;
+            // 應付多版本：isPlacing / isPlacingMode / IsPlacing / IsPlacingMode
+            foreach (var n in new[] { "isPlacing", "isPlacingMode", "IsPlacing", "IsPlacingMode" })
+            {
+                var f = _buildingPlacer.GetType().GetField(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (f != null && f.FieldType == typeof(bool)) return (bool)f.GetValue(_buildingPlacer);
+                var p = _buildingPlacer.GetType().GetProperty(n, System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic);
+                if (p != null && p.PropertyType == typeof(bool)) return (bool)p.GetValue(_buildingPlacer, null);
+            }
+            // 若無旗標，保守視為 true（沿用舊版行為）
+            return true;
+        }
+
+        private static bool SamePrefabName(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+            string norm(string s) => s.Replace("(Clone)", string.Empty).Trim().ToLowerInvariant();
+            return norm(a) == norm(b);
+        }
+    } // class BuildingCatalogBinder
 }
