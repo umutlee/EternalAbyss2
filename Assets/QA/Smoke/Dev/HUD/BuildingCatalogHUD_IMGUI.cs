@@ -14,9 +14,12 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
     public class BuildingCatalogHUD_IMGUI : MonoBehaviour
     {
         private const string PrefKey = "DAH.BuildingCatalogHUD.Rect";
-        private Rect _rect = new Rect(320, 360, 660, 120);
+        private Rect _rect = new Rect(320, 360, 660, 160);
         private Vector2 _scroll;
         private bool _visible = true;
+        private bool _resizing;
+        private Vector2 _resizeStartMouse;
+        private Rect _resizeStartRect;
 
         private UnityEngine.Object _binder;
         private ScriptableObject _catalog;
@@ -27,7 +30,8 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private KeyCode _nextKey = KeyCode.Tab;
         private KeyCode _prevKey = KeyCode.BackQuote;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        // [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        // 已禁用自動啟動，避免與 BuildingCatalogHUD 衝突
         private static void Bootstrap()
         {
             var go = new GameObject("HUD_BuildingCatalog_IMGUI");
@@ -51,15 +55,50 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private void OnGUI()
         {
             if (!_visible || _catalog == null || _entries == null) return;
-            KeepInsideScreen();
             _rect = GUI.Window(0xDA171, _rect, DrawWindow, "Building Catalog");
+
+            // 調整大小 handle（↘）
+            var e = Event.current;
+            var handle = new Rect(_rect.xMax - 14, _rect.yMax - 14, 12, 12);
+#if UNITY_EDITOR
+            UnityEditor.EditorGUIUtility.AddCursorRect(handle, UnityEditor.MouseCursor.ResizeUpLeft);
+#endif
+            if (e.type == EventType.MouseDown && handle.Contains(e.mousePosition))
+            {
+                _resizing = true;
+                _resizeStartMouse = e.mousePosition;
+                _resizeStartRect = _rect;
+                e.Use();
+            }
+            if (_resizing && e.type == EventType.MouseDrag)
+            {
+                var delta = e.mousePosition - _resizeStartMouse;
+                _rect.width = Mathf.Max(360f, _resizeStartRect.width + delta.x);
+                _rect.height = Mathf.Max(120f, _resizeStartRect.height + delta.y);
+                e.Use();
+            }
+            if (_resizing && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
+            {
+                _resizing = false;
+                SaveRect();
+                e.Use();
+            }
+
+            // 不讓視窗跑出螢幕
+            _rect.x = Mathf.Clamp(_rect.x, 0, Screen.width - _rect.width);
+            _rect.y = Mathf.Clamp(_rect.y, 0, Screen.height - _rect.height);
         }
 
         private void DrawWindow(int id)
         {
+            GUILayout.BeginVertical();
             GUILayout.Label("Click a building to select. (Tab/BackQuote hotkeys still work)");
 
-            _scroll = GUILayout.BeginScrollView(_scroll, false, false, GUILayout.Height(56));
+            // 捲動區（高度動態）
+            float contentH = Mathf.Max(64f, _rect.height - 64f);
+            _scroll = GUILayout.BeginScrollView(_scroll, true, true, GUILayout.Height(contentH));
+
+            // 水平列
             GUILayout.BeginHorizontal();
 
             for (int i = 0; i < _entries.Count; i++)
@@ -83,7 +122,9 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (GUILayout.Button("Close", GUILayout.Width(90))) _visible = false;
             GUILayout.EndHorizontal();
 
-            GUI.DragWindow(new Rect(0, 0, 10000, 20));
+            // 固定上方 20px 為拖曳區
+            GUI.DragWindow(new Rect(0,0,_rect.width,20));
+            GUILayout.EndVertical();
         }
 
         private void SelectRelative(int delta)
@@ -158,13 +199,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             return null;
         }
 
-        private void KeepInsideScreen()
-        {
-            float w = _rect.width, h = _rect.height;
-            float x = Mathf.Clamp(_rect.x, 0, Screen.width - w);
-            float y = Mathf.Clamp(_rect.y, 0, Screen.height - h);
-            _rect = new Rect(x, y, w, h);
-        }
+
 
         private void LoadRect()
         {
