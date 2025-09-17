@@ -18,9 +18,9 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         private const string PrefKeyRect = "DAH.BuildingCatalogHUD.Rect";
         private static BuildingCatalogHUD s_instance;
 
-        private Rect _rect = new Rect(12, 12, 640, 200);
+        private Rect _rect = new Rect(12, 12, 800, 300);
         private bool _visible = true;
-        private KeyCode _toggle = KeyCode.F8;
+        private KeyCode _toggle = KeyCode.Z;
         
         // 允許拖曳/調整大小
         private bool _resizing;
@@ -68,7 +68,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             {
                 _visible = !_visible;
                 Log("HUD", $"BuildingCatalogHUD visible = {_visible}");
-                SaveRect();
+                if (!_visible) SaveRect();
             }
         }
 
@@ -95,8 +95,8 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (_resizing && e.type == EventType.MouseDrag)
             {
                 var delta = e.mousePosition - _resizeStartMouse;
-                _rect.width = Mathf.Max(400f, _resizeStartRect.width + delta.x);
-                _rect.height = Mathf.Max(180f, _resizeStartRect.height + delta.y);
+                _rect.width = Mathf.Max(600f, _resizeStartRect.width + delta.x);
+                _rect.height = Mathf.Max(250f, _resizeStartRect.height + delta.y);
                 e.Use();
             }
             if (_resizing && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
@@ -128,24 +128,33 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             GUILayout.Space(2);
             GUILayout.Label("Click a building to select. (Tab/BackQuote hotkeys still work)");
 
-            // 動態高度：扣掉標題/邊距後的剩餘空間，至少 64px
-            float contentH = Mathf.Max(64f, _rect.height - 120f);
+            // 動態高度：扣掉標題/邊距後的剩餘空間，至少 120px
+            float contentH = Mathf.Max(120f, _rect.height - 140f);
             _scroll = GUILayout.BeginScrollView(_scroll, true, true, GUILayout.Height(contentH));
             
-            // 水平列
-            var style = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleLeft, padding = new RectOffset(8,8,6,6)};
-            GUILayout.BeginHorizontal();
-            for (int i = 0; i < _ids.Length; i++)
+            // 網格列（每行 5 個按鈕）
+            var style = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleCenter, padding = new RectOffset(4,4,4,4)};
+            int cols = 5;
+            for (int row = 0; row < Mathf.CeilToInt((float)_ids.Length / cols); row++)
             {
-                bool isCurrent = (i == _current);
-                GUI.enabled = !isCurrent;
-                if (GUILayout.Button($"{i:00}  {_ids[i]}", style, GUILayout.Height(28)))
+                GUILayout.BeginHorizontal();
+                for (int col = 0; col < cols; col++)
                 {
-                    Select(i);
+                    int i = row * cols + col;
+                    if (i >= _ids.Length) break;
+                    
+                    bool isCurrent = (i == _current);
+                    var color = isCurrent ? Color.yellow : Color.white;
+                    GUI.backgroundColor = color;
+                    
+                    if (GUILayout.Button($"{i:00}\n{_ids[i]}", style, GUILayout.Width(140), GUILayout.Height(50)))
+                    {
+                        Select(i);
+                    }
                 }
-                GUI.enabled = true;
+                GUI.backgroundColor = Color.white;
+                GUILayout.EndHorizontal();
             }
-            GUILayout.EndHorizontal();
             GUILayout.EndScrollView();
 
             // 當前
