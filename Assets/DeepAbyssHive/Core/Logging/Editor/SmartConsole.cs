@@ -241,12 +241,10 @@ namespace DeepAbyssHive.Core.Logging.Editor
             }
             
             // 關閉按鈕（大顆有字）
-            if (GUILayout.Button("Close", EditorStyles.toolbarButton, GUILayout.Width(60)))
+            var closeText = _isPinned ? "Close (PIN)" : "Close";
+            if (GUILayout.Button(closeText, EditorStyles.toolbarButton, GUILayout.Width(80)))
             {
-                if (!_isPinned)
-                {
-                    Close();
-                }
+                Close();
             }
 
             GUILayout.Space(10);
