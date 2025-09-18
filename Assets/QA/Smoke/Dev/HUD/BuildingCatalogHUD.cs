@@ -123,20 +123,21 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (_ids == null) return;
 
             GUILayout.BeginVertical();
+            
+            // 處理熱鍵（在視窗內）
+            HandleHotkeys();
 
             GUILayout.Space(2);
             GUILayout.Label("Click a building to select. (Tab/BackQuote hotkeys still work)");
 
             // 動態高度：扣掉標題/邊距後的剩餘空間，至少 120px
             float contentH = Mathf.Max(120f, _rect.height - 140f);
-            _scroll = GUILayout.BeginScrollView(_scroll, true, true, GUILayout.Height(contentH));
+            // 計算實際內容高度（按鈕行數 × 行高）
+            int rows = Mathf.CeilToInt((float)_ids.Length / 5);
+            float actualContentH = rows * 60f; // 每行 50px 按鈕 + 10px 間距
+            _scroll = GUILayout.BeginScrollView(_scroll, false, actualContentH > contentH, GUILayout.Height(contentH));
             
             // 網格列（每行 5 個按鈕）
-            var normalStyle = new GUIStyle(GUI.skin.button){ alignment = TextAnchor.MiddleCenter, padding = new RectOffset(4,4,4,4)};
-            var selectedStyle = new GUIStyle(normalStyle);
-            selectedStyle.normal.background = selectedStyle.active.background;
-            selectedStyle.normal.textColor = Color.black;
-            
             int cols = 5;
             for (int row = 0; row < Mathf.CeilToInt((float)_ids.Length / cols); row++)
             {
@@ -147,17 +148,29 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                     if (i >= _ids.Length) break;
                     
                     bool isCurrent = (i == _current);
-                    var style = isCurrent ? selectedStyle : normalStyle;
-                    var color = isCurrent ? Color.yellow : Color.white;
-                    GUI.backgroundColor = color;
                     
-                    if (GUILayout.Button($"{i:00}\n{_ids[i]}", style, GUILayout.Width(140), GUILayout.Height(50)))
+                    // 設置按鈕顏色
+                    if (isCurrent)
+                    {
+                        GUI.backgroundColor = Color.yellow;
+                        GUI.contentColor = Color.black;
+                    }
+                    else
+                    {
+                        GUI.backgroundColor = Color.white;
+                        GUI.contentColor = Color.white;
+                    }
+                    
+                    if (GUILayout.Button($"{i:00}\n{_ids[i]}", GUILayout.Width(140), GUILayout.Height(50)))
                     {
                         Select(i);
                     }
                 }
+                // 重置顏色
                 GUI.backgroundColor = Color.white;
+                GUI.contentColor = Color.white;
                 GUILayout.EndHorizontal();
+                GUILayout.Space(5); // 行間距
             }
             GUILayout.EndScrollView();
 
@@ -181,8 +194,26 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             
             GUILayout.EndVertical();
             
-            // 讓整個視窗都可以拖曳（除了按鈕區域）
-            GUI.DragWindow();
+            // 讓標題欄可以拖曳（前 25px）
+            GUI.DragWindow(new Rect(0, 0, _rect.width, 25));
+        }
+        
+        private void HandleHotkeys()
+        {
+            var e = Event.current;
+            if (e.type == EventType.KeyDown)
+            {
+                if (e.keyCode == KeyCode.Tab)
+                {
+                    Cycle(1);
+                    e.Use();
+                }
+                else if (e.keyCode == KeyCode.BackQuote)
+                {
+                    Cycle(-1);
+                    e.Use();
+                }
+            }
         }
 
         private GUIStyle Mini()
@@ -206,14 +237,24 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (prefab == null) { Log("PLACEMENT", $"Catalog entry {index} has null prefab."); return; }
 
             _current = index;
-            // 優先呼叫 T17f Binder
+            
+            // 優先呼叫 T17f Binder（這會處理預覽切換）
             var binder = Type.GetType("DeepAbyssHive.Buildings.Runtime.BuildingCatalogBinder, Assembly-CSharp");
             var m = binder?.GetMethod("ApplyPrefabToPlacer", BindingFlags.Public|BindingFlags.Static);
-            if (m != null) { m.Invoke(null, new object[]{ prefab, _ids[index], index }); }
-            else { TryApplyToPlacer(prefab); }
+            if (m != null) 
+            { 
+                m.Invoke(null, new object[]{ prefab, _ids[index], index }); 
+            }
+            else 
+            { 
+                TryApplyToPlacer(prefab); 
+            }
 
             // 自動進入放置模式（類似按 B 鍵）
             TryEnterPlacingMode();
+            
+            // 強制重繪以更新按鈕狀態
+            // Repaint(); // IMGUI 不需要手動 Repaint
 
             Log("PLACEMENT", $"Select → idx={index:00}, id={_ids[index]}, prefab={prefab.name}");
         }
