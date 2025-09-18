@@ -84,11 +84,8 @@ namespace DeepAbyssHive.Core.Logging.Editor
         
         void OnLostFocus()
         {
-            // 如果 pin 住了，重新獲得焦點
-            if (_isPinned)
-            {
-                Focus();
-            }
+            // 移除強制 focus 邏輯，讓其他視窗可以正常接收輸入
+            // PIN 狀態僅影響視窗關閉行為，不強制搶奪焦點
         }
 
         void OnDisable()
@@ -229,14 +226,12 @@ namespace DeepAbyssHive.Core.Logging.Editor
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            // Pin 按鈕
-            var pinColor = _isPinned ? Color.yellow : Color.white;
-            GUI.backgroundColor = pinColor;
-            if (GUILayout.Button(_isPinned ? "📌" : "📌", EditorStyles.toolbarButton, GUILayout.Width(30)))
+            // Pin checkbox + label
+            var newPinned = GUILayout.Toggle(_isPinned, "PIN", EditorStyles.toolbarButton, GUILayout.Width(50));
+            if (newPinned != _isPinned)
             {
-                _isPinned = !_isPinned;
+                _isPinned = newPinned;
             }
-            GUI.backgroundColor = Color.white;
             
             // 清除按鈕
             if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(50)))
@@ -245,10 +240,13 @@ namespace DeepAbyssHive.Core.Logging.Editor
                 RefreshFilteredLogs();
             }
             
-            // 關閉按鈕
-            if (GUILayout.Button("✕", EditorStyles.toolbarButton, GUILayout.Width(25)))
+            // 關閉按鈕（大顆有字）
+            if (GUILayout.Button("Close", EditorStyles.toolbarButton, GUILayout.Width(60)))
             {
-                Close();
+                if (!_isPinned)
+                {
+                    Close();
+                }
             }
 
             GUILayout.Space(10);
