@@ -238,25 +238,38 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
 
             _current = index;
             
-            // 優先呼叫 T17f Binder（這會處理預覽切換）
-            var binder = Type.GetType("DeepAbyssHive.Buildings.Runtime.BuildingCatalogBinder, Assembly-CSharp");
-            var m = binder?.GetMethod("ApplyPrefabToPlacer", BindingFlags.Public|BindingFlags.Static);
-            if (m != null) 
-            { 
-                m.Invoke(null, new object[]{ prefab, _ids[index], index }); 
+            Log("PLACEMENT", $"Selecting building: idx={index:00}, id={_ids[index]}, prefab={prefab.name}");
+            
+            // 優先嘗試 BuildingCatalogBinder
+            bool binderSuccess = false;
+            try
+            {
+                var binderType = Type.GetType("DeepAbyssHive.Buildings.Runtime.BuildingCatalogBinder, Assembly-CSharp");
+                if (binderType != null)
+                {
+                    var method = binderType.GetMethod("ApplyPrefabToPlacer", BindingFlags.Public|BindingFlags.Static);
+                    if (method != null)
+                    {
+                        method.Invoke(null, new object[]{ prefab, _ids[index], index });
+                        binderSuccess = true;
+                        Log("PLACEMENT", "Applied via BuildingCatalogBinder");
+                    }
+                }
             }
-            else 
-            { 
-                TryApplyToPlacer(prefab); 
+            catch (Exception e)
+            {
+                Log("PLACEMENT", "BuildingCatalogBinder failed: " + e.Message);
+            }
+            
+            // 如果 Binder 失敗，直接嘗試設置
+            if (!binderSuccess)
+            {
+                Log("PLACEMENT", "Trying direct placer setup...");
+                TryApplyToPlacer(prefab);
             }
 
             // 自動進入放置模式（類似按 B 鍵）
             TryEnterPlacingMode();
-            
-            // 強制重繪以更新按鈕狀態
-            // Repaint(); // IMGUI 不需要手動 Repaint
-
-            Log("PLACEMENT", $"Select → idx={index:00}, id={_ids[index]}, prefab={prefab.name}");
         }
 
         private void TryApplyToPlacer(GameObject prefab)
@@ -266,12 +279,48 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                 var placer = FindObjectOfTypeByNameContains("BuildingPlacer");
                 if (placer == null) { Log("PLACEMENT", "No BuildingPlacer found in scene."); return; }
                 var t = placer.GetType();
-                var f = t.GetField("previewPrefab") ?? t.GetField("currentPrefab") ?? t.GetField("prefab") ?? t.GetField("placePrefab");
-                var p = t.GetProperty("PreviewPrefab") ?? t.GetProperty("CurrentPrefab") ?? t.GetProperty("Prefab");
-                if (f != null) f.SetValue(placer, prefab);
-                else if (p != null && p.CanWrite) p.SetValue(placer, prefab);
-                var refresh = t.GetMethod("RefreshPreview") ?? t.GetMethod("RebuildPreview") ?? t.GetMethod("RecreatePreview");
-                refresh?.Invoke(placer, null);
+                
+                // 嘗試多種欄位名稱（按優先級排序）
+                var f = t.GetField("placePrefab", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                     ?? t.GetField("previewPrefab", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                     ?? t.GetField("currentPrefab", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                     ?? t.GetField("prefab", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                     
+                if (f != null) 
+                {
+                    f.SetValue(placer, prefab);
+                    Log("PLACEMENT", $"Set prefab via field: {f.Name}");
+                }
+                else
+                {
+                    Log("PLACEMENT", "No suitable prefab field found in BuildingPlacer");
+                }
+                
+                // 嘗試刷新預覽（BuildingPlacer 使用 EnsurePreview）
+                var refresh = t.GetMethod("EnsurePreview", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                            ?? t.GetMethod("RefreshPreview", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                            ?? t.GetMethod("RebuildPreview", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
+                            ?? t.GetMethod("RecreatePreview", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                            
+                if (refresh != null)
+                {
+                    refresh.Invoke(placer, null);
+                    Log("PLACEMENT", $"Called refresh method: {refresh.Name}");
+                }
+                else
+                {
+                    // 嘗試直接重建預覽：先清除再重建
+                    var destroyPreview = t.GetMethod("DestroyPreview", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                    if (destroyPreview != null)
+                    {
+                        destroyPreview.Invoke(placer, null);
+                        Log("PLACEMENT", "Called DestroyPreview to force refresh");
+                    }
+                    else
+                    {
+                        Log("PLACEMENT", "No suitable refresh method found in BuildingPlacer");
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -284,33 +333,48 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             try
             {
                 var placer = FindObjectOfTypeByNameContains("BuildingPlacer");
-                if (placer == null) return;
+                if (placer == null) 
+                {
+                    Log("PLACEMENT", "No BuildingPlacer found for entering placing mode");
+                    return;
+                }
                 var t = placer.GetType();
                 
-                // 嘗試設置 isPlacing = true
+                // 檢查當前狀態
                 var isPlacingField = t.GetField("isPlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                bool currentlyPlacing = false;
                 if (isPlacingField != null && isPlacingField.FieldType == typeof(bool))
                 {
-                    isPlacingField.SetValue(placer, true);
+                    currentlyPlacing = (bool)isPlacingField.GetValue(placer);
                 }
                 
-                // 嘗試調用 TogglePlacing() 或類似方法
-                var toggleMethod = t.GetMethod("TogglePlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
-                                ?? t.GetMethod("StartPlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic)
-                                ?? t.GetMethod("EnterPlacingMode", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+                Log("PLACEMENT", $"Current placing mode: {currentlyPlacing}");
                 
-                // 只有在當前不是放置模式時才調用 toggle
+                // 如果已經在放置模式，不需要再切換
+                if (currentlyPlacing)
+                {
+                    Log("PLACEMENT", "Already in placing mode, skipping toggle");
+                    return;
+                }
+                
+                // 嘗試調用 TogglePlacing() 方法
+                var toggleMethod = t.GetMethod("TogglePlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
                 if (toggleMethod != null)
                 {
-                    bool currentlyPlacing = false;
+                    toggleMethod.Invoke(placer, null);
+                    Log("PLACEMENT", "Called TogglePlacing() to enter placing mode");
+                }
+                else
+                {
+                    // 直接設置 isPlacing = true
                     if (isPlacingField != null)
                     {
-                        currentlyPlacing = (bool)isPlacingField.GetValue(placer);
+                        isPlacingField.SetValue(placer, true);
+                        Log("PLACEMENT", "Set isPlacing = true directly");
                     }
-                    
-                    if (!currentlyPlacing)
+                    else
                     {
-                        toggleMethod.Invoke(placer, null);
+                        Log("PLACEMENT", "No TogglePlacing method or isPlacing field found");
                     }
                 }
             }
