@@ -133,12 +133,18 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             // 動態高度：扣掉標題/邊距後的剩餘空間，至少 120px
             float contentH = Mathf.Max(120f, _rect.height - 140f);
             // 計算實際內容高度（按鈕行數 × 行高）
-            int rows = Mathf.CeilToInt((float)_ids.Length / 5);
+            float availableWidth = _rect.width - 40f;
+            int buttonWidth = 130;
+            int cols = Mathf.Max(1, (int)(availableWidth / (buttonWidth + 5)));
+            int rows = Mathf.CeilToInt((float)_ids.Length / cols);
             float actualContentH = rows * 60f; // 每行 50px 按鈕 + 10px 間距
             _scroll = GUILayout.BeginScrollView(_scroll, false, actualContentH > contentH, GUILayout.Height(contentH));
             
-            // 網格列（每行 5 個按鈕）
-            int cols = 5;
+            // 網格列（動態計算列數以完整顯示按鈕）
+            float availableWidth = _rect.width - 40f; // 扣除邊距和 scroll bar 空間
+            int buttonWidth = 130; // 稍微縮小按鈕寬度
+            int cols = Mathf.Max(1, (int)(availableWidth / (buttonWidth + 5))); // 動態計算列數
+            
             for (int row = 0; row < Mathf.CeilToInt((float)_ids.Length / cols); row++)
             {
                 GUILayout.BeginHorizontal();
@@ -161,7 +167,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                         GUI.contentColor = Color.white;
                     }
                     
-                    if (GUILayout.Button($"{i:00}\n{_ids[i]}", GUILayout.Width(140), GUILayout.Height(50)))
+                    if (GUILayout.Button($"{i:00}\n{_ids[i]}", GUILayout.Width(buttonWidth), GUILayout.Height(50)))
                     {
                         Select(i);
                     }
