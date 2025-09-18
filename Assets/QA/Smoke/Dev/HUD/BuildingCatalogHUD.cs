@@ -132,18 +132,15 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
 
             // 動態高度：扣掉標題/邊距後的剩餘空間，至少 120px
             float contentH = Mathf.Max(120f, _rect.height - 140f);
-            // 計算實際內容高度（按鈕行數 × 行高）
-            float availableWidth = _rect.width - 40f;
-            int buttonWidth = 130;
-            int cols = Mathf.Max(1, (int)(availableWidth / (buttonWidth + 5)));
+            // 計算按鈕佈局參數
+            float availableWidth = _rect.width - 40f; // 扣除邊距和 scroll bar 空間
+            int buttonWidth = 130; // 稍微縮小按鈕寬度
+            int cols = Mathf.Max(1, (int)(availableWidth / (buttonWidth + 5))); // 動態計算列數
             int rows = Mathf.CeilToInt((float)_ids.Length / cols);
             float actualContentH = rows * 60f; // 每行 50px 按鈕 + 10px 間距
             _scroll = GUILayout.BeginScrollView(_scroll, false, actualContentH > contentH, GUILayout.Height(contentH));
             
-            // 網格列（動態計算列數以完整顯示按鈕）
-            float availableWidth = _rect.width - 40f; // 扣除邊距和 scroll bar 空間
-            int buttonWidth = 130; // 稍微縮小按鈕寬度
-            int cols = Mathf.Max(1, (int)(availableWidth / (buttonWidth + 5))); // 動態計算列數
+            // 網格列（使用上面計算的參數）
             
             for (int row = 0; row < Mathf.CeilToInt((float)_ids.Length / cols); row++)
             {
