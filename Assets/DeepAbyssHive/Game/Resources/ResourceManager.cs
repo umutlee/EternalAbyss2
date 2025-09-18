@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DeepAbyssHive.Core.Logging;
 
-namespace DeepAbyssHive.Core.Resources
+namespace DeepAbyssHive.Game.Resources
 {
     /// <summary>
     /// 簡單的資源管理系統

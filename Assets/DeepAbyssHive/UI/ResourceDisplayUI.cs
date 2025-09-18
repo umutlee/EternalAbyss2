@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using DeepAbyssHive.Core.Resources;
+using DeepAbyssHive.Game.Resources;
 using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.UI
