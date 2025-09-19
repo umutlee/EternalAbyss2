@@ -524,7 +524,7 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
 ✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
 
-## M3 階段：Game Loop/UI/存檔系統 ✅ M3-T02 已完成 (2025-09-19)
+## M3 階段：Game Loop/UI/存檔系統 ✅ M3-T02, M3-T04 已完成 (2025-09-19)
 ✅ **M3-T02 TimeService + HUD 控制**: 統一時間控制系統實現  
 - **ITimeService 接口**: 定義時間控制核心 API (TimeScale, IsPaused, 事件系統)
 - **TimeService 實現**: 統一管理 Unity.Time.timeScale，支援暫停/倍速控制
@@ -532,7 +532,15 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **ServiceRegistrar 整合**: TimeService 註冊到核心服務系統
 - **GameHUD 時間控制**: 熱鍵處理、時間倍率循環 (1x→2x→4x→1x)
 - **驗收**: Space 鍵暫停/恢復、T 鍵循環倍速、Console 日誌輸出正常
-⏳ **待完成**: M3-T04 (HUD/Overlay), M3-T03 (存檔系統), M3-T05~T07
+
+✅ **M3-T04 最低 HUD/Overlay**: 基礎遊戲界面顯示系統實現
+- **HUDOverlayController**: F3/F4 切換 Terrain/Creep 覆蓋層，反射設置 Manager 旗標
+- **HUDTimeStatusRunner**: 左上角顯示時間狀態 (Paused/1x/2x/4x)，自動創建 Canvas+Text
+- **GameConfig 覆蓋層熱鍵**: overlayTerrainKey (F3), overlayCreepKey (F4), hudTimeFontSize 配置
+- **最小侵入**: 通過反射嘗試設置覆蓋層旗標，找不到時只記錄警告
+- **驗收**: F3/F4 切換覆蓋層、時間狀態正確顯示、無 GC 抖動
+
+⏳ **待完成**: M3-T03 (存檔系統), M3-T05~T07
 
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
