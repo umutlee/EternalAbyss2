@@ -524,6 +524,16 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
 ✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
 
+## M3 階段：Game Loop/UI/存檔系統 ✅ M3-T02 已完成 (2025-09-19)
+✅ **M3-T02 TimeService + HUD 控制**: 統一時間控制系統實現  
+- **ITimeService 接口**: 定義時間控制核心 API (TimeScale, IsPaused, 事件系統)
+- **TimeService 實現**: 統一管理 Unity.Time.timeScale，支援暫停/倍速控制
+- **GameConfig 時間熱鍵**: pauseToggleKey (Space), timeScaleCycleKey (T) 配置化
+- **ServiceRegistrar 整合**: TimeService 註冊到核心服務系統
+- **GameHUD 時間控制**: 熱鍵處理、時間倍率循環 (1x→2x→4x→1x)
+- **驗收**: Space 鍵暫停/恢復、T 鍵循環倍速、Console 日誌輸出正常
+⏳ **待完成**: M3-T04 (HUD/Overlay), M3-T03 (存檔系統), M3-T05~T07
+
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
 ✅ **Assembly Definition 重構**: 統一程式集架構，解決循環依賴問題  

@@ -6,6 +6,8 @@ using DeepAbyssHive.Terrain.Services;
 using DeepAbyssHive.Creep.Services;
 using DeepAbyssHive.SpatialIndex.Services;
 using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Interfaces;
+using DeepAbyssHive.Core.Time;
 
 namespace DeepAbyssHive.Core.Services
 {
@@ -44,6 +46,9 @@ namespace DeepAbyssHive.Core.Services
 
             var serviceManager = ServiceManager.Instance;
 
+            // 注册核心服务
+            RegisterCoreServices(serviceManager);
+
             // 注册单位服务
             RegisterUnitServices(serviceManager);
 
@@ -60,6 +65,17 @@ namespace DeepAbyssHive.Core.Services
             RegisterSpatialIndexServices(serviceManager);
 
             DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 所有服务注册完成");
+        }
+
+        /// <summary>
+        /// 注册核心服务
+        /// </summary>
+        private void RegisterCoreServices(ServiceManager serviceManager)
+        {
+            // 注册時間服务
+            serviceManager.RegisterService<ITimeService>(new TimeService());
+            
+            DAHLog.Info(LogCategory.SERVICE, "[ServiceRegistrar] 核心服务注册完成");
         }
 
         /// <summary>
