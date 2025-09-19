@@ -1,0 +1,61 @@
+---
+description: EA — M3/M4 工作計劃
+globs:
+alwaysApply: true
+---
+
+
+# EA — M3/M4 工作計劃
+
+> 版本：v2025-09-19 · 範圍：Milestone 3（Game Loop/UI/存檔）與 Milestone 4（穩定化與回歸）  
+> 原則：小步快跑、最小改動（MDC/PR 每次 1–3 檔、≤200 行）
+
+---
+
+## 一、執行順序（高層）
+
+1) **M3-T02 ➜ M3-T04 ➜ M3-T03 ➜ M3-T05 ➜ M3-T06 ➜ M3-T07**  
+2) 收尾 **M3-T01**（若初始化順序仍有邊界情況則補強）  
+3) 轉入 **M4 全面鋪設**：**M4-T01**（退訂/生命週期）→ **M4-T02**（微效能/GC）→ **M4-T03**（CI/Smoke）→ **M4-T04**（決定論/回放，選做）→ **M4-T05**（資產/序列化驗證）→ **M4-T06**（Build/首啟健康檢查）→ **M4-T07**（文件與 Runbook）
+
+---
+
+## 二、任務明細（M3）
+
+| Key | 任務 | 目的 | 依賴 | 主要修改 | 驗收（DoD） | 建議 MDC 檔名 |
+|---|---|---|---|---|---|---|
+| M3-T02 | **TimeService + HUD 控制** | 統一暫停/倍速來源；UI 按鈕（Pause/1x/2x/4x） | – | `Core/Time/TimeService.cs`、`Core/Services/ServiceRegistrar.cs`、`HUD/GameHUD.cs` | 遊戲暫停時 creep/單位停止；倍速時等比例加速；HUD 狀態同步 | `M3-T02_TimeService_And_HUD_Controls.mdc` |
+| M3-T04 | **最低 HUD/Overlay** | 顯示資源/時間倍率；切換 Chunk/Creep 覆蓋層 | T02 | `HUD/Prefabs/MainHUD.prefab`、`HUD/OverlayToggle.cs` | 兩組覆蓋層可即時開關；資源/時間顯示更新無 GC 抖動 | `M3-T04_MinHUD_And_Overlays.mdc` |
+| M3-T03 | **存檔/讀檔 v1** | 可保存：地形修改、菌毯源與密度快照、建築/單位清單、資源/時間倍率等；可讀回 | T02, T04 | `Core/Save/SaveLoadService.cs`、`Core/DTO/*` | 啟動→玩→存→退→讀，狀態一致；鍵名版本化 | `M3-T03_SaveLoad_V1.mdc` |
+| M3-T05 | **護欄/降級** | 關鍵更新 try/catch，錯誤不致中斷遊戲；統一錯誤分類輸出到 Smart Console | T02–T04 | 各 Manager Update 熱點 | 10 分鐘跑局 0 未處理例外；Console 無刷屏 | `M3-T05_DefensiveGuards_And_ErrorPolicy.mdc` |
+| M3-T06 | **Scenario Loader（QA）** | 一鍵載入「空白/壓測/擴張壅塞」樣本 | T03 | `DevTools/ScenarioLoader.cs`、`assets/scenarios/*.json` | 3 樣本可載入；5 分鐘內 FPS 穩定 | `M3-T06_ScenarioLoader.mdc` |
+| M3-T07 | **Telemetry & 日誌整合** | 指標：每幀 GC、地形載入/卸載數、Creep 擴張 P50/P95；本地輪轉 | T02–T06 | `Core/Telemetry/*`、`Core/Logging/*` | 10 分鐘跑局產出摘要；可定位瓶頸 | `M3-T07_Telemetry_Basic_Metrics.mdc` |
+| (補) M3-T01 | **啟動流程收斂** | Bootstrap→主場景→Managers 初始化順序與階段旗標 | – | `Core/Bootstrap/*`、`Core/Services/ServiceRegistrar.cs` | PreInit/Init/PostInit/Ready 有序；無重入 | `M3-T01_Bootstrap_Stages.mdc` |
+
+---
+
+## 三、任務明細（M4）
+
+| Key | 任務 | 目的 | 依賴 | 主要修改 | 驗收（DoD） | 建議 MDC 檔名 |
+|---|---|---|---|---|---|---|
+| M4-T01 | **記憶體與事件退訂** | 長跑無洩漏/幽靈更新；統一 OnDisable/OnDestroy 準則 | – | 全案事件訂閱點、Coroutine 停止位 | 15 分鐘長跑記憶體趨勢平；事件訂閱數不增 | `M4-T01_Lifecycle_Unsubscribe_Audit.mdc` |
+| M4-T02 | **微效能優化（GC/Boxing/快取）** | 降 GC、熱路徑加速 | T01 | 熱點函式、GetComponent 快取、字串拼接 | 內部指標下降（GC/耗時） | `M4-T02_MicroPerf_Optimizations.mdc` |
+| M4-T03 | **CI/Smoke 測試** | 每次提交跑單測與 3 分鐘冒煙場景 | – | `Tests/*`、`CI/*`、`Smoke/*` | CI 綠燈；Smoke 穩定通過 | `M4-T03_CI_And_SmokeScene.mdc` |
+| M4-T04 | **決定論 / 回放**（選） | 指令錄製→回放以重現 | T03 | `Core/Replay/*` | 同一 seed/錄製結果一致 | `M4-T04_Determinism_Replay.mdc` |
+| M4-T05 | **資產/序列化驗證** | 啟動前快速掃描資源/存檔版本 | T03 | `Core/Validation/*` | 啟動健康檢查 0 紅燈 | `M4-T05_Assets_And_Save_Validation.mdc` |
+| M4-T06 | **Build/首啟健康檢查** | 穩定出包；平台差異護欄 | T05 | Build Profile 設置、健康檢查項 | Development 包穩跑 10 分鐘 | `M4-T06_Build_Profile_And_Healthcheck.mdc` |
+| M4-T07 | **文件與 Runbook** | 新人 1 小時可跑起與存讀 | – | `README/QA_GUIDE/*` | 文件步驟可用、QA 自助 | `M4-T07_Docs_And_Runbook.mdc` |
+
+---
+
+## 四、提交規範與注意事項
+
+- **MDC**：每任務一檔，標頭含目的/風險/驗收/回滾；附「受影響檔」清單與手測步驟。  
+- **命名空間/目錄**：新增檔案依 `Assets/DeepAbyssHive/{Module}/...`；ScriptableObject 資產統一 `Assets/Resources/Configs/`。  
+- **Smart Console**：所有日誌走分類 API；新增參數務必寫入 `GameConfig` 並在啟動時輸出一行摘要。  
+- **熱鍵與參數**：TimeService/ScenarioLoader/Telemetry 的開關與按鍵放入 `GameConfig`。  
+- **驗收跑法**：Dev_Playground 進 Play → 依序觸發 Pause/倍速/存讀/樣本載入 → 觀察 Console 與 Telemetry 摘要。
+
+---
+
+

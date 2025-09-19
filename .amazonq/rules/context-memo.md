@@ -372,22 +372,74 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 3. **清理衝突**: 解決重複 Assembly Definition 文件問題
 4. **命名空間修復**: 修復 CreepConfigSO 等類型的命名空間引用問題
 
-### 關鍵修復
-- **CreepManager.Core.cs LoadConfiguration()**: 修復大括號錯位與 NullConfig 後備參數
-- **Assembly Definition 清理**: 移除重複文件，統一到正確目錄結構
-- **命名空間統一**: 解決 using 語句衝突和類型找不到問題
+### 關鍵修復 (2025-09-14)
+#### EA-M4-FIX-01: CreepManager.LoadConfiguration 語法修復 ✅ 已完成
+- **問題**: LoadConfiguration() 方法大括號錯位造成 CS1022 編譯錯誤
+- **解決**: 修正大括號結構，將後備參數包入 `if (_config == null)` 區塊
+- **影響文件**: `Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs`
+- **結果**: 消除語法錯誤，統一日誌訊息格式
+
+#### EA-M4-FIX-02: ISpatialIndex 別名統一與 CreepTileStatus 標準化 ✅ 已完成
+- **問題**: 混用完整限定名與別名，CreepTileStatus 枚舉來源不一致
+- **解決**: 統一使用 ISpatialIndex 別名，以 CreepTileStatusCompat 為唯一枚舉來源
+- **影響文件**: `Assets/DeepAbyssHive/Creep/Managers/CreepManager.Core.cs`
+- **結果**: 提升代碼一致性，避免枚舉名稱衝突
+
+#### EA-M4-T14.1: Assembly Definition 目錄結構修正 ✅ 已完成
+- **問題**: Unity 限制每個目錄只能有一個 .asmdef 文件
+- **解決**: Editor/Dev asmdef 移至各自子目錄，避免與 Runtime 衝突
+- **目標結構**:
+  - `Assets/DeepAbyssHive/DeepAbyssHive.Runtime.asmdef` (根目錄)
+  - `Assets/DeepAbyssHive/Editor/DeepAbyssHive.Editor.asmdef` (Editor 子目錄)
+  - `Assets/DeepAbyssHive/Dev/DeepAbyssHive.Dev.asmdef` (Dev 子目錄)
+- **安全機制**: 自動清理舊路徑的遺留文件
+
+#### EA-M4-T14.2: Assembly Definition 衝突稽核與清理工具 ✅ 已完成
+- **功能**: 新增 asmdef 衝突檢查與一鍵清理工具
+- **稽核機制**: 自動檢測同目錄多個 .asmdef 文件的衝突情況
+- **清理工具**: "Clean Root asmdef dups" 按鈕，安全刪除根目錄誤放的 Editor/Dev asmdef
+- **防呆設計**: 重複執行安全，提供詳細的操作日誌
 
 ### 經驗教訓
 - **過度工程化風險**: Assembly Definition 過度細分會帶來維護負擔
 - **依賴關係複雜性**: 業務模組間的相互依賴難以用 Assembly 邊界清晰分離
 - **Unity 限制**: 每個目錄只能有一個 .asmdef 文件的限制
 - **漸進式重構**: 大型架構變更需要分步驟進行，避免同時引入多個變數
+- **工具化修復**: 複雜的架構問題需要配套的檢測和修復工具
 
 ### 最終狀態
-- ✅ **零編譯錯誤**: 所有 CS 錯誤已解決
+- ✅ **零編譯錯誤**: 所有 CS 錯誤已解決，包括語法和命名空間問題
 - ✅ **統一程式集**: DeepAbyssHive.Runtime 包含所有業務邏輯
 - ✅ **Editor 分離**: DeepAbyssHive.Editor 獨立處理 Editor 工具
 - ✅ **架構簡化**: 消除循環依賴，降低維護複雜度
+- ✅ **工具完備**: 提供稽核和修復工具，防止未來重複問題
+- ✅ **代碼標準化**: 統一別名使用和枚舉來源，提升代碼品質
+
+#### M4-T15: 開發工具 HUD 系統整合 ✅ 已完成 (2025-09-14)
+- **KeyHintsHUD 增強**: 新增 Building 相關熱鍵提示 (B鍵放置、Delete/X刪除)
+- **PlacementStatusHUD 優化**: 改善 HUD 顯示邏輯，避免重複顯示
+- **統一 HUD 管理**: 所有開發 HUD 組件協調顯示，避免 UI 重疊
+- **GameConfig 整合**: HUD 顯示狀態與 GameConfig 參數同步
+- **驗收**: 多個 HUD 組件同時運行無衝突，提示信息準確
+
+#### M4-T16: Health HUD 系統實現 ✅ 已完成 (2025-09-14)
+- **HealthHUD.cs**: 可拖拽 IMGUI 視窗，顯示 FPS/記憶體/單位數/建築數統計
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **位置持久化**: EditorPrefs/PlayerPrefs 記憶視窗位置，支援 Editor/Runtime 雙模式
+- **GameConfig 整合**: 讀取 healthLogEnabled/healthLogInterval 參數控制顯示
+- **Smart Console 整合**: 優先使用 Smart Console，回退到 Debug.Log
+- **Editor 菜單**: DeepAbyssHive/HUD/Toggle Health HUD 菜單項目
+- **反射統計**: 自動統計 UnitManager.ActiveUnits 和場景 Building 物件數量
+- **語法修復**: 修復 GUI.Window 中的無效十六進制數字 0xDAH001 → 0xDA0001
+- **驗收**: 可拖拽 HUD 視窗正常顯示，統計數據準確，無編譯錯誤
+
+#### M4-T17: 建築目錄循環選取系統 ✅ 已完成 (2025-09-15)
+- **BuildingCycler.cs**: Runtime 單例管理器，支援建築目錄循環選取
+- **反射注入**: 自動注入到 BuildingPlacer，無需手動配置
+- **HUD 顯示**: 實時顯示當前選中建築名稱和索引
+- **GameConfig 整合**: buildingCycleKey 熱鍵配置 (預設 Tab)
+- **智能回退**: 支援 Inspector 後備熱鍵設置
+- **驗收**: Tab 鍵循環選取建築，HUD 顯示當前選項
 
 #### M4-T17f: 建築預覽同步修復 ✅ 已完成 (2025-09-16)
 - **BuildingCatalogBinder.cs**: 修復 Tab/BackQuote 切換建築時預覽模型不同步問題
@@ -396,6 +448,62 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
 - **最小侵入**: 不修改現有文件，避免與 BuildingSelectionProvider 衝突
 - **驗收**: Tab/BackQuote 切換建築時預覽模型正確同步更新
+
+#### M4-T17X: 統一標準化工具包 ✅ 已完成 (2025-09-14)
+- **MenuPaths.cs**: 中央常數管理，統一所有 Editor 菜單路徑
+- **CreateAssetMenuRewriter.cs**: 自動重寫 CreateAssetMenu 屬性，確保命名一致
+- **AssetPathEnforcer.cs**: 強制資產路徑規範，自動移動到正確位置
+- **UnitTemplateMigrator.cs**: 精確 Lint + Rebind 防呆機制，支援選擇性替換
+- **BuildingPrefabWizard.cs**: 批量建築 Prefab 生成工具，支援居中、貼地、碰撞器
+- **UnifiedEditorMenu.cs**: 統一選單系統，集中管理選單層級結構
+- **驗收**: 所有 Editor 工具統一命名為 DeepAbyssHive，路徑規範化
+
+#### M4-T18: 單位貼地系統 ✅ 已完成 (2025-09-15)
+- **UnitGroundFollower.cs**: 可選的單位地面貼附功能
+- **平滑貼地**: 支援平滑插值和坡面對齊
+- **GameConfig 外放**: groundFollowEnabled/groundSampleInterval/groundLerpSpeed 參數
+- **性能優化**: 預算化取樣，避免每幀大量 Raycast
+- **驗收**: 單位能平滑貼附地面，支援坡面行走
+
+#### M4-T19: Unit Grounding 正式版 ✅ 已完成 (2025-09-15)
+- **UnitGroundFollowerManager.cs**: 預算化貼地與走失保險機制
+- **走失保險**: 單位超出地圖邊界時自動傳送回安全位置
+- **參數外放**: unitGroundingEnabled/maxUnitsPerFrame/groundCheckRadius/lostUnitTeleportY
+- **無限迴圈修復**: 加入 visits 計數器限制最大遍歷次數
+- **驗收**: 修正單位越走越不見問題，加入預算化貼地與走失保險機制
+
+#### M4-T19c: Foot Offset 自動偵測 ✅ 已完成 (2025-09-15)
+- **自動計算**: 透過自動計算每個單位的 footOffset (pivot 到模型底部距離)
+- **腳貼地效果**: 實現腳貼地效果，解決單位半身入土問題
+- **Renderer 邊界**: 使用 Renderer.bounds 自動偵測模型底部
+- **UnitAgent 整合**: footOffset 參數整合到 UnitAgent 系統
+- **驗收**: 單位腳部正確貼地，無半身入土現象
+
+#### M4-XT: 四合一配置管理工具包 ✅ 已完成 (2025-09-15)
+- **ConfigMenuUnifier.cs**: 菜單統一工具，確保配置菜單命名一致
+- **ConfigAssetEnforcer.cs**: 位置強制工具，自動檢查和創建缺失配置
+- **ConfigSingletons.cs**: 單例管理工具，防止配置重複實例化
+- **GameConfigLoadLock.cs**: 載入策略鎖定，確保配置載入順序正確
+- **DAHLog 整合**: 所有配置工具統一使用 DAHLog.Info/Warn/Error 日誌系統
+- **驗收**: 配置系統管理工具完備，支援統一日誌和錯誤處理
+
+#### M4-T17i: BuildingCatalog UX 與 Binder 修復 ✅ 已完成 (2025-09-17)
+- **BuildingCatalogBinder.cs**: 新增節流機制，防止過度驗證觸發
+- **節流參數**: _verifyCooldownSec (2秒冷卻)、_maxResets (最多3次重置)
+- **方法重命名**: ApplyPrefabToPlacer → TryApplyPrefabToPlacer (避免方法名衝突)
+- **BuildingCatalogHUD_IMGUI.cs**: 新增可拖拽 IMGUI HUD，顯示建築目錄狀態
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **編譯修復**: 修復 DelayedVerify 方法參數缺失、無效十六進制數字語法錯誤
+- **驗收**: 建築目錄系統穩定運行，HUD 正常顯示，無編譯錯誤
+
+#### M4-T20: 建築選擇系統完整修復 ✅ 已完成 (2025-09-18)
+- **TMPro 編譯錯誤修復**: 在 DeepAbyssHive.Runtime.asmdef 中添加 Unity.TextMeshPro 引用
+- **Tab/BackQuote 實時切換**: BuildingCatalogBinder.SyncPreviewToPlacer 添加自動進入放置模式
+- **按鈕事件修復**: BuildingCatalogHUD 的 Prev/Next/Close 按鈕添加 GUI.FocusControl(null)
+- **預覽同步優化**: 修復 TryEnterPlacingMode 邏輯，確保建築模型正確跟隨滑鼠
+- **按鈕放置模式**: Select 方法添加 TryRefreshPreview 調用，確保按鈕點擊後立即顯示模型
+- **系統回滾**: 移除有問題的 uGUI BuildingSelectionUI，恢復穩定的 IMGUI 系統
+- **驗收**: Tab/BackQuote 實時切換建築、按鈕正常工作、預覽模型正確顯示、無需按兩次B鍵
 
 ---
 
@@ -414,7 +522,7 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **開發工具**: SMOKE 測試擴充、刪除工具、狀態 HUD、Editor 菜單  
 ✅ **API 擴展**: 有向碰撞檢測、雙版本 API、完全向後兼容  
 ✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
-✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制
+✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
 
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
@@ -426,7 +534,7 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
 ✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
 ✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
-⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)  
+⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)
 
 
 

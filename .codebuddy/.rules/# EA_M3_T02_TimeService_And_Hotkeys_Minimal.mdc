@@ -1,0 +1,263 @@
+
+
+
+M3-T04｜最低 HUD（時間倍率顯示）＋ 覆蓋層切換（Terrain/Creep）
+目的：以最小改動提供可用 HUD 元素（顯示暫停/倍率）與兩項覆蓋層的熱鍵/按鈕切換（地形區塊、菌毯）。不改動既有 UI/Manager，只新增 2 個腳本；支援從 GameConfig 讀取自訂熱鍵，啟動輸出一行 [CONFIG]。若場景中沒有對應文字元件，會自動生成一個極簡 Canvas+Text（可移除）。
+風險：低。兩個新增腳本，熱鍵處理與反射設定覆蓋層旗標均具容錯，失敗只記錄警告，遊戲不會中斷。
+影響面：玩家可用 F3/F4 開關地形/菌毯覆蓋層；畫面左上角出現「Time: Paused/1x/2x/4x」文字；Smart Console 有結構化日誌。
+依賴：TimeService（M3-T02）已存在；Smart Console 日誌（DAHLog）；Unity UI (Text)。
+
+Prerequisites
+- 不移動既有檔案與 Prefab；新增檔案置於 `Assets/DeepAbyssHive/HUD/Main/`。
+- GameConfig 如有以下欄位/屬性將被讀取（沒有則用預設）：`overlayTerrainKey`, `overlayCreepKey`, `hudTimeFontSize`。
+- Terrain/Creep 覆蓋層旗標以**反射**對常見名稱進行設置（見註解），若未找到則只切換內部開關並記錄警告。
+
+Diff / Patch
+
+新增：Assets/DeepAbyssHive/HUD/Main/HUDOverlayController.cs
+@@
++using System;
++using System.Reflection;
++using UnityEngine;
++using DeepAbyssHive.Core.Logging;
++
++namespace DeepAbyssHive.HUD.Main
++{
++    /// <summary>
++    /// 覆蓋層切換控制（F3/F4）＋ 對外 Button 事件。透過反射嘗試驅動 Manager 上常見的覆蓋層旗標。
++    /// 支援從 GameConfig 讀取自訂熱鍵。不存在時使用預設：F3=Terrain，F4=Creep。
++    /// </summary>
++    public class HUDOverlayController : MonoBehaviour
++    {
++        public static bool TerrainOverlayOn { get; private set; }
++        public static bool CreepOverlayOn { get; private set; }
++
++        internal static KeyCode TerrainKey = KeyCode.F3;
++        internal static KeyCode CreepKey = KeyCode.F4;
++
++        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
++        private static void AutoCreate()
++        {
++            if (FindObjectOfType<HUDOverlayController>() != null) return;
++            var go = new GameObject("HUDOverlayController");
++            var c = go.AddComponent<HUDOverlayController>();
++            var managers = GameObject.Find("Managers"); if (managers != null) go.transform.SetParent(managers.transform);
++            DontDestroyOnLoad(go);
++            TryLoadKeysFromGameConfig();
++            DAHLog.DLog("CONFIG", $"Overlays: terrainKey={TerrainKey}, creepKey={CreepKey}"); // 啟動摘要
++            DAHLog.DLog("BOOT", "HUDOverlayController created");
++        }
++
++        private void Update()
++        {
++            if (Input.GetKeyDown(TerrainKey)) ToggleTerrainOverlay();
++            if (Input.GetKeyDown(CreepKey)) ToggleCreepOverlay();
++        }
++
++        public void ToggleTerrainOverlay()
++        {
++            SetTerrainOverlay(!TerrainOverlayOn);
++        }
++
++        public void ToggleCreepOverlay()
++        {
++            SetCreepOverlay(!CreepOverlayOn);
++        }
++
++        public static void SetTerrainOverlay(bool on)
++        {
++            TerrainOverlayOn = on;
++            if (!ApplyFlagToManager(on, new[] { "TerrainManager", "ITerrainManager" },
++                new[] { "showChunkOverlay", "showChunkBounds", "drawChunks", "overlayChunks", "overlayEnabled", "showGrid" }))
++            {
++                DAHLog.DLog("HUD", "Terrain overlay flag not applied to manager (no known field); internal state toggled only");
++            }
++            DAHLog.DLog("HUD", $"TerrainOverlay={(on ? "ON" : "OFF")}");
++        }
++
++        public static void SetCreepOverlay(bool on)
++        {
++            CreepOverlayOn = on;
++            if (!ApplyFlagToManager(on, new[] { "CreepManager", "ICreepSimulationService", "ICreepGridService" },
++                new[] { "showCreepOverlay", "drawCreepOverlay", "overlayCreep", "overlayEnabled", "debugOverlay" }))
++            {
++                DAHLog.DLog("HUD", "Creep overlay flag not applied to manager (no known field); internal state toggled only");
++            }
++            DAHLog.DLog("HUD", $"CreepOverlay={(on ? "ON" : "OFF")}");
++        }
++
++        private static bool ApplyFlagToManager(bool value, string[] typeNames, string[] flagNames)
++        {
++            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
++            foreach (var tn in typeNames)
++            {
++                var t = asm.GetType(tn) ?? asm.GetType("DeepAbyssHive.Terrain.Managers."+tn) ?? asm.GetType("DeepAbyssHive.Creep.Managers."+tn);
++                if (t == null) continue;
++                UnityEngine.Object target = FindRuntimeInstanceOf(t);
++                if (target == null) continue;
++                foreach (var fn in flagNames)
++                {
++                    var f = t.GetField(fn, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++                    if (f != null && f.FieldType == typeof(bool)) { f.SetValue(target, value); return true; }
++                    var p = t.GetProperty(fn, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++                    if (p != null && p.CanWrite && p.PropertyType == typeof(bool)) { p.SetValue(target, value); return true; }
++                }
++            }
++            return false;
++        }
++
++        private static UnityEngine.Object FindRuntimeInstanceOf(Type t)
++        {
++            // 先找場景物件，再找 Resources 單例（Instance 靜態屬性）
++            var all = GameObject.FindObjectsOfType<MonoBehaviour>(true);
++            foreach (var mb in all) if (t.IsAssignableFrom(mb.GetType())) return mb;
++            var inst = t.GetProperty("Instance", BindingFlags.Public|BindingFlags.Static)?.GetValue(null) as UnityEngine.Object;
++            return inst;
++        }
++
++        private static void TryLoadKeysFromGameConfig()
++        {
++            try
++            {
++                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
++                {
++                    var p = asm.GetType("GameConfigProvider") ?? asm.GetType("DeepAbyssHive.Core.Config.GameConfigProvider");
++                    if (p == null) continue;
++                    var cfg = p.GetProperty("Current", BindingFlags.Public|BindingFlags.Static)?.GetValue(null);
++                    if (cfg == null) continue;
++                    TerrainKey = GetKey(cfg, "overlayTerrainKey", TerrainKey);
++                    CreepKey = GetKey(cfg, "overlayCreepKey", CreepKey);
++                    break;
++                }
++            } catch {}
++        }
++
++        private static KeyCode GetKey(object cfg, string name, KeyCode fallback)
++        {
++            var t = cfg.GetType();
++            var f = t.GetField(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            if (f != null && f.FieldType == typeof(KeyCode)) return (KeyCode)f.GetValue(cfg);
++            var p = t.GetProperty(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            if (p != null && p.PropertyType == typeof(KeyCode)) return (KeyCode)p.GetValue(cfg);
++            return fallback;
++        }
++    }
++}
+@@
+新增：Assets/DeepAbyssHive/HUD/Main/HUDTimeStatusRunner.cs
+@@
++using UnityEngine;
++using UnityEngine.UI;
++using DeepAbyssHive.Core.Logging;
++using DeepAbyssHive.Core.Time;
++
++namespace DeepAbyssHive.HUD.Main
++{
++    /// <summary>
++    /// 左上角顯示 Time 狀態（Paused / Nx）。如場景中沒有對應 UI，將自動創建一個最小 Canvas + Text。
++    /// </summary>
++    public class HUDTimeStatusRunner : MonoBehaviour
++    {
++        private Text _text;
++        private float _acc;
++
++        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
++        private static void AutoCreate()
++        {
++            if (FindObjectOfType<HUDTimeStatusRunner>() != null) return;
++            var go = new GameObject("HUD-TimeStatus");
++            var r = go.AddComponent<HUDTimeStatusRunner>();
++            var managers = GameObject.Find("Managers"); if (managers != null) go.transform.SetParent(managers.transform);
++            DontDestroyOnLoad(go);
++            DAHLog.DLog("BOOT", "HUDTimeStatusRunner created");
++        }
++
++        private void Awake()
++        {
++            EnsureText();
++            // 啟動摘要
++            int fontSize = TryGetIntFromGameConfig("hudTimeFontSize", 16);
++            _text.fontSize = fontSize;
++            _text.alignment = TextAnchor.UpperLeft;
++            _text.raycastTarget = false;
++            UpdateNow(true);
++            DAHLog.DLog("CONFIG", $"HUDTime: fontSize={fontSize}"); 
++        }
++
++        private void Update()
++        {
++            _acc += UnityEngine.Time.unscaledDeltaTime;
++            if (_acc >= 0.2f) { _acc = 0f; UpdateNow(false); }
++        }
++
++        private void UpdateNow(bool force)
++        {
++            if (_text == null) return;
++            var paused = TimeService.IsPaused;
++            var scale = TimeService.TimeScale;
++            _text.text = paused ? "Time: Paused" : (scale == 1f ? "Time: 1x" : $"Time: {scale:0.#}x");
++        }
++
++        private void EnsureText()
++        {
++            // 嘗試尋找現有 Canvas 下名為 TimeStatus 的 Text；沒有就創建一個最小 UI
++            var existing = GameObject.Find("TimeStatusText"); 
++            if (existing != null) { _text = existing.GetComponent<Text>(); if (_text != null) return; }
++
++            Canvas canvas = FindObjectOfType<Canvas>();
++            if (canvas == null)
++            {
++                var cgo = new GameObject("HUD-Canvas");
++                canvas = cgo.AddComponent<Canvas>();
++                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
++                cgo.AddComponent<CanvasScaler>();
++                cgo.AddComponent<GraphicRaycaster>();
++                DontDestroyOnLoad(cgo);
++            }
++            var textGO = new GameObject("TimeStatusText"); textGO.transform.SetParent(canvas.transform, false);
++            var rect = textGO.AddComponent<RectTransform>();
++            rect.anchorMin = new Vector2(0, 1); rect.anchorMax = new Vector2(0, 1);
++            rect.pivot = new Vector2(0, 1); rect.anchoredPosition = new Vector2(12, -12);
++            _text = textGO.AddComponent<Text>();
++            _text.color = Color.white;
++            _text.text = "Time: 1x";
++        }
++
++        private int TryGetIntFromGameConfig(string name, int fallback)
++        {
++            try
++            {
++                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
++                {
++                    var p = asm.GetType("GameConfigProvider") ?? asm.GetType("DeepAbyssHive.Core.Config.GameConfigProvider");
++                    if (p == null) continue;
++                    var cfg = p.GetProperty("Current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.GetValue(null);
++                    if (cfg == null) continue;
++                    var t = cfg.GetType();
++                    var f = t.GetField(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++                    if (f != null) return System.Convert.ToInt32(f.GetValue(cfg));
++                    var pr = t.GetProperty(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++                    if (pr != null) return System.Convert.ToInt32(pr.GetValue(cfg));
++                }
++            } catch {}
++            return fallback;
++        }
++    }
++}
+@@
+註解
+- **不侵入**：不改任何 Manager 或現有 UI；覆蓋層切換以反射設定常見旗標名稱；找不到就只切換內部狀態並警告。
+- **可關閉**：若不需要自動生成的 HUD 文字，刪除 `HUDTimeStatusRunner` 或刪除其生成的 `HUD-Canvas/TimeStatusText` 即可。
+- **可擴充**：未來可在 `HUDOverlayController` 加入更多覆蓋層（NavGrid、SpatialIndex 節點等），只需擴充候選旗標名清單。
+- **鍵值外放**：按鍵優先讀 GameConfig（`overlayTerrainKey`、`overlayCreepKey`），啟動一行 [CONFIG] 輸出；不存在時採預設 F3/F4。
+
+驗收步驟
+1) 進入 Play：Console 看到 `[BOOT] HUDOverlayController created`、`[BOOT] HUDTimeStatusRunner created` 與一行 `[CONFIG] Overlays...`、`[CONFIG] HUDTime...`。
+2) 螢幕左上角出現「Time: 1x」；按 `Space` 暫停後顯示「Time: Paused」；按 `1/2/4` 顯示 `1x/2x/4x`。
+3) 按 `F3`：Terrain 覆蓋層切換（Chunk/Grid 顯示）；按 `F4`：Creep 覆蓋層切換（菌毯熱力圖/邊界）。若目標 Manager 尚未提供旗標，Console 會提示未套用到 Manager，但不影響運行。
+4) 若 GameConfig 已定義 `overlayTerrainKey/overlayCreepKey/hudTimeFontSize`，啟動時會讀取並以該設定運行。
+
+回滾指引
+- 刪除以下兩個檔案即可回滾：
+  - `Assets/DeepAbyssHive/HUD/Main/HUDOverlayController.cs`
+  - `Assets/DeepAbyssHive/HUD/Main/HUDTimeStatusRunner.cs`
