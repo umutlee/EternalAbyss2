@@ -118,3 +118,18 @@ port 5173的Express服务器，用于提供项目文档：
 - Express 4.21.2
 - Neo4j Driver 5.28.1
 - Nodemon 2.0.22 (开发环境)
+
+## 最近更新记录
+
+### 2025-09-18: 建筑选择系统完整修复
+- **问题解决**: 修复了 Tab/BackQuote 键不实时切换建筑预览的问题
+- **编译修复**: 解决 TMPro 命名空间编译错误，在 Assembly Definition 中添加 Unity.TextMeshPro 引用
+- **交互优化**: 修复建筑目录 HUD 的按钮事件处理，确保 Prev/Next/Close 按钮正常工作
+- **预览同步**: 改进建筑预览同步机制，确保切换建筑时立即进入放置模式
+- **用户体验**: 解决需要按两次 B 键的问题，现在 Tab/BackQuote 切换后立即可用
+- **系统稳定**: 移除有问题的 uGUI 系统，恢复稳定的 IMGUI 建筑选择界面
+
+### 核心修复文件
+- `DeepAbyssHive.Runtime.asmdef` - 添加 TextMeshPro 引用
+- `BuildingCatalogBinder.cs` - 添加自动进入放置模式功能
+- `BuildingCatalogHUD.cs` - 修复按钮事件处理和预览刷新逻辑

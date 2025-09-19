@@ -187,6 +187,9 @@ namespace DeepAbyssHive.Buildings.Runtime
             {
                 TryApplyPrefabToPlacer(currentBuilding, null, _currentIndex);
                 
+                // 強制進入放置模式
+                TryEnterPlacingMode();
+                
                 // 延遲驗證：應對某些 Placer 在 Start/Update 內重置的情況
                 StartCoroutine(DelayedVerify(currentBuilding, currentBuilding.name, _currentIndex));
             }
@@ -274,6 +277,41 @@ namespace DeepAbyssHive.Buildings.Runtime
             DontDestroyOnLoad(go);
             
             DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] 自動啟動完成");
+        }
+
+        /// <summary>
+        /// 嘗試進入放置模式
+        /// </summary>
+        private void TryEnterPlacingMode()
+        {
+            if (_buildingPlacer == null) return;
+            
+            var t = _buildingPlacer.GetType();
+            
+            // 檢查當前狀態
+            var isPlacingField = t.GetField("isPlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+            bool currentlyPlacing = false;
+            if (isPlacingField != null && isPlacingField.FieldType == typeof(bool))
+            {
+                currentlyPlacing = (bool)isPlacingField.GetValue(_buildingPlacer);
+            }
+            
+            // 如果已經在放置模式，不需要再切換
+            if (currentlyPlacing) return;
+            
+            // 嘗試調用 TogglePlacing() 方法
+            var toggleMethod = t.GetMethod("TogglePlacing", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+            if (toggleMethod != null)
+            {
+                toggleMethod.Invoke(_buildingPlacer, null);
+                DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] 進入放置模式");
+            }
+            else if (isPlacingField != null)
+            {
+                // 直接設置 isPlacing = true
+                isPlacingField.SetValue(_buildingPlacer, true);
+                DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] 直接設置放置模式");
+            }
         }
 
         #endregion

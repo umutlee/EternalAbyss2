@@ -496,6 +496,15 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **編譯修復**: 修復 DelayedVerify 方法參數缺失、無效十六進制數字語法錯誤
 - **驗收**: 建築目錄系統穩定運行，HUD 正常顯示，無編譯錯誤
 
+#### M4-T20: 建築選擇系統完整修復 ✅ 已完成 (2025-09-18)
+- **TMPro 編譯錯誤修復**: 在 DeepAbyssHive.Runtime.asmdef 中添加 Unity.TextMeshPro 引用
+- **Tab/BackQuote 實時切換**: BuildingCatalogBinder.SyncPreviewToPlacer 添加自動進入放置模式
+- **按鈕事件修復**: BuildingCatalogHUD 的 Prev/Next/Close 按鈕添加 GUI.FocusControl(null)
+- **預覽同步優化**: 修復 TryEnterPlacingMode 邏輯，確保建築模型正確跟隨滑鼠
+- **按鈕放置模式**: Select 方法添加 TryRefreshPreview 調用，確保按鈕點擊後立即顯示模型
+- **系統回滾**: 移除有問題的 uGUI BuildingSelectionUI，恢復穩定的 IMGUI 系統
+- **驗收**: Tab/BackQuote 實時切換建築、按鈕正常工作、預覽模型正確顯示、無需按兩次B鍵
+
 ---
 
 ## MVP 各個里程碑完成總結

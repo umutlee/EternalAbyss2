@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深淵巢穴 - 遊戲 UI 設計預覽</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        
+        .game-screen {
+            width: 1200px;
+            height: 800px;
+            background: linear-gradient(45deg, #2a2a2a, #1a1a1a);
+            position: relative;
+            border: 2px solid #444;
+            margin: 20px auto;
+        }
+        
+        /* 資源面板 - 頂部 */
+        .resource-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #666;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .resource-item {
+            display: inline-block;
+            margin-right: 20px;
+            padding: 5px 10px;
+            background: rgba(50, 50, 50, 0.8);
+            border-radius: 3px;
+        }
+        
+        .biomass { color: #4CAF50; }
+        .energy { color: #2196F3; }
+        .minerals { color: #FF9800; }
+        
+        /* 建築選擇面板 - 底部 */
+        .building-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 120px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #666;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .building-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            height: 100%;
+        }
+        
+        .building-button {
+            background: rgba(70, 70, 70, 0.8);
+            border: 2px solid #888;
+            border-radius: 5px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .building-button:hover {
+            background: rgba(100, 100, 100, 0.8);
+            border-color: #aaa;
+        }
+        
+        .building-button.selected {
+            background: rgba(255, 193, 7, 0.3);
+            border-color: #FFC107;
+        }
+        
+        /* 迷你地圖 - 右上角 */
+        .minimap {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #666;
+            border-radius: 5px;
+        }
+        
+        .minimap-content {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #333 20%, #111 80%);
+            position: relative;
+        }
+        
+        .minimap-player {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        /* 建築信息面板 - 右側 */
+        .info-panel {
+            position: absolute;
+            top: 180px;
+            right: 10px;
+            width: 250px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #666;
+            border-radius: 5px;
+            padding: 15px;
+            display: none;
+        }
+        
+        .info-panel.active {
+            display: block;
+        }
+        
+        .info-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #FFC107;
+        }
+        
+        .info-content {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        /* 遊戲世界區域 */
+        .game-world {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            right: 270px;
+            bottom: 150px;
+            background: linear-gradient(135deg, #2d4a2d, #1a2e1a);
+            border: 1px solid #555;
+            border-radius: 3px;
+        }
+        
+        .game-world::after {
+            content: "遊戲世界區域\n(地形、建築、單位)";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #888;
+            font-size: 18px;
+            white-space: pre-line;
+        }
+        
+        /* 熱鍵提示 */
+        .hotkey-hints {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #FFC107;
+        }
+        
+        .description {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">深淵巢穴 - 遊戲 UI 設計預覽</h1>
+    
+    <div class="description">
+        <h3>UI 組件說明：</h3>
+        <ul>
+            <li><strong>資源面板</strong>（左上）：顯示生物質、能量、礦物 - 按 F2 切換</li>
+            <li><strong>建築選擇面板</strong>（底部中央）：選擇要建造的建築 - 按 F8 切換</li>
+            <li><strong>迷你地圖</strong>（右上）：顯示地圖概覽 - 按 F3 切換</li>
+            <li><strong>建築信息面板</strong>（右側）：顯示選中建築的詳細信息</li>
+            <li><strong>遊戲世界</strong>（中央）：主要遊戲區域，顯示地形、建築、單位</li>
+        </ul>
+    </div>
+    
+    <div class="game-screen">
+        <!-- 熱鍵提示 -->
+        <div class="hotkey-hints">
+            F1: 增加資源 | F2: 資源面板 | F3: 迷你地圖 | F8: 建築面板 | B: 建築模式
+        </div>
+        
+        <!-- 資源面板 -->
+        <div class="resource-panel">
+            <div class="resource-item biomass">🧬 生物質: 150</div>
+            <div class="resource-item energy">⚡ 能量: 75</div>
+            <div class="resource-item minerals">💎 礦物: 35</div>
+        </div>
+        
+        <!-- 迷你地圖 -->
+        <div class="minimap">
+            <div class="minimap-content">
+                <div class="minimap-player"></div>
+            </div>
+        </div>
+        
+        <!-- 建築信息面板 -->
+        <div class="info-panel active">
+            <div class="info-title">模組化建築</div>
+            <div class="info-content">
+                <p><strong>成本：</strong></p>
+                <p>🧬 生物質: 25</p>
+                <p>⚡ 能量: 10</p>
+                <p><br><strong>功能：</strong></p>
+                <p>基礎建築單元，可擴展和升級</p>
+                <p><br><strong>狀態：</strong> 可建造</p>
+            </div>
+        </div>
+        
+        <!-- 遊戲世界 -->
+        <div class="game-world"></div>
+        
+        <!-- 建築選擇面板 -->
+        <div class="building-panel">
+            <div class="building-grid">
+                <div class="building-button selected">
+                    <div>00</div>
+                    <div>模組化建築</div>
+                </div>
+                <div class="building-button">
+                    <div>01</div>
+                    <div>資源採集器</div>
+                </div>
+                <div class="building-button">
+                    <div>02</div>
+                    <div>能量核心</div>
+                </div>
+                <div class="building-button">
+                    <div>03</div>
+                    <div>防禦塔</div>
+                </div>
+                <div class="building-button">
+                    <div>04</div>
+                    <div>研究設施</div>
+                </div>
+                <div class="building-button">
+                    <div>05</div>
+                    <div>單位孵化器</div>
+                </div>
+                <div class="building-button">
+                    <div>06</div>
+                    <div>存儲倉庫</div>
+                </div>
+                <div class="building-button">
+                    <div>07</div>
+                    <div>傳送門</div>
+                </div>
+                <div class="building-button">
+                    <div>08</div>
+                    <div>指揮中心</div>
+                </div>
+                <div class="building-button">
+                    <div>09</div>
+                    <div>擴展模組</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="description">
+        <h3>互動說明：</h3>
+        <ul>
+            <li>點擊建築按鈕選擇要建造的建築（黃色邊框表示選中）</li>
+            <li>選中建築後會自動進入建築模式（等同按 B 鍵）</li>
+            <li>資源不足時按鈕會變灰且無法選擇</li>
+            <li>建築信息面板會顯示選中建築的詳細信息和成本</li>
+            <li>所有面板都可以通過熱鍵切換顯示/隱藏</li>
+        </ul>
+    </div>
+</body>
+</html>
