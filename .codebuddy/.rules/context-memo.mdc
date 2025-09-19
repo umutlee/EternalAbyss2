@@ -540,7 +540,16 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **最小侵入**: 通過反射嘗試設置覆蓋層旗標，找不到時只記錄警告
 - **驗收**: F3/F4 切換覆蓋層、時間狀態正確顯示、無 GC 抖動
 
-⏳ **待完成**: M3-T03 (存檔系統), M3-T05~T07
+✅ **M3-T03 存檔/讀檔 v1**: 版本化 JSON 存檔系統實現
+- **ISaveParticipant 接口**: 定義存檔參與者契約 (Key, CaptureState, RestoreState)
+- **SaveLoadService**: 版本化 JSON 存讀服務，支援 slot 管理和型別相容
+- **SaveLoadRunner**: F5/F9 快存快讀熱鍵控制，可由 GameConfig 覆蓋
+- **TimeServiceSaveParticipant**: 範例參與者，保存 TimeService 狀態
+- **存檔路徑**: Application.persistentDataPath/Saves/<slot>.json
+- **GameConfig 存檔配置**: saveKey (F5), loadKey (F9), saveSlot ("autosave")
+- **驗收**: F5 存檔、F9 讀檔、TimeService 狀態正確還原、型別不存在時優雅跳過
+
+⏳ **待完成**: M3-T05~T07
 
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
