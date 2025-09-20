@@ -1,0 +1,66 @@
+# GitHub Actions: PlayMode tests + (if pass) Linux build
+name: Unity CI
+on:
+  push:
+    branches: [ main, develop, feature/** ]
+  pull_request:
+
+env:
+  # 建議在 GitHub Repository "Variables" 設定 UNITY_VERSION 與 PROJECT_PATH（預設用 .）
+  UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
+  PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
+
+jobs:
+  tests:
+    name: PlayMode Tests (Headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('**/Packages/manifest.json') }}
+          restore-keys: |
+            Library-
+      - name: Run PlayMode tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: ${{ env.PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          testMode: playmode
+          coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+DeepAbyssHive*'
+          artifactsPath: artifacts/tests
+
+  build-linux:
+    name: Build (Linux x64 Dev)
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('**/Packages/manifest.json') }}
+          restore-keys: |
+            Library-
+      - name: Build project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: ${{ env.PROJECT_PATH }}
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: StandaloneLinux64
+          buildName: EA_Dev
+          buildMethod: 
+          versioning: Custom
+          version: 0.1.${{ github.run_number }}
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: EA_Build_Linux64
+          path: build
