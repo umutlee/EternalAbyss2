@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using DeepAbyssHive.Core.Interfaces;
-using DeepAbyssHive.Core.Services;
 using DeepAbyssHive.Core.Logging;
 
 namespace DeepAbyssHive.Core.Time
@@ -9,7 +8,7 @@ namespace DeepAbyssHive.Core.Time
     /// <summary>
     /// 時間服務實現 - 統一管理遊戲時間控制
     /// </summary>
-    public class TimeService : ITimeService, IService
+    public class TimeService : ITimeService, DeepAbyssHive.Core.Services.IService
     {
         private float _timeScale = 1.0f;
         private bool _isPaused = false;
