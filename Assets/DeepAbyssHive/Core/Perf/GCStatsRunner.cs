@@ -32,7 +32,7 @@ namespace DeepAbyssHive.Core.Perf
         private void Update()
         {
             if (!_enabled) return;
-            _acc += Time.unscaledDeltaTime;
+            _acc += UnityEngine.Time.unscaledDeltaTime;
             if (_acc < _interval) return;
             _acc = 0f;
             Emit();
@@ -41,7 +41,7 @@ namespace DeepAbyssHive.Core.Perf
         private void Emit()
         {
             // fps 與 frame time 近似
-            float fps = 1f / Mathf.Max(1e-6f, Time.unscaledDeltaTime);
+            float fps = 1f / Mathf.Max(1e-6f, UnityEngine.Time.unscaledDeltaTime);
             long total = System.GC.GetTotalMemory(false);
             long allocThread = 0;
             try { allocThread = System.GC.GetAllocatedBytesForCurrentThread(); } catch {}

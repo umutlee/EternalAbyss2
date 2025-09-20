@@ -26,6 +26,7 @@ namespace DeepAbyssHive.Core.Logging
         SPATIAL,        // 空間索引
         TEST,           // 測試系統
         PERF,           // 性能監測
-        BOOT            // 啟動系統
+        BOOT,           // 啟動系統
+        COMMON          // 通用系統
     }
 }

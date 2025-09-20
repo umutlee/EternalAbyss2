@@ -1,11 +1,12 @@
 using System;
+using DeepAbyssHive.Core.Services;
 
 namespace DeepAbyssHive.Core.Interfaces
 {
     /// <summary>
     /// 時間服務接口 - 統一管理遊戲時間控制
     /// </summary>
-    public interface ITimeService
+    public interface ITimeService : IService
     {
         /// <summary>
         /// 當前時間倍率（1.0 = 正常速度）

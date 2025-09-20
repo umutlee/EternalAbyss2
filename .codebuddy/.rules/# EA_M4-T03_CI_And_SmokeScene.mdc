@@ -1,0 +1,165 @@
+
+
+
+M4-T03｜CI／Smoke 測試（PlayModeTest + GitHub Actions / Unity Builder）— 最小改動
+目的：把「3 分鐘冒煙驗收」與「PR 自動化」落地，避免回歸破壞：
+- **PlayMode Smoke 測試**：跑空場景→進 Play→驗證 Boot 建立 `Managers` 與四大 Manager 存在；等待 3 秒確認無例外刷屏（以 ErrorGuard/Smart Console 既有護欄協助）。
+- **GitHub Actions**：PR/Push 自動跑 **PlayMode Tests**（headless），通過後再跑 **Unity Builder** 建一個 Linux 開發包（可改目標）。
+- **零侵入**：僅新增 2 檔（測試腳本 + workflow），不改既有邏輯/場景。
+
+風險：低。若 UNITY_VERSION 或 license 未設定，workflow 會 fail（明確錯誤訊息）；不影響本地開發。
+
+Prerequisites
+- 專案已安裝 **Unity Test Framework**（`com.unity.test-framework`）。若未安裝，請先在 Package Manager 安裝。
+- 檢查 `ProjectSettings/ProjectVersion.txt` 以取得 Unity 版本字串（供 CI 使用）。
+- GitHub 專案 Secret：`UNITY_LICENSE`（Base64 內容；見下方 HOWTO / 或本文「操作步驟」）。
+
+Diff / Patch（最小新增）
+
+新增：Assets/Tests/PlayMode/SmokePlayModeTests.cs
+@@
++using System;
++using System.Collections;
++using NUnit.Framework;
++using UnityEngine;
++using UnityEngine.TestTools;
++#if UNITY_EDITOR
++using UnityEditor.SceneManagement;
++using UnityEditor;
++#endif
++
++public class SmokePlayModeTests
++{
++    // 允許 10 秒總 timeout（CI 上冷啟動較慢），每步 yield 一小段
++    [UnityTest]
++    public IEnumerator Boot_Creates_Managers_And_CoreManagers()
++    {
++#if UNITY_EDITOR
++        // 建立一個新的臨時場景，避免依賴資產
++        EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects);
++        yield return null;
++#endif
++        yield return new EnterPlayMode();
++        // 讓 BootEnsureManagers / BootAuditor 有時間執行
++        yield return null;
++        yield return null;
++
++        var managers = GameObject.Find("Managers");
++        Assert.IsNotNull(managers, "Managers root should exist after entering Play.");
++
++        string[] qnTypes = {
++            "DeepAbyssHive.Creep.Managers.CreepManager",
++            "DeepAbyssHive.Units.Managers.UnitManager",
++            "DeepAbyssHive.SpatialIndex.Managers.SpatialIndexManager",
++            "DeepAbyssHive.Terrain.Managers.TerrainManager"
++        };
++        foreach (var qn in qnTypes)
++        {
++            var t = Type.GetType(qn);
++            Assert.IsNotNull(t, $"Type not found: {qn}. Ensure assembly/namespace is correct.");
++            var inst = UnityEngine.Object.FindObjectOfType(t);
++            Assert.IsNotNull(inst, $"Manager missing: {qn}");
++        }
++
++        // 觀察 3 秒，期間不得拋出未處理例外（若 ErrorGuard 開啟會被率限並記錄）
++        var end = Time.realtimeSinceStartup + 3f;
++        while (Time.realtimeSinceStartup < end) { yield return null; }
++
++        yield return new ExitPlayMode();
++    }
++}
+@@
+新增：.github/workflows/ci.yml
+@@
++# GitHub Actions: PlayMode tests + (if pass) Linux build
++name: Unity CI
++on:
++  push:
++    branches: [ main, develop, feature/** ]
++  pull_request:
++
++env:
++  # 建議在 GitHub Repository "Variables" 設定 UNITY_VERSION 與 PROJECT_PATH（預設用 .）
++  UNITY_VERSION: ${{ vars.UNITY_VERSION || '2021.3.37f1' }}
++  PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
++
++jobs:
++  tests:
++    name: PlayMode Tests (Headless)
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: Cache Library
++        uses: actions/cache@v4
++        with:
++          path: Library
++          key: Library-${{ hashFiles('**/Packages/manifest.json') }}
++          restore-keys: |
++            Library-
++      - name: Run PlayMode tests
++        uses: game-ci/unity-test-runner@v4
++        env:
++          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
++        with:
++          projectPath: ${{ env.PROJECT_PATH }}
++          unityVersion: ${{ env.UNITY_VERSION }}
++          testMode: playmode
++          coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+DeepAbyssHive*'
++          artifactsPath: artifacts/tests
++
++  build-linux:
++    name: Build (Linux x64 Dev)
++    needs: tests
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: Cache Library
++        uses: actions/cache@v4
++        with:
++          path: Library
++          key: Library-${{ hashFiles('**/Packages/manifest.json') }}
++          restore-keys: |
++            Library-
++      - name: Build project
++        uses: game-ci/unity-builder@v4
++        env:
++          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
++        with:
++          projectPath: ${{ env.PROJECT_PATH }}
++          unityVersion: ${{ env.UNITY_VERSION }}
++          targetPlatform: StandaloneLinux64
++          buildName: EA_Dev
++          buildMethod: 
++          versioning: Custom
++          version: 0.1.${{ github.run_number }}
++      - name: Upload build
++        uses: actions/upload-artifact@v4
++        with:
++          name: EA_Build_Linux64
++          path: build
++
+註解 / 設計取捨
+- **最小改動**：不新增 Smoke Scene 資產，改為在 PlayMode 測試中用 `NewScene(DefaultGameObjects)` 建立臨時場景，避免資產差異造成 CI 不穩。
+- **反射對接**：用型別全名檢查四大 Manager 是否就緒，與 Boot 流程相容。
+- **可擴充**：日後可再加：
+  - 第二個測試：`ScenarioLoader` 的 `stress_200_units` 在 Editor 下直接呼叫其 API（或以 Resources JSON 驗證）。
+  - Build job 增加 Windows / macOS；或分離「PR 只測試，合併到 main 才 build」。
+
+操作步驟（交給 CI/小Q 之前請先做）
+1) **確認 Unity 版本**：打開 `ProjectSettings/ProjectVersion.txt`，把值（如 `2021.3.37f1`）填到 GitHub Repository → Settings → **Variables**：`UNITY_VERSION`。
+2) **建立 UNITY_LICENSE Secret**：
+   - 在你的開發機打開 Unity Hub，用與 CI 相同版本啟動一次專案。
+   - Help → Manage License → 手動/離線激活，取得 `.alf`，到 Unity 鏈接換回 `.ulf`（或用現有 `.ulf`）。
+   - 用文字編輯器打開 `.ulf`，把全文做 **Base64 編碼**，到 GitHub Repository → Settings → **Secrets and variables → Actions → Secrets** 新增 `UNITY_LICENSE`，貼上 Base64。
+3) **（可選）設定 PROJECT_PATH**：若專案不在 repo 根目錄，將子資料夾路徑寫入 `PROJECT_PATH` 變數。
+4) **推送分支**：CI 會在 PR 與 `main/develop/feature/*` 分支 push 時自動觸發。
+
+驗收（DoD）
+- PR 顯示兩個 Job：**PlayMode Tests** 與 **Build (Linux x64 Dev)**；Tests 綠燈後 Build 觸發並產出 `EA_Build_Linux64` artifact。
+- 測試報告（HTML/coverage）可於 `artifacts/tests` 下載；PlayMode 測試通過。
+- 本地用 Test Runner 執行 `SmokePlayModeTests` 也能通過。
+
+回滾指引
+- 刪除兩檔：
+  - `Assets/Tests/PlayMode/SmokePlayModeTests.cs`
+  - `.github/workflows/ci.yml`

@@ -14,7 +14,7 @@ namespace DeepAbyssHive.Core.Logging
         static string Prefix(LogCategory cat)
         {
             var time = DateTime.Now.ToString("HH:mm:ss.fff");
-            string frame = IncludeFrame ? $"[{Time.frameCount}]" : "";
+            string frame = IncludeFrame ? $"[{UnityEngine.Time.frameCount}]" : "";
             return $"[{cat}][{time}]{frame} ";
         }
 
@@ -45,6 +45,12 @@ namespace DeepAbyssHive.Core.Logging
         /// <summary>開發期噪音；正式版可關閉或改為條件編譯。</summary>
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
         public static void Dev(LogCategory cat, string message, UnityEngine.Object? ctx = null)
+        {
+            Info(cat, message, ctx);
+        }
+
+        /// <summary>Debug 日誌方法，等同於 Info</summary>
+        public static void Debug(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
             Info(cat, message, ctx);
         }
