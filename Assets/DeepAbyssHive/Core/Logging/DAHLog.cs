@@ -20,14 +20,14 @@ namespace DeepAbyssHive.Core.Logging
 
         public static void Info(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
-            if (ctx) Debug.Log(Prefix(cat) + message, ctx);
-            else Debug.Log(Prefix(cat) + message);
+            if (ctx) UnityEngine.Debug.Log(Prefix(cat) + message, ctx);
+            else UnityEngine.Debug.Log(Prefix(cat) + message);
         }
 
         public static void Warn(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
-            if (ctx) Debug.LogWarning(Prefix(cat) + message, ctx);
-            else Debug.LogWarning(Prefix(cat) + message);
+            if (ctx) UnityEngine.Debug.LogWarning(Prefix(cat) + message, ctx);
+            else UnityEngine.Debug.LogWarning(Prefix(cat) + message);
         }
 
         /// <summary>Warning 方法別名，保持向後兼容</summary>
@@ -38,8 +38,8 @@ namespace DeepAbyssHive.Core.Logging
 
         public static void Error(LogCategory cat, string message, UnityEngine.Object? ctx = null)
         {
-            if (ctx) Debug.LogError(Prefix(cat) + message, ctx);
-            else Debug.LogError(Prefix(cat) + message);
+            if (ctx) UnityEngine.Debug.LogError(Prefix(cat) + message, ctx);
+            else UnityEngine.Debug.LogError(Prefix(cat) + message);
         }
 
         /// <summary>開發期噪音；正式版可關閉或改為條件編譯。</summary>
