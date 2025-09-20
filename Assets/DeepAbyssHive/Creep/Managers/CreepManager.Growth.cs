@@ -37,7 +37,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void ProcessAutoExpansion()
         {
-            if (Time.time - _lastExpansionTime < _expansionInterval)
+            if (UnityEngine.Time.time - _lastExpansionTime < _expansionInterval)
                 return;
                 
             if (_expansionQueue.Count == 0)
@@ -53,7 +53,7 @@ namespace DeepAbyssHive.Creep.Managers
                 }
             }
             
-            _lastExpansionTime = Time.time;
+            _lastExpansionTime = UnityEngine.Time.time;
         }
         
         /// <summary>

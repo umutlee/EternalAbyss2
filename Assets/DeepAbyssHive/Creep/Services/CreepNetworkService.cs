@@ -172,10 +172,10 @@ namespace DeepAbyssHive.Creep.Services
 
             // 如果该玩家没有网络或者网络分析过期，重新分析
             if (!_playerNetworks.ContainsKey(playerId) || 
-                Time.time - _lastAnalysisTime > _networkAnalysisInterval)
+                UnityEngine.Time.time - _lastAnalysisTime > _networkAnalysisInterval)
             {
                 AnalyzeNetworkConnectivity(playerId);
-                _lastAnalysisTime = Time.time;
+                _lastAnalysisTime = UnityEngine.Time.time;
             }
 
             // 找到包含该位置的网络
@@ -197,10 +197,10 @@ namespace DeepAbyssHive.Creep.Services
         {
             // 如果网络分析过期，重新分析
             if (!_playerNetworks.ContainsKey(playerId) || 
-                Time.time - _lastAnalysisTime > _networkAnalysisInterval)
+                UnityEngine.Time.time - _lastAnalysisTime > _networkAnalysisInterval)
             {
                 AnalyzeNetworkConnectivity(playerId);
-                _lastAnalysisTime = Time.time;
+                _lastAnalysisTime = UnityEngine.Time.time;
             }
 
             if (!_playerNetworks.TryGetValue(playerId, out List<int> networkIds))
@@ -350,7 +350,7 @@ namespace DeepAbyssHive.Creep.Services
 
             // 重新分析连通性
             AnalyzeNetworkConnectivity(playerId);
-            _lastAnalysisTime = Time.time;
+            _lastAnalysisTime = UnityEngine.Time.time;
 
             // 返回新的网络ID
             if (_playerNetworks.TryGetValue(playerId, out List<int> newNetworkIds))
@@ -499,7 +499,7 @@ namespace DeepAbyssHive.Creep.Services
             {
                 // 如果有合并，重新分析连通性
                 AnalyzeNetworkConnectivity(playerId);
-                _lastAnalysisTime = Time.time;
+                _lastAnalysisTime = UnityEngine.Time.time;
             }
         }
 
@@ -509,13 +509,13 @@ namespace DeepAbyssHive.Creep.Services
                 return;
 
             // 定期重新分析网络连通性
-            if (Time.time - _lastAnalysisTime > _networkAnalysisInterval)
+            if (UnityEngine.Time.time - _lastAnalysisTime > _networkAnalysisInterval)
             {
                 foreach (int playerId in _playerNetworks.Keys)
                 {
                     AnalyzeNetworkConnectivity(playerId);
                 }
-                _lastAnalysisTime = Time.time;
+                _lastAnalysisTime = UnityEngine.Time.time;
             }
         }
 

@@ -30,9 +30,9 @@ namespace DeepAbyssHive.Core.Telemetry
 
         private void Update()
         {
-            TelemetryService.RecordFrame(Time.unscaledDeltaTime);
+            TelemetryService.RecordFrame(UnityEngine.Time.unscaledDeltaTime);
             if (!_enabled) return;
-            _acc += Time.unscaledDeltaTime;
+            _acc += UnityEngine.Time.unscaledDeltaTime;
             if (_acc >= _interval)
             {
                 _acc = 0f;

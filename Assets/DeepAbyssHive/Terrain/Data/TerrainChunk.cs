@@ -28,7 +28,7 @@ namespace DeepAbyssHive.Terrain.Data
             TypeMap = terrainData ?? new int[chunkSize, chunkSize];
             IsGenerated = terrainData != null;
             IsModified = false;
-            LastModifiedTime = Time.time;
+            LastModifiedTime = UnityEngine.Time.time;
         }
 
         // ITerrainChunk 接口實現

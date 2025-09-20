@@ -51,7 +51,7 @@ namespace DeepAbyssHive.Units.Agents
         {
             var cfg = GameConfigProvider.Current;
             if (cfg == null || !cfg.devVerboseLogs) return;
-            float now = Time.unscaledTime;
+            float now = UnityEngine.Time.unscaledTime;
             if (now - _lastVerboseLogAt < 1f) return;
             _lastVerboseLogAt = now;
             DAHLog.Dev(LogCategory.UNITS, message);
@@ -108,10 +108,10 @@ namespace DeepAbyssHive.Units.Agents
             if (to.sqrMagnitude > 1e-6f)
             {
                 var targetRot = Quaternion.LookRotation(to.normalized, Vector3.up);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotateSpeed * Time.deltaTime);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotateSpeed * UnityEngine.Time.deltaTime);
             }
             // 前進
-            transform.position += transform.forward * (moveSpeed * _speedFactor * Time.deltaTime);
+            transform.position += transform.forward * (moveSpeed * _speedFactor * UnityEngine.Time.deltaTime);
         }
 
         /// <summary>
@@ -127,12 +127,12 @@ namespace DeepAbyssHive.Units.Agents
             float probeR      = (cfg && cfg.unitObstacleProbeRadius > 0f) ? cfg.unitObstacleProbeRadius : obstacleProbeRadius;
             float probeExtra  = (cfg && cfg.unitObstacleProbeExtra >= 0f) ? cfg.unitObstacleProbeExtra : obstacleProbeExtra;
 
-            _dynCheckTimer += Time.deltaTime;
+            _dynCheckTimer += UnityEngine.Time.deltaTime;
             if (_dynCheckTimer < cfgInterval) return;
             _dynCheckTimer = 0f;
 
             if (_path == null || _idx >= _path.Count) return;
-            if (Time.time < _lastRepathAt + cfgCooldown) return;
+            if (UnityEngine.Time.time < _lastRepathAt + cfgCooldown) return;
 
             // 取得下一個導航點（或末點）；計算水平方向
             Vector3 from = transform.position;
@@ -155,7 +155,7 @@ namespace DeepAbyssHive.Units.Agents
                 // 命中：對「當前→最終目標」重新排路
                 Vector3 goal = _path[_path.Count - 1];
                 UnitPathQueue.Enqueue(from, goal, OnPath);
-                _lastRepathAt = Time.time;
+                _lastRepathAt = UnityEngine.Time.time;
                 DevLog($"[DEV] UnitAgent: dynamic re-path (hit {hit.collider.name})");
             }
         }
@@ -163,7 +163,7 @@ namespace DeepAbyssHive.Units.Agents
         private void SampleCreepIfDue()
         {
             var cfg = GameConfigProvider.Current;
-            float dt = Time.deltaTime;
+            float dt = UnityEngine.Time.deltaTime;
             float interval = (cfg != null && cfg.creepSampleInterval > 0f) ? cfg.creepSampleInterval : 0.25f;
             _creepSampleTimer += dt;
             if (_creepSampleTimer < interval) return;
@@ -196,7 +196,7 @@ namespace DeepAbyssHive.Units.Agents
         private void OnObstaclesChanged(Vector3 center, float radius)
         {
             if (_path == null || _path.Count == 0) return;
-            if (Time.time < _lastRepathAt + dynamicRepathCooldown) return; // 與 T06 共用冷卻
+            if (UnityEngine.Time.time < _lastRepathAt + dynamicRepathCooldown) return; // 與 T06 共用冷卻
 
             Vector3 a = transform.position;
             Vector3 b = _path[_path.Count - 1]; // 以最終目標估計路徑線段
@@ -204,7 +204,7 @@ namespace DeepAbyssHive.Units.Agents
             if (d <= (radius + _eventInflate))
             {
                 UnitPathQueue.Enqueue(a, b, OnPath);
-                _lastRepathAt = Time.time;
+                _lastRepathAt = UnityEngine.Time.time;
                 DevLog($"[DEV] UnitAgent: event re-path (d={d:0.##} ≤ r={radius:0.##})");
             }
         }

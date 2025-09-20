@@ -89,7 +89,7 @@ namespace DeepAbyssHive.Units.Data
             IsAttacking = false;
             IsIdle = true;
             
-            var currentTime = Time.time;
+            var currentTime = UnityEngine.Time.time;
             LastUpdateTime = currentTime;
             StateChangeTime = currentTime;
             CreationTime = currentTime;
@@ -101,7 +101,7 @@ namespace DeepAbyssHive.Units.Data
         public void UpdatePosition(Vector3 newPosition)
         {
             Position = newPosition;
-            LastUpdateTime = Time.time;
+            LastUpdateTime = UnityEngine.Time.time;
         }
         
         /// <summary>
@@ -112,8 +112,8 @@ namespace DeepAbyssHive.Units.Data
             if (CurrentState != newState)
             {
                 CurrentState = newState;
-                StateChangeTime = Time.time;
-                LastUpdateTime = Time.time;
+                StateChangeTime = UnityEngine.Time.time;
+                LastUpdateTime = UnityEngine.Time.time;
             }
         }
         
@@ -123,7 +123,7 @@ namespace DeepAbyssHive.Units.Data
         public void UpdateHealth(float newHealth)
         {
             Health = Mathf.Clamp(newHealth, 0f, MaxHealth);
-            LastUpdateTime = Time.time;
+            LastUpdateTime = UnityEngine.Time.time;
             
             if (Health <= 0f)
             {

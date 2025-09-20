@@ -204,10 +204,10 @@ namespace DeepAbyssHive.Buildings.Runtime
             if (!IsPlacingMode()) yield break;
 
             // 節流：至少間隔 _verifyCooldownSec 秒才驗證
-            if (Time.realtimeSinceStartup - _lastVerifyAt < _verifyCooldownSec)
+            if (UnityEngine.Time.realtimeSinceStartup - _lastVerifyAt < _verifyCooldownSec)
                 yield break;
 
-            _lastVerifyAt = Time.realtimeSinceStartup;
+            _lastVerifyAt = UnityEngine.Time.realtimeSinceStartup;
 
             // 讀現在 Placer 上的 prefab 名稱
             string current = GetCurrentPlacerPrefabName(_buildingPlacer);

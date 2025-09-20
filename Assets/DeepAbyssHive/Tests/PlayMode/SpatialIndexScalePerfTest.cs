@@ -91,7 +91,7 @@ namespace DeepAbyssHive.Tests.SpatialIndex
             json.AppendFormat("\"case\":\"SpatialIndexScalePerfTest\",\"N\":{0}", N);
             json.AppendFormat(",\"queries\":{0}", stats.TotalQueries);
             json.AppendFormat(",\"frameQueries\":{0}", stats.FrameQueries);
-            json.AppendFormat(",\"avgQueryTimeSec\":{0}", stats.AverageQueryTime.ToString("0.########"));
+            json.AppendFormat(",\"avgQueryTimeSec\":{0}", stats.AverageQueryUnityEngine.Time.ToString("0.########"));
             json.AppendFormat(",\"objects\":{0}", stats.ObjectCount);
             json.Append("}");
             DAHLog.Info(LogCategory.COMMON, json.ToString());

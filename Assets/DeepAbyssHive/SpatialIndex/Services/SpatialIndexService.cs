@@ -129,7 +129,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
                 return new NativeArray<int>(0, Allocator.Temp);
             }
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             
             var querySize = new Vector3(radius * 2, radius * 2, radius * 2);
             var results = _spatialIndex.QueryRange(center, querySize);
@@ -148,7 +148,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
                 }
             }
 
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             
             var resultArray = new NativeArray<int>(filteredResults.Count, Allocator.Temp);
             for (int i = 0; i < filteredResults.Count; i++)
@@ -169,7 +169,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
                 return new NativeArray<int>(0, Allocator.Temp);
             }
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             var results = _spatialIndex.QueryRange(bounds.center, bounds.size);
             
             // 过滤类型
@@ -182,7 +182,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
                 }
             }
 
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             
             var resultArray = new NativeArray<int>(filteredResults.Count, Allocator.Temp);
             for (int i = 0; i < filteredResults.Count; i++)
@@ -215,7 +215,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
         {
             if (!IsInitialized) return -1;
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             
             float nearestDistance = float.MaxValue;
             int nearestId = -1;
@@ -238,7 +238,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
             }
             
             candidates.Dispose();
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             
             return nearestId;
         }
@@ -253,7 +253,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
                 return new NativeArray<int>(0, Allocator.Temp);
             }
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             
             // 使用较大的查询范围来找到候选对象
             var searchRadius = Mathf.Min(maxDistance, 100f);
@@ -285,7 +285,7 @@ namespace DeepAbyssHive.SpatialIndex.Services
                 resultArray[i] = distanceList[i].objectId;
             }
             
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             return resultArray;
         }
 

@@ -173,7 +173,7 @@ namespace DeepAbyssHive.Creep.Services
                         var cell = _gridService.GetGridCell(targetPos);
                         if (cell != null && cell.IsActive)
                         {
-                            cell.Strength = Mathf.Max(0f, cell.Strength - finalDecayRate * Time.deltaTime);
+                            cell.Strength = Mathf.Max(0f, cell.Strength - finalDecayRate * UnityEngine.Time.deltaTime);
                             if (cell.Strength <= 0.01f)
                             {
                                 cell.IsActive = false;

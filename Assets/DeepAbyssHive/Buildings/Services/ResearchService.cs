@@ -115,7 +115,7 @@ namespace DeepAbyssHive.Buildings.Services
             var progress = new ResearchProgress
             {
                 Progress = 0f,
-                StartTime = Time.time,
+                StartTime = UnityEngine.Time.time,
                 BuildingId = buildingId,
                 SpeedMultiplier = 1f
             };
@@ -195,7 +195,7 @@ namespace DeepAbyssHive.Buildings.Services
             var template = GetResearchTemplate(researchId);
             if (template == null) return 0f;
 
-            var elapsedTime = Time.time - progress.StartTime;
+            var elapsedTime = UnityEngine.Time.time - progress.StartTime;
             var adjustedTime = elapsedTime * progress.SpeedMultiplier;
             return Mathf.Clamp01(adjustedTime / template.ResearchTime);
         }

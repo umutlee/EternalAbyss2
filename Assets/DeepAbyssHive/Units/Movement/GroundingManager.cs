@@ -83,7 +83,7 @@ namespace DeepAbyssHive.Units.Movement
             if (TrySampleTerrain(pos, out targetY, out normal) || TryRaycastDown(pos + Vector3.up * 50f, out targetY, out normal))
             {
                 // 平滑貼附
-                var y = Mathf.Lerp(pos.y, targetY, 1f - Mathf.Exp(-_snapSpeed * Time.deltaTime));
+                var y = Mathf.Lerp(pos.y, targetY, 1f - Mathf.Exp(-_snapSpeed * UnityEngine.Time.deltaTime));
                 tr.position = new Vector3(pos.x, y, pos.z);
 
                 // 可選：對齊坡面
@@ -92,7 +92,7 @@ namespace DeepAbyssHive.Units.Movement
                     var fwd = Vector3.ProjectOnPlane(tr.forward, normal).normalized;
                     if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.Cross(normal, Vector3.right).normalized;
                     var targetRot = Quaternion.LookRotation(fwd, normal);
-                    tr.rotation = Quaternion.Slerp(tr.rotation, targetRot, 1f - Mathf.Exp(-_snapSpeed * Time.deltaTime));
+                    tr.rotation = Quaternion.Slerp(tr.rotation, targetRot, 1f - Mathf.Exp(-_snapSpeed * UnityEngine.Time.deltaTime));
                 }
             }
         }

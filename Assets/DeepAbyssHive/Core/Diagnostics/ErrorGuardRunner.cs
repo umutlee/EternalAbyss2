@@ -56,7 +56,7 @@ namespace DeepAbyssHive.Core.Diagnostics
             if (!_enabled) return;
             if (type != LogType.Exception && type != LogType.Error) return;
 
-            var now = Time.unscaledTime;
+            var now = UnityEngine.Time.unscaledTime;
             if (now - _windowStart >= 1f) { _windowStart = now; _windowCount = 0; }
             _windowCount++;
             if (_windowCount > _limitPerSec) return; // 率限：丟棄多餘同秒錯誤

@@ -73,7 +73,7 @@ namespace DeepAbyssHive.Units.Runtime
             // 本幀處理配額（保底）
             int budget = Mathf.Clamp(_perFrame, 1, 2048);
             int processed = 0;
-            float now = Time.unscaledTime;
+            float now = UnityEngine.Time.unscaledTime;
 
             // 關鍵修復：最多僅拜訪「count 次」，避免當前無任何 due 單位時 busy-loop。
             int visits = 0;

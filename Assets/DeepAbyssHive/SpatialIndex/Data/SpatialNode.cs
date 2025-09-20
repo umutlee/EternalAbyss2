@@ -51,7 +51,7 @@ namespace DeepAbyssHive.SpatialIndex.Data
             _category = category;
             _layer = layer;
             _isStatic = isStatic;
-            _lastUpdateTime = Time.time;
+            _lastUpdateTime = UnityEngine.Time.time;
             _velocity = Vector3.zero;
             _tags = new HashSet<string>();
         }
@@ -63,7 +63,7 @@ namespace DeepAbyssHive.SpatialIndex.Data
         {
             if (!_isStatic)
             {
-                float deltaTime = Time.time - _lastUpdateTime;
+                float deltaTime = UnityEngine.Time.time - _lastUpdateTime;
                 if (deltaTime > 0)
                 {
                     _velocity = (newPosition - _position) / deltaTime;
@@ -71,7 +71,7 @@ namespace DeepAbyssHive.SpatialIndex.Data
                 
                 _position = newPosition;
                 _bounds.center = newPosition;
-                _lastUpdateTime = Time.time;
+                _lastUpdateTime = UnityEngine.Time.time;
             }
         }
 
@@ -82,7 +82,7 @@ namespace DeepAbyssHive.SpatialIndex.Data
         {
             _bounds = newBounds;
             _position = newBounds.center;
-            _lastUpdateTime = Time.time;
+            _lastUpdateTime = UnityEngine.Time.time;
         }
 
         /// <summary>

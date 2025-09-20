@@ -117,8 +117,8 @@ namespace DeepAbyssHive.Buildings.Placement
 
         private void ThrottledLog(string msg)
         {
-            if (Time.unscaledTime - _lastLog < 0.25f) return;
-            _lastLog = Time.unscaledTime;
+            if (UnityEngine.Time.unscaledTime - _lastLog < 0.25f) return;
+            _lastLog = UnityEngine.Time.unscaledTime;
             DAHLog.Info(LogCategory.PLACEMENT, "[PLACEMENT] " + msg);
         }
     }

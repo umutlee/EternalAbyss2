@@ -238,7 +238,7 @@ namespace DeepAbyssHive.Units.Core
             if (distance > 0.1f)
             {
                 // 移动
-                Vector3 movement = direction * _moveSpeed * Time.deltaTime;
+                Vector3 movement = direction * _moveSpeed * UnityEngine.Time.deltaTime;
                 transform.position += movement;
 
                 // 旋转
@@ -246,7 +246,7 @@ namespace DeepAbyssHive.Units.Core
                 {
                     Quaternion targetRotation = Quaternion.LookRotation(direction);
                     transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, 
-                                                                 _rotationSpeed * Time.deltaTime);
+                                                                 _rotationSpeed * UnityEngine.Time.deltaTime);
                 }
             }
             else
@@ -270,7 +270,7 @@ namespace DeepAbyssHive.Units.Core
             
             if (distanceToTarget <= _attackRange)
             {
-                if (Time.time >= _lastAttackTime + _attackCooldown)
+                if (UnityEngine.Time.time >= _lastAttackTime + _attackCooldown)
                 {
                     AttackTarget(_currentTarget);
                 }
@@ -366,7 +366,7 @@ namespace DeepAbyssHive.Units.Core
             Unit unitTarget = target as Unit;
             if (unitTarget == null || !unitTarget.IsAlive) return;
 
-            _lastAttackTime = Time.time;
+            _lastAttackTime = UnityEngine.Time.time;
             unitTarget.TakeDamage(_attackDamage);
 
             // 播放攻击动画和音效

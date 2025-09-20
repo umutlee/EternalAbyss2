@@ -94,7 +94,7 @@ namespace DeepAbyssHive.Core.Logging
                 if (!(msg.Contains("PLACEMENT") || msg.Contains("Placement") || msg.Contains("Placer"))) return false;
                 // 取前 96 字作為 key
                 string key = msg.Length <= 96 ? msg : msg.Substring(0, 96);
-                float now = Time.realtimeSinceStartup;
+                float now = UnityEngine.Time.realtimeSinceStartup;
                 if (_last.TryGetValue(key, out var t0))
                 {
                     if ((now - t0) * 1000f < IntervalMs) return true; // 抑制

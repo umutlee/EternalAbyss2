@@ -80,7 +80,7 @@ namespace DeepAbyssHive.Creep.Services
             source.Type = sourceType;
             source.Strength = Mathf.Clamp01(strength);
             source.IsActive = true;
-            source.CreationTime = Time.time;
+            source.CreationTime = UnityEngine.Time.time;
             source.Radius = CalculateInfluenceRadius(sourceType, strength);
             source.NetworkId = 0;
 
@@ -193,7 +193,7 @@ namespace DeepAbyssHive.Creep.Services
             {
                 source.Strength = Mathf.Clamp01(strength);
                 source.InfluenceRadius = CalculateInfluenceRadius(source.Type, source.Strength);
-                source.LastUpdateTime = Time.time;
+                source.LastUpdateTime = UnityEngine.Time.time;
                 _creepSources[sourceId] = source;
             }
         }
@@ -204,7 +204,7 @@ namespace DeepAbyssHive.Creep.Services
             {
                 source.Type = sourceType;
                 source.InfluenceRadius = CalculateInfluenceRadius(sourceType, source.Strength);
-                source.LastUpdateTime = Time.time;
+                source.LastUpdateTime = UnityEngine.Time.time;
                 _creepSources[sourceId] = source;
             }
         }
@@ -214,7 +214,7 @@ namespace DeepAbyssHive.Creep.Services
             if (_creepSources.TryGetValue(sourceId, out CreepSource source))
             {
                 source.IsActive = true;
-                source.LastUpdateTime = Time.time;
+                source.LastUpdateTime = UnityEngine.Time.time;
                 _creepSources[sourceId] = source;
             }
         }
@@ -224,7 +224,7 @@ namespace DeepAbyssHive.Creep.Services
             if (_creepSources.TryGetValue(sourceId, out CreepSource source))
             {
                 source.IsActive = false;
-                source.LastUpdateTime = Time.time;
+                source.LastUpdateTime = UnityEngine.Time.time;
                 _creepSources[sourceId] = source;
             }
         }
@@ -381,7 +381,7 @@ namespace DeepAbyssHive.Creep.Services
                 
                 // 检查源点是否有效（例如强度过低、长时间未更新等）
                 if (source.Strength <= 0f || 
-                    (!source.IsActive && Time.time - source.LastUpdateTime > 300f)) // 5分钟未更新的非活跃源点
+                    (!source.IsActive && UnityEngine.Time.time - source.LastUpdateTime > 300f)) // 5分钟未更新的非活跃源点
                 {
                     invalidSources.Add(kvp.Key);
                 }
@@ -424,7 +424,7 @@ namespace DeepAbyssHive.Creep.Services
                 return;
 
             // 更新源点逻辑（例如强度衰减、影响范围变化等）
-            source.LastUpdateTime = Time.time;
+            source.LastUpdateTime = UnityEngine.Time.time;
             
             // 这里可以添加更复杂的源点更新逻辑
             // 例如：根据周围菌毯密度调整强度、检查资源消耗等

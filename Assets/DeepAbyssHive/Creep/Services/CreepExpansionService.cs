@@ -132,7 +132,7 @@ namespace DeepAbyssHive.Creep.Services
                 TargetPosition = targetPosition,
                 ExpansionType = expansionType,
                 Priority = GetExpansionPriority(nearestSource.Position, targetPosition, expansionType),
-                StartTime = Time.time,
+                StartTime = UnityEngine.Time.time,
                 EstimatedDuration = CalculateExpansionDuration(nearestSource.Position, targetPosition, expansionType),
                 IsActive = true
             };
@@ -418,7 +418,7 @@ namespace DeepAbyssHive.Creep.Services
                     continue;
 
                 // 检查扩张是否完成
-                if (Time.time - request.StartTime >= request.EstimatedDuration)
+                if (UnityEngine.Time.time - request.StartTime >= request.EstimatedDuration)
                 {
                     // 完成扩张
                     Vector2Int targetGrid = _gridService.WorldToGridPosition(request.TargetPosition);
@@ -444,8 +444,8 @@ namespace DeepAbyssHive.Creep.Services
                 Strength = 0.5f, // 初始强度
                 Density = 0.5f,
                 PlayerId = GetPlayerIdFromSource(sourcePosition),
-                CreationTime = Time.time,
-                LastUpdateTime = Time.time
+                CreationTime = UnityEngine.Time.time,
+                LastUpdateTime = UnityEngine.Time.time
             };
 
             _gridService.SetGridCell(gridPosition, creepData);

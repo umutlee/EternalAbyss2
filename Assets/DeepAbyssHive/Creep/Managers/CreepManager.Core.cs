@@ -208,10 +208,10 @@ namespace DeepAbyssHive.Creep.Managers
         private void UpdateCreepTiles(float deltaTime)
         {
             // 检查更新间隔
-            if (_updateInterval > 0f && Time.time - _lastUpdateTime < _updateInterval)
+            if (_updateInterval > 0f && UnityEngine.Time.time - _lastUpdateTime < _updateInterval)
                 return;
                 
-            _lastUpdateTime = Time.time;
+            _lastUpdateTime = UnityEngine.Time.time;
             
             // 批量处理瓦片更新
             int processedCount = 0;
@@ -229,10 +229,10 @@ namespace DeepAbyssHive.Creep.Managers
             }
             
             // 定期检查网络连接
-            if (Time.time - _lastNetworkCheckTime >= _networkCheckInterval)
+            if (UnityEngine.Time.time - _lastNetworkCheckTime >= _networkCheckInterval)
             {
                 CheckNetworkConnections();
-                _lastNetworkCheckTime = Time.time;
+                _lastNetworkCheckTime = UnityEngine.Time.time;
             }
         }
 
@@ -241,7 +241,7 @@ namespace DeepAbyssHive.Creep.Managers
         /// </summary>
         private void UpdateTileStatus(CreepTile tile, float deltaTime)
         {
-            tile.LastUpdateTime = Time.time;
+            tile.LastUpdateTime = UnityEngine.Time.time;
             
             // 根据状态更新瓦片
             switch (tile.Status)
@@ -369,8 +369,8 @@ namespace DeepAbyssHive.Creep.Managers
                 GrowthRate = 1f,
                 NeedsUpdate = true,
                 IsActive = true,
-                CreationTime = Time.time,
-                LastUpdateTime = Time.time
+                CreationTime = UnityEngine.Time.time,
+                LastUpdateTime = UnityEngine.Time.time
             };
             return tile;
         }

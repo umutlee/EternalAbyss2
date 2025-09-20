@@ -60,11 +60,11 @@ namespace DeepAbyssHive.Core.Services
 
         private void Update()
         {
-            UpdateServices(Time.deltaTime);
+            UpdateServices(UnityEngine.Time.deltaTime);
             
             if (enablePerformanceMonitoring)
             {
-                MonitorPerformance(Time.deltaTime);
+                MonitorPerformance(UnityEngine.Time.deltaTime);
             }
         }
 
@@ -224,7 +224,7 @@ namespace DeepAbyssHive.Core.Services
             {
                 if (service.IsInitialized)
                 {
-                    var startTime = Time.realtimeSinceStartup;
+                    var startTime = UnityEngine.Time.realtimeSinceStartup;
                     
                     try
                     {
@@ -237,7 +237,7 @@ namespace DeepAbyssHive.Core.Services
 
                     if (enablePerformanceMonitoring)
                     {
-                        var updateTime = Time.realtimeSinceStartup - startTime;
+                        var updateTime = UnityEngine.Time.realtimeSinceStartup - startTime;
                         _serviceUpdateTimes[service.GetType()] = updateTime;
                     }
                 }

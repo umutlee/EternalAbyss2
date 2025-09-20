@@ -57,7 +57,7 @@ namespace DeepAbyssHive.Creep.Managers
                 Radius = radius,
                 Type = sourceType,
                 IsActive = true,
-                CreationTime = Time.time,
+                CreationTime = UnityEngine.Time.time,
                 NetworkId = ownerId, // 使用 ownerId 作为 NetworkId
                 Strength = CalculateSourceStrength(sourceType)
             };

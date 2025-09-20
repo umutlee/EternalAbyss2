@@ -55,7 +55,7 @@ namespace DeepAbyssHive.Terrain.Managers
         /// </summary>
         private void ProcessPendingModifications()
         {
-            _modificationProcessTimer += Time.deltaTime;
+            _modificationProcessTimer += UnityEngine.Time.deltaTime;
             
             if (_modificationProcessTimer < _modificationProcessInterval)
                 return;

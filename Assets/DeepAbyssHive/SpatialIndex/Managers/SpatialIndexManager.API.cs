@@ -186,7 +186,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 return new List<SpatialNode>();
             }
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             var bounds = new Bounds(center, new Vector3(radius * 2, radius * 2, radius * 2));
             
             List<SpatialNode> results;
@@ -210,7 +210,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 return distance <= radius;
             }).ToList();
 
-            var queryTime = Time.realtimeSinceStartup - startTime;
+            var queryTime = UnityEngine.Time.realtimeSinceStartup - startTime;
             UpdateQueryStats(queryTime);
 
             return filteredResults;
@@ -230,7 +230,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 return new List<SpatialNode>();
             }
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             
             List<SpatialNode> results;
             
@@ -251,7 +251,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 return bounds.Intersects(node.Bounds);
             }).ToList();
 
-            var queryTime = Time.realtimeSinceStartup - startTime;
+            var queryTime = UnityEngine.Time.realtimeSinceStartup - startTime;
             UpdateQueryStats(queryTime);
 
             return filteredResults;
@@ -272,7 +272,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
                 return new List<SpatialNode>();
             }
 
-            var startTime = Time.realtimeSinceStartup;
+            var startTime = UnityEngine.Time.realtimeSinceStartup;
             
             // 使用较大的查询范围
             var searchRadius = 100f;
@@ -287,7 +287,7 @@ namespace DeepAbyssHive.SpatialIndex.Managers
             var sortedCandidates = candidates.OrderBy(node => 
                 Vector3.Distance(node.Position, position)).Take(count).ToList();
 
-            var queryTime = Time.realtimeSinceStartup - startTime;
+            var queryTime = UnityEngine.Time.realtimeSinceStartup - startTime;
             UpdateQueryStats(queryTime);
 
             return sortedCandidates;

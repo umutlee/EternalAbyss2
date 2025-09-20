@@ -93,10 +93,10 @@ namespace DeepAbyssHive.Creep.Data
             _density = Mathf.Clamp01(density);
             _radius = Mathf.Max(0f, radius);
             _ownerId = ownerId;
-            _creationTime = Time.time;
+            _creationTime = UnityEngine.Time.time;
             _isSource = false;
             _sourceRadius = radius;
-            _lastUpdateTime = Time.time;
+            _lastUpdateTime = UnityEngine.Time.time;
         }
         
         /// <summary>

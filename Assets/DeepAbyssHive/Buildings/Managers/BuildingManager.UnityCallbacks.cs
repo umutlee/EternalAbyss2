@@ -8,9 +8,9 @@ namespace DeepAbyssHive.Buildings.Managers
     /// </summary>
     public partial class BuildingManager : MonoBehaviour
     {
-        private void Update()      => TickUpdate(Time.deltaTime);
-        private void LateUpdate()  => TickLateUpdate(Time.deltaTime);
-        private void FixedUpdate() => TickFixedUpdate(Time.fixedDeltaTime);
+        private void Update()      => TickUpdate(UnityEngine.Time.deltaTime);
+        private void LateUpdate()  => TickLateUpdate(UnityEngine.Time.deltaTime);
+        private void FixedUpdate() => TickFixedUpdate(UnityEngine.Time.fixedDeltaTime);
         
         // 添加缺少的 Tick 方法
         public void TickLateUpdate(float deltaTime)

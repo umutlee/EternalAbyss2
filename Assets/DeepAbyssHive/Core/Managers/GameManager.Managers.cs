@@ -547,7 +547,7 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         void IGameManager.LateUpdate()
         {
-            float deltaTime = Time.deltaTime;
+            float deltaTime = UnityEngine.Time.deltaTime;
             
             // 后更新所有注册的管理器
             for (int i = 0; i < _updateableManagers.Count; i++)

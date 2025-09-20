@@ -126,7 +126,7 @@ namespace DeepAbyssHive.Core.Managers
             if (!_isGamePaused && _isInitialized)
             {
                 // 调用IGameManager接口的Update方法
-                ((IGameManager)this).Update(Time.deltaTime);
+                ((IGameManager)this).Update(UnityEngine.Time.deltaTime);
             }
         }
         
@@ -137,7 +137,7 @@ namespace DeepAbyssHive.Core.Managers
             if (!_isGamePaused && _isInitialized)
             {
                 // 调用IGameManager接口的FixedUpdate方法
-                ((IGameManager)this).FixedUpdate(Time.fixedDeltaTime);
+                ((IGameManager)this).FixedUpdate(UnityEngine.Time.fixedDeltaTime);
             }
         }
         
@@ -205,12 +205,12 @@ namespace DeepAbyssHive.Core.Managers
             try
             {
                 // 初始化时间跟踪
-                _realTimeSinceStartup = Time.realtimeSinceStartup;
+                _realTimeSinceStartup = UnityEngine.Time.realtimeSinceStartup;
                 _gameTimeSinceStartup = 0f;
                 _frameCount = 0;
                 
                 // 设置时间缩放
-                Time.timeScale = _timeScale;
+                UnityEngine.Time.timeScale = _timeScale;
                 
                 DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 核心系统初始化完成");
             }
@@ -226,8 +226,8 @@ namespace DeepAbyssHive.Core.Managers
         /// </summary>
         private void UpdateTimeTracking()
         {
-            _realTimeSinceStartup = Time.realtimeSinceStartup;
-            _gameTimeSinceStartup += Time.deltaTime;
+            _realTimeSinceStartup = UnityEngine.Time.realtimeSinceStartup;
+            _gameTimeSinceStartup += UnityEngine.Time.deltaTime;
             _frameCount++;
         }
         
@@ -253,7 +253,7 @@ namespace DeepAbyssHive.Core.Managers
             }
             
             _isGamePaused = false;
-            Time.timeScale = _gameSpeed;
+            UnityEngine.Time.timeScale = _gameSpeed;
             
             OnGameStarted?.Invoke();
             DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏开始");
@@ -267,7 +267,7 @@ namespace DeepAbyssHive.Core.Managers
             if (_isGamePaused) return;
             
             _isGamePaused = true;
-            Time.timeScale = 0f;
+            UnityEngine.Time.timeScale = 0f;
             
             OnGamePaused?.Invoke();
             DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏暂停");
@@ -281,7 +281,7 @@ namespace DeepAbyssHive.Core.Managers
             if (!_isGamePaused) return;
             
             _isGamePaused = false;
-            Time.timeScale = _gameSpeed;
+            UnityEngine.Time.timeScale = _gameSpeed;
             
             OnGameResumed?.Invoke();
             DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏恢复");
@@ -295,7 +295,7 @@ namespace DeepAbyssHive.Core.Managers
             _gameSpeed = Mathf.Clamp(speed, _minTimeScale, _maxTimeScale);
             if (!_isGamePaused)
             {
-                Time.timeScale = _gameSpeed;
+                UnityEngine.Time.timeScale = _gameSpeed;
             }
             
             DAHLog.Info(LogCategory.SYSTEM, $"[GameManager] 游戏速度设置为: {_gameSpeed}");
@@ -307,7 +307,7 @@ namespace DeepAbyssHive.Core.Managers
         public void EndGame()
         {
             _isGamePaused = true;
-            Time.timeScale = 0f;
+            UnityEngine.Time.timeScale = 0f;
             
             OnGameEnded?.Invoke();
             DAHLog.Info(LogCategory.SYSTEM, "[GameManager] 游戏结束");
@@ -327,7 +327,7 @@ namespace DeepAbyssHive.Core.Managers
             try
             {
                 // 重置时间缩放
-                Time.timeScale = 1f;
+                UnityEngine.Time.timeScale = 1f;
                 
                 // 清理事件
                 OnGameInitialized = null;

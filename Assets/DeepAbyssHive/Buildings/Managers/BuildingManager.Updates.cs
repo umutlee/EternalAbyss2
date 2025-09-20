@@ -27,7 +27,7 @@ namespace DeepAbyssHive.Buildings.Managers
         /// </summary>
         private void UpdateBuildings()
         {
-            _buildingUpdateTimer += Time.deltaTime;
+            _buildingUpdateTimer += UnityEngine.Time.deltaTime;
             
             if (_buildingUpdateTimer < _buildingUpdateInterval)
                 return;

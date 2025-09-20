@@ -253,7 +253,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// </summary>
         public NativeArray<int> QueryRange(Vector3 position, float radius)
         {
-            float startTime = Time.realtimeSinceStartup;
+            float startTime = UnityEngine.Time.realtimeSinceStartup;
             
             _queryResults.Clear();
             Bounds queryBounds = new Bounds(position, new Vector3(radius * 2, radius * 2, radius * 2));
@@ -264,7 +264,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
             var filteredResults = _queryResults.Where(obj => 
                 Vector3.Distance(obj.Position, position) <= radius).ToList();
             
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             
             // 转换为NativeArray
             NativeArray<int> result = new NativeArray<int>(filteredResults.Count, Allocator.Temp);
@@ -281,14 +281,14 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// </summary>
         public List<SpatialNode> QueryRange(Vector3 center, Vector3 size)
         {
-            float startTime = Time.realtimeSinceStartup;
+            float startTime = UnityEngine.Time.realtimeSinceStartup;
             
             _queryResults.Clear();
             Bounds queryBounds = new Bounds(center, size);
             
             QueryRangeRecursive(_root, queryBounds, _queryResults);
             
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             return _queryResults.Cast<object>().ToList().ToSpatialNodes();
         }
 
@@ -297,7 +297,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// </summary>
         public List<SpatialNode> Query(SpatialQuery query)
         {
-            float startTime = Time.realtimeSinceStartup;
+            float startTime = UnityEngine.Time.realtimeSinceStartup;
             
             _queryResults.Clear();
             
@@ -343,7 +343,7 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
                 filteredResults = filteredResults.Take(query.MaxResults).ToList();
             }
             
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             return filteredResults;
         }
 
@@ -364,12 +364,12 @@ namespace DeepAbyssHive.SpatialIndex.Implementations
         /// </summary>
         public List<SpatialNode> QueryRaycast(Ray ray, float maxDistance)
         {
-            float startTime = Time.realtimeSinceStartup;
+            float startTime = UnityEngine.Time.realtimeSinceStartup;
             
             _queryResults.Clear();
             QueryRaycastRecursive(_root, ray, maxDistance, _queryResults);
             
-            UpdateQueryStats(Time.realtimeSinceStartup - startTime);
+            UpdateQueryStats(UnityEngine.Time.realtimeSinceStartup - startTime);
             return _queryResults.Cast<object>().ToList().ToSpatialNodes();
         }
 

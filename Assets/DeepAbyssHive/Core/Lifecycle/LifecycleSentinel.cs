@@ -35,7 +35,7 @@ namespace DeepAbyssHive.Core.Lifecycle
 
         private void Update()
         {
-            _acc += Time.unscaledDeltaTime;
+            _acc += UnityEngine.Time.unscaledDeltaTime;
             if (_acc < _interval) return;
             _acc = 0f;
             if (!_enabled) return;

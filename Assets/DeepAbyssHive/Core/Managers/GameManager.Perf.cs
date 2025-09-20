@@ -122,7 +122,7 @@ namespace DeepAbyssHive.Core.Managers
         {
             if (!_enablePerformanceMonitoring) return;
             
-            _performanceTimer += Time.unscaledDeltaTime;
+            _performanceTimer += UnityEngine.Time.unscaledDeltaTime;
             
             // 每帧更新基础数据
             UpdateFramePerformance();
@@ -141,7 +141,7 @@ namespace DeepAbyssHive.Core.Managers
         private void UpdateFramePerformance()
         {
             // 计算FPS
-            _frameTime = Time.unscaledDeltaTime;
+            _frameTime = UnityEngine.Time.unscaledDeltaTime;
             _currentFPS = 1f / _frameTime;
             
             // 更新FPS统计

@@ -146,7 +146,7 @@ namespace DeepAbyssHive.Core.Logging.Editor
                 type = type,
                 category = LogCategory.SYSTEM,
                 timestamp = DateTime.Now,
-                frameCount = Time.frameCount,
+                frameCount = UnityEngine.Time.frameCount,
                 cleanMessage = logString
             };
         }
