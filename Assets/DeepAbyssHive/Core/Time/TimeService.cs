@@ -12,9 +12,14 @@ namespace DeepAbyssHive.Core.Time
     {
         private float _timeScale = 1.0f;
         private bool _isPaused = false;
+        private bool _isInitialized = false;
         
         public float TimeScale => _timeScale;
         public bool IsPaused => _isPaused;
+        
+        // IService 實現
+        public string ServiceName => "TimeService";
+        public bool IsInitialized => _isInitialized;
         
         public event Action<float> OnTimeScaleChanged;
         public event Action<bool> OnPauseStateChanged;
@@ -50,6 +55,31 @@ namespace DeepAbyssHive.Core.Time
         private void UpdateUnityTimeScale()
         {
             UnityEngine.Time.timeScale = _isPaused ? 0f : _timeScale;
+        }
+        
+        // IService 實現
+        public void Initialize()
+        {
+            if (_isInitialized) return;
+            
+            _timeScale = 1.0f;
+            _isPaused = false;
+            UpdateUnityTimeScale();
+            _isInitialized = true;
+            
+            DAHLog.Info(LogCategory.SERVICE, "[TimeService] Initialized");
+        }
+        
+        public void Cleanup()
+        {
+            if (!_isInitialized) return;
+            
+            UnityEngine.Time.timeScale = 1.0f;
+            OnTimeScaleChanged = null;
+            OnPauseStateChanged = null;
+            _isInitialized = false;
+            
+            DAHLog.Info(LogCategory.SERVICE, "[TimeService] Cleaned up");
         }
     }
 }
