@@ -1,299 +1,221 @@
 
 
 
-M3-T03｜存檔/讀檔 v1（版本化 JSON + 熱鍵 F5/F9 + 可擴充參與者）
-目的：在不動既有 Manager 的前提下，交付「可用的 v1 存讀」基礎設施：
-- 版本化 JSON（v1）＋ 檔位（slot）儲存到 `Application.persistentDataPath/Saves/<slot>.json`
-- 最小可驗收內容：**TimeService 狀態**（Paused/Scale）可正確存/讀回
-- 可擴充：透過 `ISaveParticipant` 介面自動收集/還原其他系統（資源、建築、單位等）狀態（後續各 Manager 逐步掛上參與者即可）
-- 啟動輸出 [CONFIG]；提供 **F5** 快存、**F9** 快讀（可由 GameConfig 覆蓋）
+M3-T05｜護欄/降級：全域錯誤策略 + 例外抑制（率限）＋ 安全協程封裝
+目的：在不大改現有 Manager 的前提下，先交付「錯誤不致中斷、不中刷屏」的 v1 防護：
+1) **全域錯誤監聽**：接 Application.logMessageReceived，把 Exception/Error 分類加入 **率限**（每秒最多 N 則），統一走 Smart Console 分類（ERROR/EXC）。
+2) **安全協程封裝**：提供 `StartSafeCoroutine()` 與 `ErrorPolicy.Try(...)`，讓後續熱點逐步接入，例外被捕捉後以結構化日誌輸出，不炸流程。
+3) **設定外放**：`errorGuardEnabled`、`errorRateLimitPerSec`、`shortenStackTrace`、`throwTestErrorKey(F12)` 進 GameConfig；啟動印一行 [CONFIG]。
+> v1 不改任何現有檔案（MDC 最小變化）。v2 再逐步把高風險點替換為 `StartSafeCoroutine`/`ErrorPolicy.Try`。
 
-風險：低。新增 4 檔，無修改既有檔。初期僅還原 TimeService；其他系統待各自提供參與者後自動納入。
+風險：低。新增 2 檔、無修改舊檔。僅攔截日誌與提供工具方法；不會改變遊戲邏輯。
 
-影響面：為 MVP 的存讀奠基（v1）。未來擴充不會破壞既有檔案格式（以 version-key 控制）。
+影響面：Console 例外刷屏被抑制；協程可選擇以安全模式啟動；可用 F12 進行驗證。
 
 Prerequisites
-- 需已有 TimeService（M3-T02）。
-- Smart Console 日誌（DAHLog）。
-- GameConfig 可選欄位：`saveKey(F5)`, `loadKey(F9)`, `saveSlot("autosave")`。
+- 已有 Smart Console 包裝器（例如 DAHLog.DLog(category, msg)）。
+- GameConfig 可選欄位（沒有就用預設）：`errorGuardEnabled(bool=true)`, `errorRateLimitPerSec(int=5)`, `shortenStackTrace(bool=true)`, `throwTestErrorKey(KeyCode.F12)`。
 
 Diff / Patch
 
-新增：Assets/DeepAbyssHive/Core/Save/ISaveParticipant.cs
-@@
-+using UnityEngine;
-+
-+namespace DeepAbyssHive.Core.Save
-+{
-+    /// <summary>
-+    /// 任何想被存讀的系統可掛一個 ISaveParticipant（通常是 MonoBehaviour）。
-+    /// CaptureState 回傳一個可被 JsonUtility 序列化的 POCO；RestoreState 以相同型別的物件還原。
-+    /// </summary>
-+    public interface ISaveParticipant
-+    {
-+        /// <summary>全域唯一鍵（建議：模組.子系統，如 "time.service"、"resources.core"）。</summary>
-+        string Key { get; }
-+        /// <summary>擷取狀態（POCO）。</summary>
-+        object CaptureState();
-+        /// <summary>還原狀態（與擷取型別一致）。</summary>
-+        void RestoreState(object state);
-+    }
-+}
-@@
-新增：Assets/DeepAbyssHive/Core/Save/SaveLoadService.cs
+新增：Assets/DeepAbyssHive/Core/Diagnostics/ErrorPolicy.cs
 @@
 +using System;
-+using System.Collections.Generic;
-+using System.IO;
++using System.Collections;
 +using UnityEngine;
 +using DeepAbyssHive.Core.Logging;
 +
-+namespace DeepAbyssHive.Core.Save
++namespace DeepAbyssHive.Core.Diagnostics
 +{
 +    /// <summary>
-+    /// v1 存讀服務：版本化 JSON + slot；自動蒐集 ISaveParticipant。
++    /// 提供 Try/安全協程封裝與例外格式化。
++    /// 後續可逐步以 ErrorPolicy.Try / host.StartSafeCoroutine 取代高風險區塊。
 +    /// </summary>
-+    public static class SaveLoadService
++    public static class ErrorPolicy
 +    {
-+        [Serializable]
-+        public class SaveEntry
++        /// <summary>在 try/catch 中執行，錯誤以結構化日誌輸出，不拋出。</summary>
++        public static void Try(Action action, string context = null)
 +        {
-+            public string key;        // 參與者鍵
-+            public string type;       // 狀態型別全名（供除錯/前向相容）
-+            public string payload;    // JsonUtility.ToJson(state)
++            try { action?.Invoke(); }
++            catch (Exception ex) { DAHLog.DLog("ERROR", FormatException(ex, context)); }
 +        }
 +
-+        [Serializable]
-+        public class SaveGameV1
++        /// <summary>安全協程：在 MoveNext 期間捕捉例外，避免炸掉執行緒；錯誤會被記錄。</summary>
++        public static Coroutine StartSafeCoroutine(this MonoBehaviour host, IEnumerator routine, string context = null)
 +        {
-+            public string version = "v1";
-+            public string slot = "autosave";
-+            public string savedAt;        // ISO8601
-+            public List<SaveEntry> entries = new List<SaveEntry>();
-+            // 可擴充：全域欄位（例如地圖 seed、遊戲版本等）
++            if (host == null || routine == null) return null;
++            return host.StartCoroutine(SafeWrap(routine, context));
 +        }
 +
-+        public static string SavesDir =>
-+            Path.Combine(Application.persistentDataPath, "Saves");
-+
-+        public static string GetSlotPath(string slot) =>
-+            Path.Combine(SavesDir, $"{slot}.json");
-+
-+        public static void Save(string slot = "autosave")
++        private static IEnumerator SafeWrap(IEnumerator inner, string context)
 +        {
-+            try
++            bool moveNext;
++            object current = null;
++            while (true)
 +            {
-+                Directory.CreateDirectory(SavesDir);
-+                var data = new SaveGameV1 { slot = slot, savedAt = DateTime.UtcNow.ToString("o") };
-+
-+                // 蒐集所有參與者
-+                var participants = GameObject.FindObjectsOfType<MonoBehaviour>(true);
-+                foreach (var mb in participants)
++                try
 +                {
-+                    if (mb is ISaveParticipant p)
-+                    {
-+                        var state = p.CaptureState();
-+                        if (state == null) continue;
-+                        var entry = new SaveEntry
-+                        {
-+                            key = p.Key,
-+                            type = state.GetType().AssemblyQualifiedName,
-+                            payload = JsonUtility.ToJson(state)
-+                        };
-+                        data.entries.Add(entry);
-+                    }
++                    moveNext = inner.MoveNext();
++                    if (!moveNext) yield break;
++                    current = inner.Current;
 +                }
-+
-+                var json = JsonUtility.ToJson(data, true);
-+                File.WriteAllText(GetSlotPath(slot), json);
-+                DAHLog.DLog("SAVE", $"Saved slot='{slot}' entries={data.entries.Count} -> {GetSlotPath(slot)}");
-+            }
-+            catch (Exception ex)
-+            {
-+                DAHLog.DLog("SAVE", "Save failed: " + ex.Message);
++                catch (Exception ex)
++                {
++                    DAHLog.DLog("EXC", FormatException(ex, context));
++                    yield break; // 協程終止但不炸引擎
++                }
++                yield return current;
 +            }
 +        }
 +
-+        public static void Load(string slot = "autosave")
++        /// <summary>將例外訊息精簡化，避免長堆疊造成刷屏。</summary>
++        public static string FormatException(Exception ex, string context = null, int maxLines = 10)
 +        {
-+            try
-+            {
-+                var path = GetSlotPath(slot);
-+                if (!File.Exists(path)) { DAHLog.DLog("SAVE", $"No save file for slot='{slot}'"); return; }
-+                var json = File.ReadAllText(path);
-+                var data = JsonUtility.FromJson<SaveGameV1>(json);
-+                if (data == null || data.entries == null) { DAHLog.DLog("SAVE", "Invalid save file (null entries)"); return; }
-+
-+                // 掃描場景，按 key 分派
-+                var participants = GameObject.FindObjectsOfType<MonoBehaviour>(true);
-+                var map = new Dictionary<string, ISaveParticipant>();
-+                foreach (var mb in participants) if (mb is ISaveParticipant p) map[p.Key] = p; // 最後出現者覆蓋
-+
-+                int applied = 0;
-+                foreach (var e in data.entries)
-+                {
-+                    if (!map.TryGetValue(e.key, out var p)) continue;
-+                    // 利用已知 type 名稱反序列化；若型別不存在/搬家，嘗試以匿名容器（同鍵名）做兼容
-+                    object stateObj = null;
-+                    try
-+                    {
-+                        var t = Type.GetType(e.type, false);
-+                        if (t != null) stateObj = JsonUtility.FromJson(e.payload, t);
-+                    }
-+                    catch { /* 忽略，stateObj 可能為 null */ }
-+                    if (stateObj == null) { DAHLog.DLog("SAVE", $"Skip '{e.key}' – type missing: {e.type}"); continue; }
-+                    try { p.RestoreState(stateObj); applied++; }
-+                    catch (Exception rex) { DAHLog.DLog("SAVE", $"Restore '{e.key}' failed: {rex.Message}"); }
-+                }
-+                DAHLog.DLog("SAVE", $"Loaded slot='{slot}' applied={applied}/{data.entries.Count}");
-+            }
-+            catch (Exception ex)
-+            {
-+                DAHLog.DLog("SAVE", "Load failed: " + ex.Message);
-+            }
++            if (ex == null) return "<null exception>";
++            var msg = $"{ex.GetType().Name}: {ex.Message}";
++            var st = ex.StackTrace ?? string.Empty;
++            var lines = st.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
++            if (lines.Length > maxLines) st = string.Join("\n", lines, 0, maxLines) + "\n…";
++            return string.IsNullOrEmpty(context) ? $"{msg}\n{st}" : $"[{context}] {msg}\n{st}";
 +        }
 +    }
 +}
 @@
-新增：Assets/DeepAbyssHive/Core/Save/SaveLoadRunner.cs
+新增：Assets/DeepAbyssHive/Core/Diagnostics/ErrorGuardRunner.cs
 @@
++using System;
 +using UnityEngine;
-+using System.Reflection;
 +using DeepAbyssHive.Core.Logging;
 +
-+namespace DeepAbyssHive.Core.Save
++namespace DeepAbyssHive.Core.Diagnostics
 +{
 +    /// <summary>
-+    /// 快存/快讀熱鍵監聽（預設 F5/F9），可由 GameConfig 覆蓋；隨遊戲啟動自動掛到 Managers。
++    /// 全域錯誤監聽與率限。以 Application.logMessageReceived 監看 Exception/Error，按秒率限輸出。
++    /// 可用 F12 觸發測試例外（熱鍵可由 GameConfig 覆蓋）。
 +    /// </summary>
-+    public class SaveLoadRunner : MonoBehaviour
++    public class ErrorGuardRunner : MonoBehaviour
 +    {
-+        internal static KeyCode SaveKey = KeyCode.F5;
-+        internal static KeyCode LoadKey = KeyCode.F9;
-+        internal static string Slot = "autosave";
++        private static bool _enabled = true;
++        private static int _limitPerSec = 5;
++        private static bool _shortenStack = true;
++        private static KeyCode _testKey = KeyCode.F12;
++
++        private float _windowStart;
++        private int _windowCount;
 +
 +        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
 +        private static void AutoCreate()
 +        {
-+            if (FindObjectOfType<SaveLoadRunner>() != null) return;
-+            var go = new GameObject("SaveLoadRunner"); var r = go.AddComponent<SaveLoadRunner>();
++            if (FindObjectOfType<ErrorGuardRunner>() != null) return;
++            var go = new GameObject("ErrorGuard"); go.AddComponent<ErrorGuardRunner>();
 +            var managers = GameObject.Find("Managers"); if (managers != null) go.transform.SetParent(managers.transform);
 +            DontDestroyOnLoad(go);
 +            TryLoadFromGameConfig();
-+            DAHLog.DLog("CONFIG", $"SaveLoad: saveKey={SaveKey}, loadKey={LoadKey}, slot='{Slot}' (path={SaveLoadService.GetSlotPath(Slot)})");
-+            DAHLog.DLog("BOOT", "SaveLoadRunner created");
++            DAHLog.DLog("CONFIG", $"ErrorGuard: enabled={_enabled}, rate={_limitPerSec}/s, shortStack={_shortenStack}, testKey={_testKey}");
++            DAHLog.DLog("BOOT", "ErrorGuardRunner created");
++        }
++
++        private void OnEnable()
++        {
++            Application.logMessageReceived += OnLog;
++        }
++
++        private void OnDisable()
++        {
++            Application.logMessageReceived -= OnLog;
 +        }
 +
 +        private void Update()
 +        {
-+            if (Input.GetKeyDown(SaveKey)) SaveLoadService.Save(Slot);
-+            if (Input.GetKeyDown(LoadKey)) SaveLoadService.Load(Slot);
++            if (!_enabled) return;
++            if (Input.GetKeyDown(_testKey))
++            {
++                // 在自身 Update 內拋出例外，驗證捕捉與率限（仍由 Unity 記錄，我們再做整合/抑制）。
++                try { throw new InvalidOperationException("Simulated test exception"); }
++                catch (Exception ex) { DAHLog.DLog("EXC", ErrorPolicy.FormatException(ex, "Test")); }
++            }
++        }
++
++        private void OnLog(string condition, string stackTrace, LogType type)
++        {
++            if (!_enabled) return;
++            if (type != LogType.Exception && type != LogType.Error) return;
++
++            var now = Time.unscaledTime;
++            if (now - _windowStart >= 1f) { _windowStart = now; _windowCount = 0; }
++            _windowCount++;
++            if (_windowCount > _limitPerSec) return; // 率限：丟棄多餘同秒錯誤
++
++            if (_shortenStack && !string.IsNullOrEmpty(stackTrace))
++            {
++                var lines = stackTrace.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
++                if (lines.Length > 10) stackTrace = string.Join("\n", lines, 0, 10) + "\n…";
++            }
++
++            var cat = type == LogType.Exception ? "EXC" : "ERROR";
++            DAHLog.DLog(cat, condition + "\n" + stackTrace);
 +        }
 +
 +        private static void TryLoadFromGameConfig()
 +        {
 +            try
 +            {
-+                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
++                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
 +                {
 +                    var p = asm.GetType("GameConfigProvider") ?? asm.GetType("DeepAbyssHive.Core.Config.GameConfigProvider");
 +                    if (p == null) continue;
-+                    var cfg = p.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
++                    var cfg = p.GetProperty("Current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.GetValue(null);
 +                    if (cfg == null) continue;
-+                    SaveKey = GetKey(cfg, "saveKey", SaveKey);
-+                    LoadKey = GetKey(cfg, "loadKey", LoadKey);
-+                    var s = GetString(cfg, "saveSlot", Slot); if (!string.IsNullOrEmpty(s)) Slot = s;
++                    var t = cfg.GetType();
++                    _enabled = GetBool(t, cfg, "errorGuardEnabled", true);
++                    _limitPerSec = GetInt(t, cfg, "errorRateLimitPerSec", 5);
++                    _shortenStack = GetBool(t, cfg, "shortenStackTrace", true);
++                    _testKey = GetKey(t, cfg, "throwTestErrorKey", KeyCode.F12);
 +                    break;
 +                }
 +            } catch {}
 +        }
 +
-+        private static KeyCode GetKey(object cfg, string name, KeyCode fallback)
++        private static bool GetBool(Type t, object cfg, string name, bool defVal)
 +        {
-+            var t = cfg.GetType();
-+            var f = t.GetField(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            var f = t.GetField(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (f != null && f.FieldType == typeof(bool)) return (bool)f.GetValue(cfg);
++            var p = t.GetProperty(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (p != null && p.PropertyType == typeof(bool)) return (bool)p.GetValue(cfg);
++            return defVal;
++        }
++        private static int GetInt(Type t, object cfg, string name, int defVal)
++        {
++            var f = t.GetField(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (f != null && f.FieldType == typeof(int)) return (int)f.GetValue(cfg);
++            var p = t.GetProperty(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (p != null && p.PropertyType == typeof(int)) return (int)p.GetValue(cfg);
++            return defVal;
++        }
++        private static KeyCode GetKey(Type t, object cfg, string name, KeyCode defVal)
++        {
++            var f = t.GetField(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
 +            if (f != null && f.FieldType == typeof(KeyCode)) return (KeyCode)f.GetValue(cfg);
-+            var p = t.GetProperty(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            var p = t.GetProperty(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
 +            if (p != null && p.PropertyType == typeof(KeyCode)) return (KeyCode)p.GetValue(cfg);
-+            return fallback;
-+        }
-+        private static string GetString(object cfg, string name, string fallback)
-+        {
-+            var t = cfg.GetType();
-+            var f = t.GetField(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
-+            if (f != null) return (string)f.GetValue(cfg);
-+            var p = t.GetProperty(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
-+            if (p != null) return (string)p.GetValue(cfg);
-+            return fallback;
++            return defVal;
 +        }
 +    }
 +}
 @@
-新增：Assets/DeepAbyssHive/Core/Save/Participants/TimeServiceSaveParticipant.cs
-@@
-+using UnityEngine;
-+using DeepAbyssHive.Core.Time;
-+
-+namespace DeepAbyssHive.Core.Save.Participants
-+{
-+    /// <summary>
-+    /// v1 範例參與者：保存/還原 TimeService 狀態（Paused/Scale）。
-+    /// 自動隨遊戲啟動創建並掛到 Managers。
-+    /// </summary>
-+    public class TimeServiceSaveParticipant : MonoBehaviour, DeepAbyssHive.Core.Save.ISaveParticipant
-+    {
-+        public string Key => "time.service";
-+
-+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-+        private static void AutoCreate()
-+        {
-+            if (FindObjectOfType<TimeServiceSaveParticipant>() != null) return;
-+            var go = new GameObject("SaveP-TimeService"); go.AddComponent<TimeServiceSaveParticipant>();
-+            var managers = GameObject.Find("Managers"); if (managers != null) go.transform.SetParent(managers.transform);
-+            DontDestroyOnLoad(go);
-+        }
-+
-+        [System.Serializable]
-+        public class State
-+        {
-+            public bool paused;
-+            public float scale;
-+        }
-+
-+        public object CaptureState()
-+        {
-+            return new State { paused = TimeService.IsPaused, scale = TimeService.TimeScale };
-+        }
-+
-+        public void RestoreState(object state)
-+        {
-+            if (state is State s)
-+            {
-+                if (s.paused) TimeService.Pause(); else TimeService.Resume();
-+                TimeService.SetTimeScale(Mathf.Max(0.0001f, s.scale));
-+            }
-+        }
-+    }
-+}
-@@
-註解 / 設計取捨
-- **最小侵入**：不動既有 Manager；Save/Load 服務以 **參與者模式** 擴充。各系統只需新增一個參與者腳本即可納入存讀。
-- **版本化**：根節點 `SaveGameV1.version="v1"`，後續升級用 v2/v3；每個 entry 帶 `type` 以助相容/除錯。
-- **資料格式**：以 JsonUtility 序列化各參與者的 POCO；避免跨域反序列化風險（型別不存在則跳過該 entry 並記錄）。
-- **可用性**：預設熱鍵 F5/F9，slot 預設 `autosave`，皆可由 GameConfig 覆蓋；啟動 [CONFIG] 印出路徑，易於手動驗證。
-- **擴充範例**：已實作 TimeService 的參與者；資源/建築/單位後續各自新增：例如 `ResourcesSaveParticipant`、`BuildingsSaveParticipant` 等。
+註解 / 為何這麼做
+- **零侵入 v1**：先上全域監聽 + 率限，馬上止血刷屏；提供 Try/安全協程 API，後續逐點導入即可。
+- **可觀測**：所有錯誤走 `ERROR`/`EXC` 分類；啟動輸出一行 `[CONFIG]` 列出當前策略。
+- **可關閉**：GameConfig 可關閉整個 ErrorGuard 或調整率限，方便對比測試/CI。
+- **可擴充**：未來可加上關鍵錯誤的弱提示（HUD 角落）、或將摘要寫入健康日誌。
 
-驗收步驟（手測）
-1) 進 Play，Console 應見：
-   - `[BOOT] SaveLoadRunner created`
-   - `[CONFIG] SaveLoad: saveKey=F5, loadKey=F9, slot='autosave' (path=...)`
-2) **時間狀態驗證**：按 `2`（需要 M3-T02）→ 顯示 `Time: 2x`；按 `F5` 存檔；退出 Play → 重新進 Play → 按 `F9` 讀檔 → 顯示恢復為 `Time: 2x`（或 `Paused` 若存時暫停）。
-3) **檔案驗證**：在系統的 `persistentDataPath/Saves/` 看到 `autosave.json`，打開可見 `version:"v1"` 與 `entries[0].key=="time.service"`。
-4) **相容性測試**：刪除該參與者腳本（模擬缺型別），再讀檔，Console 應提示跳過該 entry 而不崩潰。
+驗收步驟
+1) 進 Play：Console 看到 `[BOOT] ErrorGuardRunner created` 與 `[CONFIG] ErrorGuard: enabled=..., rate=.../s, shortStack=..., testKey=...`。
+2) **刷屏抑制**：在任一系統連續觸發錯誤（或手動 `throw`），同 1 秒內超過 N 條以後不再重複輸出。
+3) **安全協程**：在任何腳本嘗試以 `this.StartSafeCoroutine(BuggyRoutine(), "unit.move")` 啟動一個會在中途拋例外的協程，驗證 Console 只記 1 條 `EXC`，遊戲不中斷。
+4) **熱鍵測試**：按 **F12** 觸發測試例外，Console 應記錄一條 `EXC`（訊息 `Simulated test exception`）。
 
 回滾指引
-- 刪除此四檔即可回滾：
-  - `Assets/DeepAbyssHive/Core/Save/ISaveParticipant.cs`
-  - `Assets/DeepAbyssHive/Core/Save/SaveLoadService.cs`
-  - `Assets/DeepAbyssHive/Core/Save/SaveLoadRunner.cs`
-  - `Assets/DeepAbyssHive/Core/Save/Participants/TimeServiceSaveParticipant.cs`
+- 刪除兩檔：
+  - `Assets/DeepAbyssHive/Core/Diagnostics/ErrorPolicy.cs`
+  - `Assets/DeepAbyssHive/Core/Diagnostics/ErrorGuardRunner.cs`

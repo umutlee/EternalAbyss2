@@ -67,10 +67,14 @@ tags: ["context", "memo", "project-state"]
 - **向後兼容**: 無 SpatialIndex 時自動回退到 Physics.OverlapSphere
 - **性能優化**: 優先使用高效的空間索引，回退到可靠的物理檢測
 
-#### M3-T05: SMOKE 測試系統 ✅ 已完成
-- **PlacementSmoke.cs**: 配置化熱鍵觸發的自動化測試腳本
-- **測試案例**: A/B/C/D 四種案例 (間距/旋轉/刪除重建)
-- **回歸測試**: PASS/FAIL 輸出，適用於開發階段快速驗證
+#### M3-T05: 防護欄/錯誤策略系統 ✅ 已完成
+- **ErrorPolicy.cs**: 提供 Try/安全協程封裝與例外格式化，支援結構化錯誤處理
+- **ErrorGuardRunner.cs**: 全域錯誤監聽與率限系統，防止Console刷屏
+- **GameConfig 整合**: errorGuardEnabled/errorRateLimitPerSec/shortenStackTrace/throwTestErrorKey 參數外放
+- **安全協程**: StartSafeCoroutine() 方法，協程例外不會炸掉引擎
+- **率限機制**: 每秒最多N則錯誤輸出，避免例外洪水攻擊
+- **測試工具**: F12熱鍵觸發測試例外，驗證錯誤捕捉機制
+- **驗收**: 零侵入v1版本，提供錯誤不致中斷的防護機制
 
 #### M3-T06: 建築旋轉支援 ✅ 已完成
 - **有向碰撞檢測**: Physics.OverlapBox 支援 Quaternion rotation
@@ -534,6 +538,15 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
 ✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
 ✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
+#### M4-T05: ScenarioLoader QA 工具系統 ✅ 已完成 (2025-09-18)
+- **ScenarioLoader.cs**: 反射式場景腳本載入器，支援多種操作類型
+- **JSON 場景配置**: 支援 log、setCameraPos、toggleOverlay、creepCircle、spawnUnits 操作
+- **GameConfig 整合**: scenarioPrevKey/scenarioNextKey/scenarioLoadKey/defaultScenarioName 熱鍵配置
+- **反射對接**: 自動尋找 CreepBrushRunner、UnitDevSpawner、HUDOverlayController 等組件
+- **預設場景**: blank、stress_200_units、expand_chokepoint 三個測試場景
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **驗收**: PageUp/PageDown 切換場景，F7 載入執行，支援單位生成和菌毯繪製
+
 ⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)
 
 
