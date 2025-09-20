@@ -549,6 +549,15 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **GameConfig 存檔配置**: saveKey (F5), loadKey (F9), saveSlot ("autosave")
 - **驗收**: F5 存檔、F9 讀檔、TimeService 狀態正確還原、型別不存在時優雅跳過
 
+✅ **M3-T08 Creep Line 定義工具（Dev）**: 畫線定義菌毯覆蓋路徑
+- **CreepLineToolRunner**: C 鍵切換工具，滑鼠拖曳畫線定義菌毯路徑
+- **反射呼叫**: 通過反射嘗試呼叫 CreepBrushRunner/CreepManager 方法
+- **折線取樣**: 按步長取樣折線，每個點以半徑方式刷入菌毯
+- **視覺化**: 拖曳時顯示綠色折線，Gizmos 顯示取樣點
+- **GameConfig 參數**: creepLineToolToggleKey (C), creepLineRadius (2.0), creepLineStep (0.5)
+- **HUD 狀態**: 左上角顯示 "DEV: CreepLine Tool ON"
+- **驗收**: C 鍵切換、滑鼠畫線、F4 覆蓋層可見菌毯路徑、Console 輸出統計
+
 ⏳ **待完成**: M3-T05~T07
 
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)

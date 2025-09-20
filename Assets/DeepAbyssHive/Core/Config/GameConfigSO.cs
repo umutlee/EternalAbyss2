@@ -127,6 +127,16 @@ namespace DeepAbyssHive.Core.Config
         [Tooltip("存檔槽位名稱")]
         public string saveSlot = "autosave";
 
+        [Header("Creep Line Tool (Dev)")]
+        [Tooltip("菌毯畫線工具切換熱鍵（None=停用）")]
+        public KeyCode creepLineToolToggleKey = KeyCode.C;
+        [Tooltip("菌毯畫線半徑（世界單位）")]
+        public float creepLineRadius = 2.0f;
+        [Tooltip("菌毯畫線步長（世界單位）")]
+        public float creepLineStep = 0.5f;
+        [Tooltip("地形 Raycast 層級遮罩（0=使用 Default）")]
+        public LayerMask terrainRaycastMask = 0;
+
         [Header("Dev HUD Controls")]
         [Tooltip("建築目錄 HUD 切換鍵（None=停用）")]
         public KeyCode buildingHudToggleKey = KeyCode.F8;
@@ -166,7 +176,7 @@ namespace DeepAbyssHive.Core.Config
         {
             var cfg = Current;
             // 顯示新增外放參數，便於驗收與查錯（含 M4-T09 新增的 buildPlacerToggleKey/devVerboseLogs）
-            DAHLog.Info(LogCategory.CONFIG, $"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, placerToggle={cfg.buildPlacerToggleKey}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, verboseLogs={cfg.devVerboseLogs}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s, pathJobs={cfg.pathJobsPerFrame}, buildingHUD={cfg.showBuildingHUD}/{cfg.buildingHudToggleKey}, pauseKey={cfg.pauseToggleKey}, timeScaleKey={cfg.timeScaleCycleKey}, overlayTerrain={cfg.overlayTerrainKey}, overlayCreep={cfg.overlayCreepKey}, hudTimeFont={cfg.hudTimeFontSize}, saveKey={cfg.saveKey}, loadKey={cfg.loadKey}, saveSlot='{cfg.saveSlot}'");
+            DAHLog.Info(LogCategory.CONFIG, $"[DEV HUD] Game: useSpatialIndex={cfg.useSpatialIndexForPlacement}, minSpacing={cfg.minSpacing:0.###}, margin={cfg.margin:0.###}, requireCreep={cfg.requireCreep}, snapSize={cfg.snapSize:0.###}, rotStep={cfg.rotationStepDegrees:0.#}, smokeKey={cfg.placementSmokeKey}, delKey1={cfg.buildingDeleteKey1}, delKey2={cfg.buildingDeleteKey2}, placerToggle={cfg.buildPlacerToggleKey}, spawnKey={cfg.devUnitsSpawnKey}, testKey={cfg.devUnitsTestKey}, spawnCount={cfg.devSpawnCount}, verboseLogs={cfg.devVerboseLogs}, creepMul={cfg.creepSpeedMul:0.##}/{cfg.offCreepSpeedMul:0.##}, creepDt={cfg.creepSampleInterval:0.##}s, rmbLock={cfg.rmbLocksCursor}, unitDyn={cfg.unitDynCheckInterval:0.##}/{cfg.unitDynRepathCooldown:0.##}s, probe={cfg.unitObstacleProbeRadius:0.##}+{cfg.unitObstacleProbeExtra:0.##}, watcher={cfg.buildingWatcherInterval:0.##}s+{cfg.buildingWatcherPadRadius:0.##}, health={cfg.healthLogEnabled}/{cfg.healthLogInterval:0.##}s, pathJobs={cfg.pathJobsPerFrame}, buildingHUD={cfg.showBuildingHUD}/{cfg.buildingHudToggleKey}, pauseKey={cfg.pauseToggleKey}, timeScaleKey={cfg.timeScaleCycleKey}, overlayTerrain={cfg.overlayTerrainKey}, overlayCreep={cfg.overlayCreepKey}, hudTimeFont={cfg.hudTimeFontSize}, saveKey={cfg.saveKey}, loadKey={cfg.loadKey}, saveSlot='{cfg.saveSlot}', creepLineTool={cfg.creepLineToolToggleKey}, creepLineRadius={cfg.creepLineRadius:0.#}, creepLineStep={cfg.creepLineStep:0.#}");
         }
     }
 }
