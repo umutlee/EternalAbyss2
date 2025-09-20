@@ -152,6 +152,16 @@ namespace DeepAbyssHive.Core.Config
         public KeyCode buildingHudToggleKey = KeyCode.F8;
         [Tooltip("是否預設顯示建築目錄 HUD")]
         public bool showBuildingHUD = true;
+
+        [Header("Performance Monitoring")]
+        [Tooltip("啟用性能追蹤與 GC 統計輸出")]
+        public bool perfTrackingEnabled = true;
+        [Tooltip("性能日誌輸出間隔（秒）")]
+        public float perfLogInterval = 10f;
+        [Tooltip("縮短堆疊追蹤輸出")]
+        public bool perfShortStack = true;
+        [Tooltip("啟用性能取樣器（開發用）")]
+        public bool enablePerfSamplers = false;
     }
 
     /// <summary>

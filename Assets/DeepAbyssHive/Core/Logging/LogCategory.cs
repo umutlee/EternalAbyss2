@@ -24,6 +24,8 @@ namespace DeepAbyssHive.Core.Logging
         MANAGER,        // 管理器層
         CORE,           // 核心系統
         SPATIAL,        // 空間索引
-        TEST            // 測試系統
+        TEST,           // 測試系統
+        PERF,           // 性能監測
+        BOOT            // 啟動系統
     }
 }
