@@ -1,0 +1,1 @@
+{ "name": "stress_200_units", "ops": [ { "op": "log", "message": "Spawning 200 units" }, { "op": "spawnUnits", "count": 200, "scatter": 12.0, "near": { "x": 0, "y": 0, "z": 0 } } ] }

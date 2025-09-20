@@ -547,6 +547,25 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
 - **驗收**: PageUp/PageDown 切換場景，F7 載入執行，支援單位生成和菌毯繪製
 
+#### M3-T06: ScenarioLoader QA工具系統 ✅ 已完成 (2025-09-18)
+- **ScenarioLoader.cs**: 反射式場景腳本載入器，支援多種操作類型
+- **JSON場景配置**: 支援 log、setCameraPos、toggleOverlay、creepCircle、spawnUnits 操作
+- **GameConfig整合**: scenarioPrevKey/scenarioNextKey/scenarioLoadKey/defaultScenarioName 熱鍵配置
+- **反射對接**: 自動尋找 CreepBrushRunner、UnitDevSpawner、HUDOverlayController 等組件
+- **預設場景**: blank、stress_200_units、expand_chokepoint 三個測試場景
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動初始化，DontDestroyOnLoad 持久化
+- **驗收**: PageUp/PageDown 切換場景，F7 載入執行，支援單位生成和菌毯繪製
+
+#### M3-T07: Telemetry基礎指標監測 ✅ 已完成 (2025-09-18)
+- **TelemetryService.cs**: 輕量級統計服務，維護FPS時序、近似P50/P95分位數
+- **TelemetryRunner.cs**: 低頻心跳輸出系統，預設10秒週期輸出健康指標
+- **反射統計**: 自動抓取Units/Buildings/Terrain Manager的數量統計
+- **GameConfig整合**: healthLoggingEnabled/healthLogInterval 參數控制開關與間隔
+- **HEALTH分類**: 所有輸出走Smart Console的HEALTH分類，避免刷屏
+- **指標內容**: FPS平均值、框時間P50/P95、記憶體使用、單位數、建築數、地形分塊數
+- **自動啟動**: RuntimeInitializeOnLoadMethod 自動掛載到Managers
+- **驗收**: 每10秒輸出一行HEALTH統計，支援壓測監控
+
 ⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)
 
 

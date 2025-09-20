@@ -1,0 +1,1 @@
+{ "name": "expand_chokepoint", "ops": [ { "op": "log", "message": "Creep chokepoint line" }, { "op": "toggleOverlay", "target": "creep", "on": true }, { "op": "creepCircle", "radius": 2.0, "points": [ { "x": -10, "y": 0, "z": -10 }, { "x": -5, "y": 0, "z": -5 }, { "x": 0, "y": 0, "z": 0 }, { "x": 5, "y": 0, "z": 5 }, { "x": 10, "y": 0, "z": 10 } ] } ] }
