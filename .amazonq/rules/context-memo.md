@@ -277,25 +277,32 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 5. **T06**: 建築動態障礙 → 與 M3 打通 ✅ 已完成
 6. **T07**: SMOKE-Units → 綠燈標準固化
 
-#### M4-T01: Nav Grid 介面與取樣器 ✅ 待開始
-- **IPathGrid**: 取樣可走/成本/鄰接，對齊 creep grid 尺寸
-- **GridSampler**: IsWalkable(x,y) 綜合坡度/高差/Building 層/地圖邊界
-- **Cost(x,y)**: 基礎成本 + off-creep 罰值（讓單位偏好走 creep）
-- **來源**: CreepManager、TerrainManager、Physics（Building）
-- **驗收**: DEV HUD 取樣 100×100 區塊，統計 walkable% 與平均 cost
+#### M4-T01: Lifecycle 退訂稽核與協程止血 ✅ 已完成 (2025-09-20)
+- **LifecyclePolicy.cs**: 統一生命週期管理策略，提供退訂稽核與協程止血機制
+- **LifecycleSentinel.cs**: 生命週期哨兵，監控組件生命週期並自動清理資源
+- **退訂稽核**: 自動檢測未正確退訂的事件和委派，防止記憶體洩漏
+- **協程止血**: 提供安全的協程管理機制，避免協程異常導致系統崩潰
+- **GameConfig 整合**: lifecycleAuditEnabled 參數控制稽核開關
+- **驗收**: 組件銷毀時自動清理所有訂閱，Console 輸出稽核報告
 
-#### M4-T02: A* 單檔輕量實作 ✅ 待開始
-- **檔案**: DeepAbyssHive/Units/Pathfinding/GridAStar.cs
-- **功能**: 8 向或 4 向連通、開放表（小根堆）＋封閉表（位元陣列）
-- **Heuristic**: Manhattan（4向）或 Octile（8向）
-- **安全閥**: 節點展開/路徑長度上限，避免最壞情況卡住
-- **驗收**: 單次求路 < 1ms（PC），失敗時回 Result<List<Vector3>>
+#### M4-T02: 微效能優化工具層 ✅ 已完成 (2025-09-20)
+- **GCStatsRunner.cs**: GC 統計監測系統，每 10 秒輸出性能基線數據
+- **PerfHints.cs**: GetComponent 快取、NonAlloc Physics 等性能優化工具
+- **Pools.cs**: List<int> 和 StringBuilder 物件池，減少 GC 壓力
+- **PerfMacros.cs**: 條件編譯的性能取樣點，支援 Unity Profiler 自訂區塊
+- **GameConfig 整合**: perfTrackingEnabled/perfLogInterval/perfShortStack/enablePerfSamplers 參數
+- **量測先行**: 建立 v1 基線，為後續熱點優化提供對比依據
+- **使用時生效**: 工具 API 僅在調用時產生效果，零侵入設計
+- **驗收**: Console 定期輸出 [PERF] 心跳，包含 fps/memMB/allocThreadKB/allocDeltaKB
 
-#### M4-T03: UnitAgent 與 Path 請求管線 ✅ 已完成
-- **UnitAgent.cs**: SetDestination(Vector3)、沿路徑移動、面向控制、到站檢測
-- **UnitPathQueue.cs**: 靜態佇列系統，每幀處理 N 筆（預設 32）
-- **自動啟動**: RuntimeInitializeOnLoadMethod 掛載 Runner 到 Managers
-- **內建 Grid**: 預設 PathGridSampler 供測試，支援外部 GridProvider 替換
+#### M4-T03: CI/Smoke 測試系統 ✅ 已完成 (2025-09-20)
+- **SmokePlayModeTests.cs**: PlayMode 測試驗證 Boot 系統與四大 Manager 存在性
+- **GitHub Actions CI**: 自動化 PR 測試與 Linux 開發包建置流程
+- **零依賴設計**: 使用臨時場景，不依賴資產文件，避免 CI 不穩定
+- **雙階段流程**: PlayMode 測試通過後執行 Linux 建置，產出 EA_Build_Linux64
+- **Unity 版本**: 使用專案實際版本 2022.3.62f1，支援快取優化
+- **測試程式集**: Tests.asmdef 引用 UnityEngine.TestRunner 和 DeepAbyssHive.Runtime
+- **驗收**: GitHub Actions 顯示綠燈，測試報告和建置產出物正常生成
 
 #### M4-T04: Dev Spawner & 指令（200 隻壓測） ✅ 已完成
 - **UnitDevSpawner.cs**: GameConfig 熱鍵（預設 F9）生成 N 隻，F10 指派目標
@@ -552,16 +559,15 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
 ✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
 
-## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
-✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
-✅ **Assembly Definition 重構**: 統一程式集架構，解決循環依賴問題  
-✅ **DAHLog 統一日誌**: 全專案 Debug.Log 遷移，支援分類過濾  
-✅ **開發工具 HUD**: Health HUD、Key Hints HUD、統一 HUD 管理  
-✅ **建築循環選取**: Tab 鍵循環選取建築，HUD 實時顯示  
-✅ **建築預覽同步**: Tab/BackQuote 切換建築時預覽模型正確同步更新  
-✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
-✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
-✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
+## M4 階段完成總結 ✅ 部分完成 (2025-09-20)
+✅ **M4-T01**: Lifecycle 退訂稽核與協程止血系統完成  
+✅ **M4-T02**: 微效能優化工具層完成（GC統計、性能工具、物件池）  
+✅ **M4-T03**: CI/Smoke 測試系統完成（PlayMode 測試、GitHub Actions）  
+✅ **編譯錯誤修復**: 統一 Time API 引用、ITimeService 接口繼承、DAHLog 命名衝突  
+✅ **日誌系統完善**: LogCategory.COMMON/PERF/BOOT 分類、DAHLog.Debug 方法  
+✅ **服務系統整合**: TimeService 完整實現 IService 接口成員  
+✅ **測試框架完善**: Tests.asmdef 程式集定義、Unity Test Framework 整合  
+⚠️ **待完成**: 單位路徑系統、Grid A*、UnitAgent 等核心功能  
 #### M4-T05: ScenarioLoader QA 工具系統 ✅ 已完成 (2025-09-18)
 - **ScenarioLoader.cs**: 反射式場景腳本載入器，支援多種操作類型
 - **JSON 場景配置**: 支援 log、setCameraPos、toggleOverlay、creepCircle、spawnUnits 操作
