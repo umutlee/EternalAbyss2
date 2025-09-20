@@ -14,19 +14,36 @@ jobs:
   tests:
     name: PlayMode Tests (Headless)
     runs-on: ubuntu-latest
+    env:
+      UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
+      PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - name: Cache Library
         uses: actions/cache@v4
         with:
-          path: Library
-          key: Library-${{ hashFiles('**/Packages/manifest.json') }}
+          path: ${{ env.PROJECT_PATH }}/Library
+          key: ${{ runner.os }}-Library-${{ env.UNITY_VERSION }}-${{ hashFiles('**/Packages/manifest.json') }}
           restore-keys: |
-            Library-
+            ${{ runner.os }}-Library-
+      # 自檢：不會洩露內容，只印長度
+      - name: Sanity check secrets and vars
+        run: |
+          echo "UNITY_VERSION=${UNITY_VERSION}"
+          echo "PROJECT_PATH=${PROJECT_PATH}"
+          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
+      # 若沒拿到 secrets（例如 fork PR），就跳過，避免紅燈
+      - name: Skip if UNITY_LICENSE missing (fork PR / secret not set)
+        if: ${{ env.UNITY_LICENSE == '' }}
+        run: |
+          echo "UNITY_LICENSE is empty -> skipping Unity tests (fork PR or missing secret)."
+          exit 0
       - name: Run PlayMode tests
         uses: game-ci/unity-test-runner@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -38,19 +55,29 @@ jobs:
     name: Build (Linux x64 Dev)
     needs: tests
     runs-on: ubuntu-latest
+    env:
+      UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
+      PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - name: Cache Library
         uses: actions/cache@v4
         with:
-          path: Library
-          key: Library-${{ hashFiles('**/Packages/manifest.json') }}
+          path: ${{ env.PROJECT_PATH }}/Library
+          key: ${{ runner.os }}-Library-${{ env.UNITY_VERSION }}-${{ hashFiles('**/Packages/manifest.json') }}
           restore-keys: |
-            Library-
+            ${{ runner.os }}-Library-
+      - name: Skip if UNITY_LICENSE missing
+        if: ${{ env.UNITY_LICENSE == '' }}
+        run: |
+          echo "UNITY_LICENSE is empty -> skipping build."
+          exit 0
       - name: Build project
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           unityVersion: ${{ env.UNITY_VERSION }}
