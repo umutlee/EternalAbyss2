@@ -3,26 +3,19 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-#if UNITY_EDITOR
-using UnityEditor.SceneManagement;
-using UnityEditor;
-#endif
+using UnityEngine.SceneManagement;
 
 public class SmokePlayModeTests
 {
     // 允許 10 秒總 timeout（CI 上冷啟動較慢），每步 yield 一小段
     [UnityTest]
-    public IEnumerator Boot_Creates_Managers_And_CoreManagers()
+    public IEnumerator Boot_Creates_Managers_And_CoreManagers_PlayMode()
     {
-#if UNITY_EDITOR
-        // 建立一個新的臨時場景，避免依賴資產
-        EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects);
-        yield return null;
-#endif
-        yield return new EnterPlayMode();
-        // 讓 BootEnsureManagers / BootAuditor 有時間執行
-        yield return null;
-        yield return null;
+        // PlayMode 測試已在 Play 中；使用 Runtime API 建立臨時場景
+        var tmp = SceneManager.CreateScene("CI_Smoke_Temp");
+        SceneManager.SetActiveScene(tmp);
+        // 讓 RuntimeInitializeOnLoad 與 BootAuditor/BootEnsureManagers 有時間執行
+        yield return null; yield return null; yield return null;
         
         // 確保 ServiceRegistrar 存在並註冊服務
         EnsureServiceRegistrar();
@@ -49,7 +42,7 @@ public class SmokePlayModeTests
         var end = UnityEngine.Time.realtimeSinceStartup + 3f;
         while (UnityEngine.Time.realtimeSinceStartup < end) { yield return null; }
 
-        yield return new ExitPlayMode();
+        // 不要呼叫 ExitPlayMode（PlayMode 測試會自行處理）
     }
     
     private void EnsureServiceRegistrar()
