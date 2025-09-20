@@ -23,6 +23,10 @@ public class SmokePlayModeTests
         // 讓 BootEnsureManagers / BootAuditor 有時間執行
         yield return null;
         yield return null;
+        
+        // 確保 ServiceRegistrar 存在並註冊服務
+        EnsureServiceRegistrar();
+        yield return null;
 
         var managers = GameObject.Find("Managers");
         Assert.IsNotNull(managers, "Managers root should exist after entering Play.");
@@ -46,5 +50,15 @@ public class SmokePlayModeTests
         while (UnityEngine.Time.realtimeSinceStartup < end) { yield return null; }
 
         yield return new ExitPlayMode();
+    }
+    
+    private void EnsureServiceRegistrar()
+    {
+        var existing = UnityEngine.Object.FindObjectOfType<DeepAbyssHive.Core.Services.ServiceRegistrar>();
+        if (existing == null)
+        {
+            var go = new GameObject("ServiceRegistrar");
+            go.AddComponent<DeepAbyssHive.Core.Services.ServiceRegistrar>();
+        }
     }
 }
