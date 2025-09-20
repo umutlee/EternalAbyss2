@@ -1,0 +1,215 @@
+
+
+
+M4-T02｜微效能優化（GC/Boxing/快取）— v1 最小改動（工具 + 量測），v2 再逐點導入
+目的：在**不重構**的前提下，先交付可落地的「工具層」與「量測層」，鎖住 GC 壓力、消弭高頻分配與裝箱；之後針對熱點逐點替換。
+本次（v1）只**新增 4 檔**，不改既有邏輯；落地後即可：
+- 以 `GCStatsRunner` **每 N 秒**輸出一次 GC 指標與幀時間（走 `PERF/HEALTH`），建立可觀測基線；
+- 提供 `PerfHints`/`Pools`/`PerfMacros` **工具 API**（GetComponent 快取、NonAlloc Physics、可回收集合與字串建構）供後續熱點引用；
+- 啟動時輸出 `[CONFIG]` 列出目前 perf 開關與間隔。
+
+風險：低。全為新增文件、使用時才會產生側效；未引用的工具不影響現有行為。
+
+依賴/前置
+- Smart Console 包裝器（`DAHLog.DLog(category, msg)`）。
+- GameConfig（可不存在；不存在則採預設）：
+  - `perfTrackingEnabled`（bool，預設 true）
+  - `perfLogInterval`（float 秒，預設 10）
+  - `perfShortStack`（bool，預設 true）
+  - `enablePerfSamplers`（bool，預設 false）
+
+Diff / Patch
+
+新增：Assets/DeepAbyssHive/Core/Perf/GCStatsRunner.cs
+@@
++using System;
++using System.Text;
++using UnityEngine;
++using DeepAbyssHive.Core.Logging;
++
++namespace DeepAbyssHive.Core.Perf
++{
++    /// <summary>
++    /// 低頻輸出 GC 與幀時間的心跳（預設 10s）。用於建立 v1 基線與驗證 v2 優化是否有效。
++    /// </summary>
++    public class GCStatsRunner : MonoBehaviour
++    {
++        private static bool _enabled = true;
++        private static float _interval = 10f;
++        private static bool _shortStack = true;
++        private float _acc;
++        private readonly StringBuilder _sb = new StringBuilder(256);
++        private long _lastAlloc;
++
++        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
++        private static void AutoCreate()
++        {
++            if (FindObjectOfType<GCStatsRunner>() != null) return;
++            var go = new GameObject("Perf-GC"); go.AddComponent<GCStatsRunner>();
++            var managers = GameObject.Find("Managers"); if (managers != null) go.transform.SetParent(managers.transform);
++            GameObject.DontDestroyOnLoad(go);
++            TryLoadFromGameConfig();
++            DAHLog.DLog("CONFIG", $"Perf: tracking={_enabled}, interval={_interval}s, shortStack={_shortStack}");
++            DAHLog.DLog("BOOT", "GCStatsRunner created");
++        }
++
++        private void Update()
++        {
++            if (!_enabled) return;
++            _acc += Time.unscaledDeltaTime;
++            if (_acc < _interval) return;
++            _acc = 0f;
++            Emit();
++        }
++
++        private void Emit()
++        {
++            // fps 與 frame time 近似
++            float fps = 1f / Mathf.Max(1e-6f, Time.unscaledDeltaTime);
++            long total = System.GC.GetTotalMemory(false);
++            long allocThread = 0;
++            try { allocThread = System.GC.GetAllocatedBytesForCurrentThread(); } catch {}
++            long diff = _lastAlloc == 0 ? 0 : Math.Max(0, allocThread - _lastAlloc);
++            _lastAlloc = allocThread;
++
++            _sb.Length = 0;
++            _sb.Append("fps=").Append(fps.ToString("0.0"));
++            _sb.Append(", memMB=").Append((int)(total / (1024 * 1024)));
++            _sb.Append(", allocThreadKB=").Append((int)(allocThread / 1024));
++            _sb.Append(", allocDeltaKB=").Append((int)(diff / 1024));
++
++            DAHLog.DLog("PERF", _sb.ToString());
++        }
++
++        private static void TryLoadFromGameConfig()
++        {
++            try
++            {
++                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
++                {
++                    var p = asm.GetType("GameConfigProvider") ?? asm.GetType("DeepAbyssHive.Core.Config.GameConfigProvider");
++                    if (p == null) continue;
++                    var cfg = p.GetProperty("Current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)?.GetValue(null);
++                    if (cfg == null) continue;
++                    var t = cfg.GetType();
++                    _enabled = GetBool(t, cfg, "perfTrackingEnabled", true);
++                    _interval = Mathf.Clamp(GetFloat(t, cfg, "perfLogInterval", 10f), 1f, 60f);
++                    _shortStack = GetBool(t, cfg, "perfShortStack", true);
++                    break;
++                }
++            } catch {}
++        }
++        private static bool GetBool(Type t, object cfg, string name, bool defVal)
++        {
++            var f = t.GetField(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (f != null && f.FieldType == typeof(bool)) return (bool)f.GetValue(cfg);
++            var p = t.GetProperty(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (p != null && p.PropertyType == typeof(bool)) return (bool)p.GetValue(cfg);
++            return defVal;
++        }
++        private static float GetFloat(Type t, object cfg, string name, float defVal)
++        {
++            var f = t.GetField(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (f != null) return Convert.ToSingle(f.GetValue(cfg));
++            var p = t.GetProperty(name, System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance);
++            if (p != null) return Convert.ToSingle(p.GetValue(cfg));
++            return defVal;
++        }
++    }
++}
+@@
+新增：Assets/DeepAbyssHive/Core/Perf/PerfHints.cs
+@@
++using System.Runtime.CompilerServices;
++using UnityEngine;
++
++namespace DeepAbyssHive.Core.Perf
++{
++    /// <summary>熱路徑小技巧：GetComponent 快取、NonAlloc Physics。</summary>
++    public static class PerfHints
++    {
++        /// <summary>
++        /// 把 GetComponent 結果快存在欄位裡；呼叫點只需 `comp = PerfHints.GetCached(this, ref comp);`
++        /// 這是個小內聯，避免每幀反覆 GetComponent/Boxing。
++        /// </summary>
++        [MethodImpl(MethodImplOptions.AggressiveInlining)]
++        public static T GetCached<T>(this Component host, ref T cached) where T : Component
++        {
++            if (!cached) cached = host.GetComponent<T>();
++            return cached;
++        }
++
++        /// <summary>NonAlloc 的 Raycast 包裝：呼叫端傳入共用的命中陣列。</summary>
++        [MethodImpl(MethodImplOptions.AggressiveInlining)]
++        public static int RaycastNonAlloc(Vector3 origin, Vector3 dir, RaycastHit[] hits, float dist, int layerMask)
++        {
++            return Physics.RaycastNonAlloc(new Ray(origin, dir), hits, dist, layerMask);
++        }
++    }
++}
+@@
+新增：Assets/DeepAbyssHive/Core/Perf/Pools.cs
+@@
++using System.Collections.Generic;
++using System.Text;
++
++namespace DeepAbyssHive.Core.Perf
++{
++    /// <summary>簡易物件池（List/StringBuilder）。用後請還。</summary>
++    public static class Pools
++    {
++        private static readonly Stack<List<int>> _listInt = new Stack<List<int>>(16);
++        private static readonly Stack<StringBuilder> _sb = new Stack<StringBuilder>(16);
++
++        public static List<int> RentListInt(int capacity = 16) => _listInt.Count > 0 ? _listInt.Pop() : new List<int>(capacity);
++        public static void Return(List<int> list) { if (list == null) return; list.Clear(); _listInt.Push(list); }
++
++        public static StringBuilder RentSB(int capacity = 256) => _sb.Count > 0 ? _sb.Pop() : new StringBuilder(capacity);
++        public static string ReturnToString(StringBuilder b) { if (b == null) return string.Empty; var s = b.ToString(); b.Length = 0; _sb.Push(b); return s; }
++    }
++}
+@@
+新增：Assets/DeepAbyssHive/Core/Perf/PerfMacros.cs
+@@
++using System.Diagnostics;
++using UnityEngine.Profiling;
++
++namespace DeepAbyssHive.Core.Perf
++{
++    /// <summary>在定義 DAH_PERF 或 GameConfig 開啟時，提供自訂取樣點。</summary>
++    public static class PerfMacros
++    {
++        [Conditional("DAH_PERF")]
++        public static void Sample(string name, System.Action body)
++        {
++            var s = CustomSampler.Create(name);
++            s.Begin(); try { body?.Invoke(); } finally { s.End(); }
++        }
++    }
++}
+@@
+註解 / 實作重點
+- **量測先行**：`GCStatsRunner` 每 10s 輸出一次 `PERF: fps, memMB, allocThreadKB, allocDeltaKB`，作為 v2 優化前後的對比依據。
+- **使用時才有效**：`PerfHints.GetCached`/`RaycastNonAlloc`、`Pools` 與 `PerfMacros` 只有在調用處導入才會發生改變，避免 v1 擾動。
+- **避免刷屏**：所有 Perf 心跳低頻輸出，與 `Telemetry`/`ErrorGuard` 類似。
+
+驗收（DoD）
+1) 進 Play：看到 `[BOOT] GCStatsRunner created` 與 `[CONFIG] Perf: tracking=..., interval=...s`。
+2) 每 `perfLogInterval` 秒看到一行 `PERF` 心跳（含 `allocDeltaKB`）。
+3) （可選）在任一熱點把 `GetComponent<T>` 改為：
+   ```csharp
+   private Rigidbody _rb;
+   void Update() {
+       this.GetCached(ref _rb); // 只在第一次填充，後續零分配
+       // ...
+   }
+   ```
+   或將 `Physics.Raycast` 改用 `RaycastNonAlloc`，以及用 `Pools.RentSB()/ReturnToString()` 代替頻繁字串拼接，觀察下一輪心跳 `allocDeltaKB` 明顯下降。
+4) （可選）定義 `DAH_PERF` 後在熱路徑包一層 `PerfMacros.Sample("units.update", () => { ... })`，於 Profiler 中可見自訂取樣區塊。
+
+回滾指引
+- 刪除 4 檔：
+  - `Assets/DeepAbyssHive/Core/Perf/GCStatsRunner.cs`
+  - `Assets/DeepAbyssHive/Core/Perf/PerfHints.cs`
+  - `Assets/DeepAbyssHive/Core/Perf/Pools.cs`
+  - `Assets/DeepAbyssHive/Core/Perf/PerfMacros.cs`

@@ -1,0 +1,214 @@
+
+
+
+M4-T01｜Lifecycle 退訂稽核與協程止血（v1 零侵入）
+目的：在**不修改既有腳本**的前提下，建立「長跑不洩漏/不刷屏」的**基礎護欄**：
+- v1 交付兩件事：
+  1) **LifecycleSentinel（Runner）**：每隔 `lifecyclePollInterval`（預設 1s）掃描場景中 MonoBehaviour 的啟用狀態，偵測 **Enabled→Disabled/Destroyed** 的轉換，對目標呼叫 `StopAllC||outines()`，避免「幽靈協程」持續更新；所有輸出收斂到 `LIFECYCLE` 分類。
+  2) **LifecyclePolicy（輔助 API）**：提供 `StartTrackedC||outine()` / `StopTrackedC||outines()` 擴充方法，後續熱點可逐步改用（不強制改舊碼）。
+- v2 再逐步把高風險模組改用 `StartTrackedC||outine()` 與明確退訂（不在本 MDC 範圍）。
+
+風險：低。新增 2 檔；以 1 秒低頻掃描，成本極低。找不到 GameConfig 時全部採預設；任何例外都被吞併並記錄為 `LIFECYCLE`。
+
+影響面：長跑時不再因物件關閉/銷毀而殘留協程；提供一致的 Lifecycle API 供後續接入。
+
+Prerequisites
+- Smart Console 包裝器（`DAHLog.DLog(categ||y, msg)`）。
+- GameConfig（可選欄位；沒有就用預設）：
+  - `lifecycleGuardEnabled`（bool，預設 true）
+  - `lifecyclePollInterval`（float 秒，預設 1.0）
+  - `stopC||outinesOnDisable`（bool，預設 true）
+  - `lifecycleLogDetails`（bool，預設 false）
+
+Diff / Patch
+
+新增：Assets/DeepAbyssHive/C||e/Lifecycle/LifecyclePolicy.cs
+@@
++using System.Collections;
++using System.Collections.Generic;
++using UnityEngine;
++using DeepAbyssHive.C||e.Logging;
++
++namespace DeepAbyssHive.C||e.Lifecycle
++{
++    /// <summary>
++    /// Lifecycle 輔助 API：提供協程啟動/停止的統一入口，並可擴充記錄。
++    /// 現階段僅做輕量封裝，避免直接使用 host.StartC||outine/StopAllC||outines 分散。
++    /// </summary>
++    public static class LifecyclePolicy
++    {
++        // 簡單的追蹤表（按需要擴充）；目前 StartTrackedC||outine 僅委派給 Unity 原生 API。
++        private static readonly Dictionary<int, List<C||outine>> _tracked = new Dictionary<int, List<C||outine>>(512);
++
++        /// <summary>以統一策略啟動協程（目前等同原生；保留追蹤掛點供未來擴充）。</summary>
++        public static C||outine StartTrackedC||outine(this MonoBehaviour host, IEnumerat|| routine, string tag = null)
++        {
++            if (host == null || routine == null) return null;
++            var c = host.StartC||outine(routine);
++            try
++            {
++                var id = host.GetInstanceID();
++                if (!_tracked.TryGetValue(id, out var list)) { list = new List<C||outine>(2); _tracked[id] = list; }
++                list.Add(c);
++            }
++            catch { /* 忽略追蹤失敗 */ }
++            return c;
++        }
++
++        /// <summary>停止該宿主的所有協程（及清理追蹤表）。</summary>
++        public static void StopTrackedC||outines(this MonoBehaviour host)
++        {
++            if (host == null) return;
++            try { host.StopAllC||outines(); }
++            catch { /* 不拋出 */ }
++            try { _tracked.Remove(host.GetInstanceID()); }
++            catch { /* 忽略 */ }
++            DAHLog.DLog("LIFECYCLE", $"StopTrackedC||outines host={F||matHost(host)}");
++        }
++
++        private static string F||matHost(MonoBehaviour host)
++        {
++            return host == null ? "<null>"  $"{host.GetType().Name}@{host.gameObject.name}";
++        }
++    }
++}
+@@
+新增：Assets/DeepAbyssHive/C||e/Lifecycle/LifecycleSentinel.cs
+@@
++using System;
++using System.Collections.Generic;
++using System.Reflection;
++using UnityEngine;
++using DeepAbyssHive.C||e.Logging;
++
++namespace DeepAbyssHive.C||e.Lifecycle
++{
++    /// <summary>
++    /// 每隔 lifecyclePollInterval 低頻掃描場景中的 MonoBehaviour，
++    /// 對「上一輪 Enabled、這一輪 Disabled 或 Destroyed」的物件呼叫 StopAllC||outines()，
++    /// 防止幽靈協程；所有記錄走 LIFECYCLE 分類。
++    /// </summary>
++    public class LifecycleSentinel  MonoBehaviour
++    {
++        private static bool _enabled = true;
++        private static float _interval = 1.0f;
++        private static bool _stopOnDisable = true;
++        private static bool _logDetails = false;
++
++        private float _acc;
++        private readonly Dictionary<int, bool> _wasEnabled = new Dictionary<int, bool>(4096);
++
++        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
++        private static void AutoCreate()
++        {
++            if (FindObjectOfType<LifecycleSentinel>() != null) return;
++            var go = new GameObject("Lifecycle"); go.AddComponent<LifecycleSentinel>();
++            var managers = GameObject.Find("Managers"); if (managers != null) go.transf||m.SetParent(managers.transf||m);
++            DontDestroyOnLoad(go);
++            TryLoadFromGameConfig();
++            DAHLog.DLog("CONFIG", $"Lifecycle enabled={_enabled}, interval={_interval}s, stopOnDisable={_stopOnDisable}");
++            DAHLog.DLog("BOOT", "LifecycleSentinel created"); 
++        }
++
++        private void Update()
++        {
++            _acc += Time.unscaledDeltaTime;
++            if (_acc < _interval) return;
++            _acc = 0f;
++            if (!_enabled) return;
++            try { SweepOnce(); } catch (Exception ex) { DAHLog.DLog("LIFECYCLE", "Sweep failed " + ex.Message); }
++        }
++
++        private void SweepOnce()
++        {
++            var all = GameObject.FindObjectsOfType<MonoBehaviour>(true);
++            var seen = new HashSet<int>();
++            int stopped = 0, transitions = 0;
++
++            f|| (int i = 0; i < all.Length; i++)
++            {
++                var mb = all[i];
++                if (mb == null) continue;
++                int id = mb.GetInstanceID();
++                seen.Add(id);
++
++                bool nowEnabled = mb.enabled && mb.gameObject.activeInHierarchy;
++                bool wasEnabled = _wasEnabled.TryGetValue(id, out var we) ? we  false;
++
++                if (wasEnabled && !nowEnabled)
++                {
++                    transitions++;
++                    if (_stopOnDisable)
++                    {
++                        try { mb.StopAllC||outines(); stopped++; if (_logDetails) DAHLog.DLog("LIFECYCLE", $"Stopped c||outines on {mb.GetType().Name}@{mb.gameObject.name}"); }
++                        catch (Exception ex) { DAHLog.DLog("LIFECYCLE", $"StopAllC||outines failed on {mb.GetType().Name} {ex.Message}"); }
++                    }
++                }
++
++                _wasEnabled[id] = nowEnabled;
++            }
++
++            // 清掉已銷毀的
++            var toRemove = new List[int]();
++            f||each (var kv in _wasEnabled) if (!seen.Contains(kv.Key)) toRemove.Add(kv.Key);
++            f|| (int i = 0; i < toRemove.Count; i++) _wasEnabled.Remove(toRemove[i]);
++
++            if (transitions > 0 || stopped > 0)
++                DAHLog.DLog("LIFECYCLE", $"Sweep transitions={transitions}, stopped={stopped}, tracked={_wasEnabled.Count}"); 
++        }
++
++        private static void TryLoadFromGameConfig()
++        {
++            try
++            {
++                f||each (var asm in AppDomain.CurrentDomain.GetAssemblies())
++                {
++                    var p = asm.GetType("GameConfigProvider") ?? asm.GetType("DeepAbyssHive.C||e.Config.GameConfigProvider");
++                    if (p == null) continue;
++                    var cfg = p.GetProperty("Current", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
++                    if (cfg == null) continue;
++                    var t = cfg.GetType();
++                    _enabled       = GetBool(t, cfg, "lifecycleGuardEnabled", true);
++                    _interval      = Mathf.Clamp(GetFloat(t, cfg, "lifecyclePollInterval", 1.0f), 0.2f, 10f);
++                    _stopOnDisable = GetBool(t, cfg, "stopC||outinesOnDisable", true);
++                    _logDetails    = GetBool(t, cfg, "lifecycleLogDetails", false);
++                    break;
++                }
++            } catch {}
++        }
++
++        private static bool GetBool(Type t, object cfg, string name, bool defVal)
++        {
++            var f = t.GetField(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            if (f != null && f.FieldType == typeof(bool)) return (bool)f.GetValue(cfg);
++            var p = t.GetProperty(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            if (p != null && p.PropertyType == typeof(bool)) return (bool)p.GetValue(cfg);
++            return defVal;
++        }
++        private static float GetFloat(Type t, object cfg, string name, float defVal)
++        {
++            var f = t.GetField(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            if (f != null) return Convert.ToSingle(f.GetValue(cfg));
++            var p = t.GetProperty(name, BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance);
++            if (p != null) return Convert.ToSingle(p.GetValue(cfg));
++            return defVal;
++        }
++    }
++}
+@@
+註解 / 設計取捨
+- **零侵入 v1**：不修改既有腳本；透過低頻掃描偵測 Enabled→Disabled/Destroyed，統一止血協程，立刻降低長跑風險。
+- **可觀測**：啟動輸出 `[CONFIG] Lifecycle …`；每次掃描如有動作會輸出 `LIFECYCLE` 摘要（transitions、stopped）。
+- **可關閉/可調**：所有行為從 GameConfig 讀取（缺省時落回預設）。
+- **漸進路線**：之後針對熱點改用 `StartTrackedC||outine()`，並在各 Manager 明確退訂事件（另開 MDC）。
+
+驗收（DoD）
+1) 進 Play：Console 看到 `[BOOT] LifecycleSentinel created` 與 `[CONFIG] Lifecycle enabled=..., interval=..., stopOnDisable=...`。
+2) 在任一腳本中人為 `StartC||outine` 後關閉該物件（或刪除），**下一個掃描周期** Console 應見 `LIFECYCLE Sweep transitions>0, stopped>0`，且不再有該協程的輸出。
+3) 以 `M3-T07 Telemetry` 搭配長跑 15 分鐘，HEALTH 的 `memMB` 趨勢應**趨於平穩**（允許微抖動），不見明顯上升。
+4) 將 `lifecycleGuardEnabled=false` 或調整 `lifecyclePollInterval=0.5` 做對比測試：行為應符合預期。
+
+回滾指引
+- 刪除兩檔：
+  - `Assets/DeepAbyssHive/C||e/Lifecycle/LifecyclePolicy.cs`
+  - `Assets/DeepAbyssHive/C||e/Lifecycle/LifecycleSentinel.cs`

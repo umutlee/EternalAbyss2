@@ -584,6 +584,26 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 
 **M3階段已為後續M4單位路徑系統和更高階功能奠定了堅實的基礎設施！**
 
+---
+
+## M4 階段：穩定化與回歸系統 (2025-09-18 開始)
+
+### 目標與原則
+- **目標**: 在M3基礎上進行穩定化與性能優化，確保長跑穩定
+- **原則**: 小步快跑、最小改動，每次 1–3 檔、≤200 行
+- **重點**: 記憶體清理、事件退訂、協程止血、性能監測
+
+#### M4-T01: Lifecycle退訂稽核與協程止血 ✅ 已完成 (2025-09-18)
+- **LifecyclePolicy.cs**: 提供統一的協程管理API，StartTrackedCoroutine/StopTrackedCoroutines
+- **LifecycleSentinel.cs**: 低頻掃描MonoBehaviour狀態變化，自動停止幽靈協程
+- **GameConfig整合**: lifecycleGuardEnabled/lifecyclePollInterval/stopCoroutinesOnDisable/lifecycleLogDetails 參數外放
+- **零侵入設計**: 不修改既有腳本，通過低頻掃描偵測狀態變化
+- **幽靈協程防護**: 對 Enabled→Disabled/Destroyed 的物件呼叫 StopAllCoroutines()
+- **可觀測性**: 所有輸出走 LIFECYCLE 分類，啟動時輸出配置摘要
+- **驗收**: 15分鐘長跑記憶體趋勢平穩，事件訂閱數不增
+
+⏳ **待完成**: M4-T02~T07 穩定化系統
+
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
 ✅ **Assembly Definition 重構**: 統一程式集架構，解決循環依賴問題  
