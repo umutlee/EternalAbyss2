@@ -134,8 +134,8 @@ namespace DeepAbyssHive.Core.Config
         public float creepLineRadius = 2.0f;
         [Tooltip("菌毯畫線步長（世界單位）")]
         public float creepLineStep = 0.5f;
-        [Tooltip("地形 Raycast 層級遮罩（0=使用 Default）")]
-        public LayerMask terrainRaycastMask = 0;
+        [Tooltip("地形 Raycast 層級遮罩（0=使用全部層）")]
+        public int terrainRaycastMask = -1;
 
         [Header("Dev HUD Controls")]
         [Tooltip("建築目錄 HUD 切換鍵（None=停用）")]

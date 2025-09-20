@@ -550,12 +550,14 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **驗收**: F5 存檔、F9 讀檔、TimeService 狀態正確還原、型別不存在時優雅跳過
 
 ✅ **M3-T08 Creep Line 定義工具（Dev）**: 畫線定義菌毯覆蓋路徑
-- **CreepLineToolRunner**: C 鍵切換工具，滑鼠拖曳畫線定義菌毯路徑
-- **反射呼叫**: 通過反射嘗試呼叫 CreepBrushRunner/CreepManager 方法
-- **折線取樣**: 按步長取樣折線，每個點以半徑方式刷入菌毯
-- **視覺化**: 拖曳時顯示綠色折線，Gizmos 顯示取樣點
-- **GameConfig 參數**: creepLineToolToggleKey (C), creepLineRadius (2.0), creepLineStep (0.5)
-- **HUD 狀態**: 左上角顯示 "DEV: CreepLine Tool ON"
+- **CreepLineTool**: C 鍵切換工具，滑鼠拖曳畫 LineRenderer 綠線
+- **QA 目錄位置**: Assets/QA/Smoke/Dev/Creep/CreepLineTool.cs
+- **反射對接**: 嘗試多種 CreepBrushRunner/CreepManager 方法 (PaintCircle, ApplyCircle, PaintAt)
+- **折線取樣**: 按步長線性插值取樣，每點以半徑刷入菌毯
+- **LineRenderer 視覺**: 拖曳時實時顯示綠色折線，提交後清除
+- **GameConfig 參數**: creepLineToolToggleKey (C), creepLineRadius (2.0), creepLineStep (0.5), terrainRaycastMask
+- **OnGUI 狀態**: 左上角顯示 "DEV: CreepLine Tool ON"
+- **容錯設計**: 找不到畫筆方法時輸出警告，不中斷遊戲
 - **驗收**: C 鍵切換、滑鼠畫線、F4 覆蓋層可見菌毯路徑、Console 輸出統計
 
 ⏳ **待完成**: M3-T05~T07
