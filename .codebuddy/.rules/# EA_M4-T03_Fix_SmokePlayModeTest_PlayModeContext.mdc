@@ -1,0 +1,59 @@
+
+
+M4-T03｜PlayMode Smoke 測試修正（不能用 EditorSceneManager / EnterPlayMode）— 最小改動
+目的：修正你在 Test Runner 看到的錯誤：
+`System.InvalidOperationException: This cannot be used during play mode, please use SceneManager.CreateScene() instead.`
+原因是**PlayMode 測試本身就已在 Play 中**，原本的測試還呼叫了 `EditorSceneManager.NewScene(...)` 與 `EnterPlayMode()`，導致例外。
+
+本補丁改為使用 **SceneManager.CreateScene** 建立臨時場景，並移除 Enter/ExitPlayMode。其餘驗收不變：檢查 `Managers` 與四大 Manager 是否存在。
+
+風險：低。僅修改測試檔一處；不影響執行時內容。
+
+Prerequisites
+- Unity Test Framework 已安裝。
+
+Diff / Patch
+
+修改：Assets/Tests/PlayMode/SmokePlayModeTests.cs
+@@
+-#if UNITY_EDITOR
+-using UnityEditor.SceneManagement;
+-using UnityEditor;
+-#endif
++using UnityEngine.SceneManagement;
+@@
+-    [UnityTest]
+-    public IEnumerator Boot_Creates_Managers_And_CoreManagers()
++    [UnityTest]
++    public IEnumerator Boot_Creates_Managers_And_CoreManagers_PlayMode()
+     {
+-#if UNITY_EDITOR
+-        // 建立一個新的臨時場景，避免依賴資產
+-        EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects);
+-        yield return null;
+-#endif
+-        yield return new EnterPlayMode();
+-        // 讓 BootEnsureManagers / BootAuditor 有時間執行
+-        yield return null;
+-        yield return null;
++        // PlayMode 測試已在 Play 中；使用 Runtime API 建立臨時場景
++        var tmp = SceneManager.CreateScene("CI_Smoke_Temp");
++        SceneManager.SetActiveScene(tmp);
++        // 讓 RuntimeInitializeOnLoad 與 BootAuditor/BootEnsureManagers 有時間執行
++        yield return null; yield return null; yield return null;
+@@
+-        yield return new ExitPlayMode();
++        // 不要呼叫 ExitPlayMode（PlayMode 測試會自行處理）
+     }
+@@
+註解
+- **PlayMode vs EditMode**：在 EditMode 測試中才會用 `EnterPlayMode/ExitPlayMode`；PlayMode 測試不要用 EditorSceneManager，也不要切換 Play 狀態。
+- 你在 Console 看到的 `ServiceManager 服务未找到: ITimeService` 與 `BuildingPlacer not found in scene` 是**警告**，來自自動掛載的 HUD/Dev 腳本；與本例外無關。它們不會讓測試失敗。
+
+驗收（DoD）
+1) 在 Test Runner（PlayMode 分頁）重新執行該測試：應通過（綠勾）。
+2) Console 不再有 `EditorSceneManager.NewScene` 相關例外；仍可能有若干警告（可忽略）。
+3) CI 上重跑 workflow：`PlayMode Tests` 綠燈。
+
+回滾指引
+- 將 `SmokePlayModeTests.cs` 還原到修正前的版本（不建議）。
