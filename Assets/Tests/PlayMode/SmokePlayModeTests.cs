@@ -28,10 +28,10 @@ public class SmokePlayModeTests
         };
         foreach (var qn in qnTypes)
         {
-            var t = Type.GetType(qn);
-            Assert.IsNotNull(t, $"Type not found: {qn}. Ensure assembly/namespace is correct.");
-            var inst = UnityEngine.Object.FindObjectOfType(t);
-            Assert.IsNotNull(inst, $"Manager missing: {qn}");
+            var t = FindTypeByFullName(qn);
+            Assert.IsNotNull(t, $"Type not found via AppDomain scan: {qn}");
+            var instances = UnityEngine.Object.FindObjectsOfType(t, true);
+            Assert.IsTrue(instances != null && instances.Length > 0, $"Manager instance missing: {qn}");
         }
 
         // 觀察 3 秒，期間不得拋出未處理例外（若 ErrorGuard 開啟會被率限並記錄）
@@ -39,6 +39,19 @@ public class SmokePlayModeTests
         while (UnityEngine.Time.realtimeSinceStartup < end) { yield return null; }
 
         // 不要呼叫 ExitPlayMode（PlayMode 測試會自行處理）
+    }
+    
+    private static System.Type FindTypeByFullName(string fullName)
+    {
+        foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                var t = asm.GetType(fullName, throwOnError: false);
+                if (t != null) return t;
+            } catch {}
+        }
+        return null;
     }
     
     // Smoke 測試不牽涉服務層；避免在空場景中注入 ServiceRegistrar 以免觸發未註冊依賴。
