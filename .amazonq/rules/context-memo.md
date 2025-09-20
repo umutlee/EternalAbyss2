@@ -155,6 +155,30 @@ tags: ["context", "memo", "project-state"]
 - **回滾保證**: 每個階段都標記為安全回滾點
 - **追蹤機制**: 記錄為 ProjectMilestone 便於管理
 
+#### M3-T01: Boot護欄補強系統 ✅ 已完成 (2025-09-18)
+- **BootAuditor.cs**: 啟動期護欄與自修，確保Managers根物件與四大Manager存在
+- **FocusGameOnPlay.cs**: Editor工具，進入Play模式時自動聚焦Game視窗
+- **GameConfig整合**: bootAuditEnabled/bootAutofixManagers/bootLogDetails 參數外放
+- **WaitForEndOfFrame**: 延後一幀執行，避免與既有BootEnsureManagers競速
+- **自動修復**: 缺少Managers或Manager時自動補齊，可由GameConfig關閉
+- **Building層檢查**: 檢查Building層與LayerMask對齊，確保射線刪除正常
+- **選單控制**: DeepAbyssHive/Focus Game On Play選單，EditorPrefs記憶設定
+- **驗收**: Console顯示完整啟動日誌與GameConfig摘要，自動聚焦Game視窗
+
+## M3 階段完成總結 ✅ 全面完成 (2025-09-18)
+✅ **建築放置系統**: 最小間距、格點對齊、旋轉支援、刪除工具、預覽一致性  
+✅ **SpatialIndex 整合**: 委派系統、最近鄰檢查、向後相容  
+✅ **統一工具系統**: 遮罩管理、UI 工具、顏色訊息統一  
+✅ **配置化設計**: GameConfig 統一參數管理、熱鍵集中配置  
+✅ **開發工具**: SMOKE 測試擴充、刪除工具、狀態 HUD、Editor 選單  
+✅ **API 擴展**: 有向碰撞檢測、雙版本 API、完全向後相容  
+✅ **測試驗證**: 四種測試案例、自動化回歸驗證  
+✅ **熱鍵管理**: 集中配置避免衝突、智能回退機制  
+✅ **防護欄/錯誤策略**: ErrorPolicy + ErrorGuardRunner，安全協程與率限機制  
+✅ **QA工具**: ScenarioLoader場景載入器，支援壓測與菌毯擴張測試  
+✅ **Telemetry監測**: 基礎健康指標監測，10秒週期輸出FPS/記憶體/單位數  
+✅ **Boot護欄**: BootAuditor啟動期檢查與自修 + FocusGameOnPlay自動聚焦  
+
 ## M3 階段完成的設計規範
 
 ### 1. 統一驗證系統 ✅ 已實現並完善
