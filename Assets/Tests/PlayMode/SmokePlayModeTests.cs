@@ -16,10 +16,6 @@ public class SmokePlayModeTests
         SceneManager.SetActiveScene(tmp);
         // 讓 RuntimeInitializeOnLoad 與 BootAuditor/BootEnsureManagers 有時間執行
         yield return null; yield return null; yield return null;
-        
-        // 確保 ServiceRegistrar 存在並註冊服務
-        EnsureServiceRegistrar();
-        yield return null;
 
         var managers = GameObject.Find("Managers");
         Assert.IsNotNull(managers, "Managers root should exist after entering Play.");
@@ -45,13 +41,5 @@ public class SmokePlayModeTests
         // 不要呼叫 ExitPlayMode（PlayMode 測試會自行處理）
     }
     
-    private void EnsureServiceRegistrar()
-    {
-        var existing = UnityEngine.Object.FindObjectOfType<DeepAbyssHive.Core.Services.ServiceRegistrar>();
-        if (existing == null)
-        {
-            var go = new GameObject("ServiceRegistrar");
-            go.AddComponent<DeepAbyssHive.Core.Services.ServiceRegistrar>();
-        }
-    }
+    // Smoke 測試不牽涉服務層；避免在空場景中注入 ServiceRegistrar 以免觸發未註冊依賴。
 }
