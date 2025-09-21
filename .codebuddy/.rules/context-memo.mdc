@@ -602,7 +602,18 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **可觀測性**: 所有輸出走 LIFECYCLE 分類，啟動時輸出配置摘要
 - **驗收**: 15分鐘長跑記憶體趋勢平穩，事件訂閱數不增
 
-⏳ **待完成**: M4-T02~T07 穩定化系統
+#### M4-T05: 資產/序列化驗證（啟動健康檢查基礎版） ✅ 已完成 (2025-09-20)
+- **AssetValidationRunner.cs**: 啟動後自動執行輕量資產健康檢查系統
+- **Building Layer 檢查**: 驗證 Building 層存在性，避免射線刪除和放置失敗
+- **GameConfig 驗證**: 反射寬鬆尋找 GameConfigSO，檢查配置可取用性
+- **存檔版本檢查**: 若 GameConfig 有版本欄位，檢查 PlayerPrefs 存檔版本一致性
+- **配置快照**: 輸出 GameConfig 關鍵參數快照，便於問題診斷
+- **Smart Console 整合**: 所有日誌走 HEALTH/CONFIG 分類，支援 DAHLog 反射調用
+- **Editor 選單**: DeepAbyssHive/Validation/Run Asset Validation 手動觸發驗證
+- **零阻塞設計**: 只輸出警告日誌，不拋例外或中止遊戲流程
+- **驗收**: 進入 Play 模式自動執行驗證，Console 輸出結構化健康報告
+
+⏳ **待完成**: M4-T02~T04, T06~T07 穩定化系統
 
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  

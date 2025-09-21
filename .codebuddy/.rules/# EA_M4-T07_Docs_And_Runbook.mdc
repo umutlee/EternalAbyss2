@@ -1,0 +1,87 @@
+
+
+
+
+M4-T07 | Docs & Runbook (Minimal Diff Change)
+
+Goal
+- Newcomer can get project running and pass smoke in ~1 hour.
+- QA can complete a 3-minute smoke using a short checklist.
+- Only add Markdown files (no code changes).
+
+Risk
+- Very low.
+
+Diff / Patch (create these files with the contents below)
+
+1) ADD Assets/DeepAbyssHive/Docs/README_DevRunbook.md
+=== MARKDOWN START ===
+# Deep Abyss Hive — Dev Runbook (Short)
+
+## Boot & Logs
+- Play boot: Managers root -> CreepManager | UnitManager | SpatialIndexManager | TerrainManager.
+- Smart Console categories: BOOT/CONFIG/HEALTH/... with toggle/solo/search.
+- GameConfigProvider prints one-line summary on load.
+
+## Hotkeys (per GameConfig)
+- Build Placer: B
+- Delete Building: Delete / F8
+- Spawn Units: F6
+- Batch Dispatch: F10
+- RMB camera lock: GameConfig.rmbLock
+
+## Common Issues
+- Cannot delete building -> prefab must be on Building layer; placer enforces as safety.
+- F6 not working -> ensure UnitDevSpawner enabled and spawnKey matches GameConfig.
+- Preview mismatch -> use Placement Trace to compare ray/spacing/decision.
+- Creep brush not working -> ensure CreepManager enabled, requireCreep, runner update, physics layers.
+
+## Tests / CI
+- Local: Window -> General -> Test Runner -> PlayMode -> run SmokePlayModeTests.
+- CI: PR runs "PR: PlayMode (Headless)"; merge to main triggers "Main: Build & Gate".
+- Unity License: use .ulf Base64 in UNITY_LICENSE (no need for email/password).
+
+## Build & First-Launch Health
+- Use "Main: Build & Gate" pipeline; first launch health check prints system/graphics/quality info (HEALTH/CONFIG).
+=== MARKDOWN END ===
+
+2) ADD Assets/QA/Smoke/Docs/QA_SmokeScene_Guide.md
+=== MARKDOWN START ===
+# QA Smoke Guide (3 minutes)
+
+## Steps
+1. Play, watch Console: Managers created; GameConfig summary; Terrain streaming.
+2. Press F6 to spawn units (log "Units: spawned"); press F10 to batch dispatch.
+3. Press B for building placer; preview color reacts to rules; place then ensure object layer is Building; Delete/F8 removes it.
+4. Smart Console: toggle categories, Solo, Search; HUD is draggable and persists position.
+5. HEALTH: per healthLogInterval prints fps/mem/counts (if enabled).
+=== MARKDOWN END ===
+
+3) ADD Assets/DeepAbyssHive/Docs/CI_Pipeline_Guide.md
+=== MARKDOWN START ===
+# CI Pipeline (PR split)
+
+## Flows
+- PR: "PR: PlayMode (Headless)" (tests only)
+- main/tags: "Main: Build & Gate" (tests -> build)
+
+## Secrets & Vars
+- Secrets: UNITY_LICENSE (.ulf Base64, single line)
+- Vars: UNITY_VERSION (match ProjectVersion.txt), PROJECT_PATH (default ".")
+
+## Common Reds
+- No valid license -> UNITY_LICENSE not passed or fork PR secrets blocked.
+- Requested Unity version not found -> mismatch with ProjectVersion.txt.
+- Editor API in PlayMode -> avoid EditorSceneManager/EnterPlayMode in PlayMode tests.
+
+## Branch Protection
+- Required checks: only "PR: PlayMode (Headless)". Build should not be required for PR.
+=== MARKDOWN END ===
+
+Acceptance
+- Files exist at the specified paths and render correctly.
+- A new teammate can follow README_DevRunbook to boot and run smoke in ~1 hour.
+- QA can finish the smoke in ~3 minutes per guide.
+
+Rollback
+- Remove the three added .md files.
