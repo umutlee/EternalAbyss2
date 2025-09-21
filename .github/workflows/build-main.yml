@@ -1,13 +1,14 @@
-# GitHub Actions: PlayMode tests + (if pass) Linux build
-name: Unity CI
+# GitHub Actions: Main branch build with gate tests
+name: Main: Build & Gate
 on:
   push:
-    branches: [ main, develop, feature/** ]
-  pull_request:
+    branches: [ main ]
+  tags: [ 'v*' ]
+  workflow_dispatch:
 
 jobs:
   tests:
-    name: PlayMode Tests (Headless)
+    name: Main: Tests (gate)
     runs-on: ubuntu-latest
     env:
       UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
@@ -23,19 +24,7 @@ jobs:
           key: ${{ runner.os }}-Library-${{ env.UNITY_VERSION }}-${{ hashFiles('**/Packages/manifest.json') }}
           restore-keys: |
             ${{ runner.os }}-Library-
-      # 自檢：不會洩露內容，只印長度
-      - name: Sanity check secrets and vars
-        run: |
-          echo "UNITY_VERSION=${UNITY_VERSION}"
-          echo "PROJECT_PATH=${PROJECT_PATH}"
-          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
-      # 若沒拿到 secrets（例如 fork PR），就跳過，避免紅燈
-      - name: Skip if UNITY_LICENSE missing (fork PR / secret not set)
-        if: ${{ env.UNITY_LICENSE == '' }}
-        run: |
-          echo "UNITY_LICENSE is empty -> skipping Unity tests (fork PR or missing secret)."
-          exit 0
-      - name: Run PlayMode tests
+      - name: Run PlayMode tests (gate)
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
@@ -46,8 +35,8 @@ jobs:
           coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+DeepAbyssHive*'
           artifactsPath: artifacts/tests
 
-  build-linux:
-    name: Build (Linux x64 Dev)
+  build:
+    name: Main: Build (Linux x64 Dev)
     needs: tests
     runs-on: ubuntu-latest
     env:
@@ -64,11 +53,6 @@ jobs:
           key: ${{ runner.os }}-Library-${{ env.UNITY_VERSION }}-${{ hashFiles('**/Packages/manifest.json') }}
           restore-keys: |
             ${{ runner.os }}-Library-
-      - name: Skip if UNITY_LICENSE missing
-        if: ${{ env.UNITY_LICENSE == '' }}
-        run: |
-          echo "UNITY_LICENSE is empty -> skipping build."
-          exit 0
       - name: Build project
         uses: game-ci/unity-builder@v4
         env:
@@ -84,5 +68,5 @@ jobs:
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: EA_Build_Linux64
+          name: linux-x64-dev
           path: build

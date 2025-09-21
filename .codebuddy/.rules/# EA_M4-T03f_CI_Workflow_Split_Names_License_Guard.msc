@@ -1,0 +1,141 @@
+
+
+
+M4-T03f｜CI 一次性修正：PR/MAIN 分流＋名稱正常化＋授權傳遞與防呆（Minimal Diff Change）
+目的
+- 解決「同一 PR 出現 2 個 PlayMode 檢查、2 個 Build skipped」與 Branch protection 無法正確選檢查項的混淆。
+- 統一改為 **分流式最佳實務**：PR 只跑測試；main/tags 才出包（含 gate 測試）。
+- 以 `.ulf` 授權檔策略運行 Unity（使用 `UNITY_LICENSE` Base64），**不要求帳密**。
+- 在 PR workflow 中加入 **自檢**與 **缺授權自動跳過（fork PR 防呆）**。
+
+風險
+- 低。僅修改兩個 workflow 的 `name:`、`on:`、`env:` 與 2~3 個步驟；不動專案程式碼。
+
+Prerequisites
+- Repo → Settings → Actions
+  - **Secrets**：`UNITY_LICENSE`（.ulf 檔之 Base64，單行）。
+  - **Variables**：`UNITY_VERSION`（如 `2022.3.62f1`）、（可選）`PROJECT_PATH`（預設 `.`）。
+- 若 PR 來源為 fork，GitHub 會遮蔽 secrets；本補丁已自動 **skip** 測試避免紅燈。
+
+Diff / Patch（以下為最小改動示意；若檔名不同，對應替換你的現有 workflow）
+
+修改：.github/workflows/test-pr.yml（PR 專用 PlayMode 測試）
+@@
+-name: Unity - PR Tests
+-on:
+-  push:
+-    branches: ['**']
+-  pull_request:
+-    branches: ['**']
++name: PR: PlayMode Tests
++on:
++  pull_request:
++    branches: ['**']
+@@
+ jobs:
+   playmode:
+-    name: PlayMode Tests (Headless)
++    name: PR: PlayMode (Headless)
+     runs-on: ubuntu-latest
++    env:
++      UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
++      PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
++      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+     steps:
+       - uses: actions/checkout@v4
+-      - name: Run PlayMode tests
+-        uses: game-ci/unity-test-runner@v4
+-        env:
+-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+-        with:
+-          projectPath: ${{ vars.PROJECT_PATH || '.' }}
+-          unityVersion: ${{ vars.UNITY_VERSION }}
+-          testMode: playmode
++
++      # 自檢（不洩露內容，只輸出長度）
++      - name: Sanity check secrets and vars
++        run: |
++          echo "UNITY_VERSION=${UNITY_VERSION}"
++          echo "PROJECT_PATH=${PROJECT_PATH}"
++          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
++      # fork PR 沒 secrets 時避免紅燈
++      - name: Skip if UNITY_LICENSE missing (fork PR / secret not set)
++        if: ${{ env.UNITY_LICENSE == '' }}
++        run: |
++          echo "UNITY_LICENSE is empty -> skipping Unity tests."
++          exit 0
++
++      - name: Run PlayMode tests
++        uses: game-ci/unity-test-runner@v4
++        if: ${{ env.UNITY_LICENSE != '' }}
++        env:
++          UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
++        with:
++          projectPath: ${{ env.PROJECT_PATH }}
++          unityVersion: ${{ env.UNITY_VERSION }}
++          testMode: playmode
+           artifactsPath: artifacts/tests
+           coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+DeepAbyssHive*'
+
+新增或修改：.github/workflows/build-main.yml（main/tags 出包，含 gate 測試）
+@@
+-name: Unity - Main/Tags Build
++name: Main: Build & Gate
+ on:
+   push:
+     branches: [ main ]
+   tags: [ 'v*' ]
+   workflow_dispatch:
+@@
+ jobs:
+-  tests:
+-    name: PlayMode Tests (gate)
++  tests:
++    name: Main: Tests (gate)
+     runs-on: ubuntu-latest
+     env:
+       UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
+       PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
+       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+     steps:
+       - uses: actions/checkout@v4
+       - name: Run PlayMode tests (gate)
+         uses: game-ci/unity-test-runner@v4
+         env:
+           UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
+         with:
+           projectPath: ${{ env.PROJECT_PATH }}
+           unityVersion: ${{ env.UNITY_VERSION }}
+           testMode: playmode
+           artifactsPath: artifacts/tests
+@@
+-  build:
+-    name: Build (Linux x64 Dev)
++  build:
++    name: Main: Build (Linux x64 Dev)
+     needs: tests
+     runs-on: ubuntu-latest
+     env:
+       UNITY_VERSION: ${{ vars.UNITY_VERSION || '2022.3.62f1' }}
+       PROJECT_PATH: ${{ vars.PROJECT_PATH || '.' }}
+       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+     steps:
+       - uses: actions/checkout@v4
+       - name: Build project
+         uses: game-ci/unity-builder@v4
+         env:
+           UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
+         with:
+           targetPlatform: StandaloneLinux64
+           projectPath: ${{ env.PROJECT_PATH }}
+           unityVersion: ${{ env.UNITY_VERSION }}
+       - name: Upload build
+         uses: actions/upload-artifact@v4
+         with:
+           name: linux-x64-dev
+           path: build/StandaloneLinux64
+
+驗收（DoD）
+1) 開/更新 PR：僅出現 `PR: PlayMode (Headless)` 檢查；綠燈後可合併。
+2) 合併到 main：自動觸發 `Main: Build & Gate` → `Main: Tests (gate)` 綠燈後執行 `Main: Build (Linux x64 Dev)`。
+3) Branch protection：Required checks 只勾 `PR: PlayMode (Headless)`；Build 不設為 PR 必要檢查。
