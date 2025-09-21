@@ -613,7 +613,24 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - **零阻塞設計**: 只輸出警告日誌，不拋例外或中止遊戲流程
 - **驗收**: 進入 Play 模式自動執行驗證，Console 輸出結構化健康報告
 
-⏳ **待完成**: M4-T02~T04, T06~T07 穩定化系統
+#### M4-T06: Build/First-Launch Health Check ✅ 已完成 (2025-09-20)
+- **BuildHealthCheckRunner.cs**: 開發建置和首次啟動健康檢查系統
+- **系統快照**: 輸出 Unity/CPU/GPU/記憶體/品質設定/顏色空間/渲染管線等資訊
+- **首次啟動擴展**: PlayerPrefs 標記首次啟動，輸出更詳細的系統資訊
+- **快速檢查**: vSync/targetFPS 設定、應用程式真實性檢查
+- **Smart Console 整合**: 所有輸出走 BOOT/CONFIG/HEALTH 分類
+- **Editor 選單**: DeepAbyssHive/Build/Run First-Launch Health Check 重置首次啟動標記
+- **驗收**: Play 模式自動輸出系統快照，首次啟動有擴展資訊
+
+#### M4-T07: Docs & Runbook ✅ 已完成 (2025-09-20)
+- **README_DevRunbook.md**: 開發者實用操作手冊，包含啟動、熱鍵、常見問題、測試指引
+- **QA_SmokeScene_Guide.md**: QA 3分鐘煙霧測試指南，清單式操作步驟
+- **CI_Pipeline_Guide.md**: CI 管道指南，包含 PR/main 分流、Secrets 設定、常見錯誤
+- **文檔分工**: deep-abyss-docs(設計文檔) vs Assets/Docs(實用指南)
+- **新手友好**: 1小時內可上手開發，QA 3分鐘完成煙霧測試
+- **驗收**: 文檔可讀性測試，新手可依指南快速上手
+
+✅ **M4 階段完成**: 穩定化與文檔系統全面完成
 
 ## M4 階段完成總結 ✅ 大部分完成 (2025-09-16)
 ✅ **單位路徑系統**: Grid A*、UnitAgent、動態障礙檢測、菌毯速度加成  
