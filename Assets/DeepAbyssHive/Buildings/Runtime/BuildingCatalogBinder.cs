@@ -25,6 +25,9 @@ namespace DeepAbyssHive.Buildings.Runtime
         [SerializeField] private int _currentIndex = 0;
         [SerializeField] private BuildingCatalogSO _catalog;
         
+        [Header("Auto-Start Control")]
+        [SerializeField] private bool autoApplyOnStart = false;
+        
         // 反射快取
         private Component _buildingPlacer;
         private FieldInfo _prefabToPlaceField;
@@ -36,6 +39,17 @@ namespace DeepAbyssHive.Buildings.Runtime
         {
             LoadCatalogFromConfig();
             InjectToBuildingPlacer();
+            
+            // 檢查是否應該自動應用
+            if (!autoApplyOnStart)
+            {
+                DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] autoApplyOnStart=false，不自動進入放置模式");
+                if (_catalog != null && _catalog.Count > 0)
+                {
+                    DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}（待手動啟動）");
+                }
+                return;
+            }
             
             if (_catalog != null && _catalog.Count > 0)
             {
@@ -262,6 +276,14 @@ namespace DeepAbyssHive.Buildings.Runtime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoStartup()
         {
+            // 檢查全域開關
+            var config = GameConfigProvider.Current;
+            if (!config.placementAutoStart)
+            {
+                DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] placementAutoStart=false，跳過自動啟動");
+                return;
+            }
+            
             // 檢查是否已存在
             if (FindObjectOfType<BuildingCatalogBinder>() != null)
             {
