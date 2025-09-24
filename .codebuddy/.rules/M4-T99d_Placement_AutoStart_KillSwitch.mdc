@@ -1,0 +1,107 @@
+M4-T99d_Placement_AutoStart_KillSwitch.mdc
+==========================================
+
+Header
+- 目的：修復「一進遊戲就自動進入建築放置」的問題。做法：在 Catalog 綁定流程中加入 KillSwitch，預設**禁止**開場自動套用建築到 Placer；並將開關外放 GameConfig。
+- 風險：低（修改 1 檔、增 1 檔部分類）；遵循「參數外放到 GameConfig 並在啟動時 Log」規範。
+- 影響面：建築綁定與放置啟動流程；不影響手動按鍵/按鈕觸發的放置。
+
+Prerequisites
+- 既有檔案：`Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`
+- 既有 GameConfig 啟動列印：`GameConfigBootLogger`（或同等）。
+
+Diff / Patch
+1) MODIFY 檔案：`Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`
+（在 Start/OnEnable 初始化處，避免自動 Apply 到 Placer，改為受開關控制）
+=== C# PATCH ===
+// 在類內新增序列化欄位（若已有類似欄位請沿用並預設關閉）
+[SerializeField] private bool autoApplyOnStart = false; // 本地安全閥，預設關
+
+private void Start()
+{
+    // 原有：EnsureCatalog(); EnsurePlacer(); InjectToBuildingPlacer();
+    // ……（保留既有注入行為，僅控制是否自動「套用建築進入放置」）
+
+    bool allowAuto = autoApplyOnStart;
+
+    // 若可取得全域 GameConfig，進一步受其控制（外放參數）
+    var cfg = DeepAbyssHive.Core.Config.GameConfigProvider.Config;
+    if (cfg != null)
+        allowAuto = allowAuto && cfg.placementAutoStart; // 兩者皆真才自動
+
+    if (allowAuto)
+    {
+        // 原本「自動進入放置」的那一行（例如）
+        // ApplyPrefabToPlacer(currentSelectionPrefabOrFirst);
+    }
+    else
+    {
+        // 明確確保處於 Idle
+        TryInvoke(placer, "CancelPlacement");
+        TrySetBool(placer, "IsPlacing", false);
+        TrySetBoolField(placer, "isPlacing", false);
+        TrySetBoolField(placer, "_isPlacing", false);
+        Debug.Log("[PLACEMENT] AutoStart suppressed by KillSwitch");
+    }
+}
+
+// 小工具：反射呼叫（避免硬相依 Placer 具體型別）
+private static void TryInvoke(object inst, string method)
+{
+    if (inst == null) return;
+    var mi = inst.GetType().GetMethod(method, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+    if (mi != null && mi.GetParameters().Length == 0) mi.Invoke(inst, null);
+}
+private static void TrySetBool(object inst, string prop)
+{
+    if (inst == null) return;
+    var pi = inst.GetType().GetProperty(prop, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+    if (pi != null && pi.PropertyType == typeof(bool) && pi.CanWrite) pi.SetValue(inst, false);
+}
+private static void TrySetBoolField(object inst, string field)
+{
+    if (inst == null) return;
+    var fi = inst.GetType().GetField(field, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+    if (fi != null && fi.FieldType == typeof(bool)) fi.SetValue(inst, false);
+}
+=== C# END PATCH ===
+
+2) ADD 檔案：`Assets/DeepAbyssHive/Core/Config/GameConfigSO.Placement.cs`
+（以 partial 擴充，避免大範圍改 GameConfig 檔；新欄位預設 False）
+=== C# START ===
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Config
+{
+    public sealed partial class GameConfigSO : ScriptableObject
+    {
+        [Header("Placement")]
+        [Tooltip("是否允許在啟動時自動進入放置（僅限開發用途）。預設關閉。")]
+        public bool placementAutoStart = false;
+    }
+}
+=== C# END ===
+
+3) MODIFY 檔案：`Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs`
+（啟動列印新增一行，用於審核與回歸）
+=== C# PATCH ===
+private static void LogConfigOnLoad(GameConfigSO cfg)
+{
+    // ……既有列印
+    DLog("CONFIG", $"placementAutoStart={cfg.placementAutoStart}");
+}
+=== C# END PATCH ===
+
+註解
+- 為何兩段開關？GameObject 層級（Binder 的 `autoApplyOnStart`） + 全域層級（`GameConfigSO.placementAutoStart`）。僅在兩者皆為 True 時才會自動套用，避免任何偶發的 Prefab 預設把自動開啟帶進來。
+- 為何不用「隔離 Runner」？那是止血；本修補直接將根因（Boot 自動 Apply）**關掉**，回到「玩家操作才進入放置」的正道。
+
+驗收步驟（DoD）
+1. 進 Play：開場 **不**再有綠色建築預覽；非按 B 或點 HUD 按鈕不會進入放置。
+2. 開 `GameConfig.asset`：`placementAutoStart` 預設 False。手動切成 True + 在 Binder 上也勾 `autoApplyOnStart` → 重新進 Play 應恢復舊行為（驗證開關生效）。
+3. 啟動 Console 看到 `[CONFIG] placementAutoStart=False` 的啟動列印。
+
+回滾指引
+- 還原 `BuildingCatalogBinder.cs` 的修改。
+- 刪除 `GameConfigSO.Placement.cs`。
+- 從 `GameConfigBootLogger.cs` 移除新增列印行。

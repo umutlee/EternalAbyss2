@@ -155,8 +155,16 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                 GUILayout.Label($"Next update in: {remain:0.0}s");
 
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Refresh")) RefreshStats();
-                if (GUILayout.Button("Close")) { _visible = false; }
+                if (GUILayout.Button("Refresh")) 
+                {
+                    RefreshStats();
+                    GUI.FocusControl(null); // 釋放焦點，避免干擾拖曳
+                }
+                if (GUILayout.Button("Close")) 
+                { 
+                    _visible = false; 
+                    GUI.FocusControl(null); // 釋放焦點，避免干擾拖曳
+                }
                 GUILayout.EndHorizontal();
             });
         }

@@ -642,7 +642,19 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
 ✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
 ✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
+✅ **建築放置自動啟動殺死開關**: 雙重安全機制防止進入遊戲自動觸發放置模式 (M4-T99d) ✅ 已完成 (2025-09-24)
 ⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)
+
+#### M4-T99d: 建築放置自動啟動殺死開關 ✅ 已完成 (2025-09-24)
+- **問題**: 進入遊戲時 BuildingCatalogBinder 自動啟動並觸發建築放置模式
+- **根本原因**: RuntimeInitializeOnLoadMethod 自動創建組件，Start() 方法無條件調用 SyncPreviewToPlacer()
+- **解決方案**: 雙重安全開關機制
+  - **全域開關**: GameConfigSO.placementAutoStart (預設 false)
+  - **實例開關**: BuildingCatalogBinder.autoApplyOnStart (預設 false)
+- **修改文件**:
+  - `Assets/DeepAbyssHive/Core/Config/GameConfigSO.cs`: 新增 placementAutoStart 欄位與日誌輸出
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 新增 autoApplyOnStart 欄位，修改 AutoStartup() 和 Start() 方法加入安全檢查
+- **驗收**: 預設情況下進入遊戲不會自動觸發建築放置模式，需手動啟用相關開關
 
 
 
