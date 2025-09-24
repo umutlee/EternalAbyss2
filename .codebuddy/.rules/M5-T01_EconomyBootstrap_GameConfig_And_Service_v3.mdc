@@ -1,0 +1,148 @@
+M5-T01_EconomyBootstrap_GameConfig_And_Service.mdc
+===================================================
+
+Header
+- 目的：建立「不與 Unity.Resources 衝突」的最小資源系統骨架，外放參數到 GameConfig，開場列印；提供一個 Dev 熱鍵（預設 F5）快速驗證累加。
+- 風險：低（新增 2 檔；不改場景、不碰既有 Manager 注入流程）。
+- 影響面：新增 `Core/Economy/ResourceService.cs` 與 `Core/Config/GameConfigSO.Economy.cs`（partial）。
+- 測試步驟：進 Play 看啟動列印；按 F5 觀察 Console 數值改變。
+
+Prerequisites
+- 無特殊前置；僅需既有 GameConfigProvider 可用。若 GameConfig 尚未掛載到資產，仍以內建預設運行。
+
+Diff / Patch
+1) **ADD** 檔案：`Assets/DeepAbyssHive/Core/Economy/ResourceService.cs`
+--- C# START ---
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Economy
+{
+    /// <summary>
+    /// MVP 資源服務：單機記帳、可 Add/Spend/Query。
+    /// 不依賴 DI；AfterSceneLoad 自行附掛並 DontDestroyOnLoad。
+    /// </summary>
+    public enum ResourceId { Biomass = 0, Energy = 1 }
+
+    public sealed class ResourceService : MonoBehaviour
+    {
+        public static ResourceService Instance { get; private set; }
+
+        private readonly Dictionary<ResourceId, int> _values = new Dictionary<ResourceId, int>
+        {
+            { ResourceId.Biomass, 0 },
+            { ResourceId.Energy, 0 },
+        };
+
+        private KeyCode _debugAddKey = KeyCode.None;
+        private int _debugAddAmount = 100;
+        private bool _enabled = true;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Ensure()
+        {
+            if (Instance != null) return;
+            var go = new GameObject("ResourceService");
+            DontDestroyOnLoad(go);
+            Instance = go.AddComponent<ResourceService>();
+        }
+
+        private void Awake()
+        {
+            // 嘗試讀取 GameConfig
+            var cfg = GetConfig();
+
+            _enabled = cfg?.resourcesEnabled ?? true;
+            _values[ResourceId.Biomass] = cfg?.startBiomass ?? 200;
+            _values[ResourceId.Energy] = cfg?.startEnergy ?? 0;
+
+            _debugAddKey = cfg?.debugAddBiomassKey ?? KeyCode.F5;
+            _debugAddAmount = cfg?.debugAddBiomassAmount ?? 100;
+
+            // 啟動列印（使用 Console 標籤，避免依賴專屬 Logger API）
+            Debug.Log($"[CONFIG] resourcesEnabled={_enabled} startBiomass={_values[ResourceId.Biomass]} startEnergy={_values[ResourceId.Energy]} debugAddBiomassKey={_debugAddKey}");
+        }
+
+        private void Update()
+        {
+            if (!_enabled) return;
+
+            if (_debugAddKey != KeyCode.None && Input.GetKeyDown(_debugAddKey))
+            {
+                Add(ResourceId.Biomass, _debugAddAmount, reason: "DevHotkey");
+            }
+        }
+
+        public int Get(ResourceId id) => _values[id];
+
+        public void Add(ResourceId id, int amount, string reason = null)
+        {
+            if (amount == 0) return;
+            _values[id] = Mathf.Max(0, _values[id] + amount);
+            Debug.Log($"[RESOURCES] {id} {(amount >= 0 ? "+" : "")}{amount} => {_values[id]} {(string.IsNullOrEmpty(reason) ? "" : $"({reason})")}");
+        }
+
+        public bool CanAfford(ResourceId id, int cost) => Get(id) >= cost;
+
+        public bool TrySpend(ResourceId id, int cost, string reason = null)
+        {
+            if (!CanAfford(id, cost)) return false;
+            _values[id] -= cost;
+            Debug.Log($"[RESOURCES] Spend {id} -{cost} => {_values[id]} {(string.IsNullOrEmpty(reason) ? "" : $"({reason})")}");
+            return true;
+        }
+
+        // 取 Config：以反射方式避免硬相依（最小化風險）
+        private static dynamic GetConfig()
+        {
+            var provType = System.Type.GetType("DeepAbyssHive.Core.Config.GameConfigProvider, Assembly-CSharp");
+            var cfgProp = provType?.GetProperty("Config", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            return cfgProp?.GetValue(null, null);
+        }
+    }
+}
+--- C# END ---
+
+2) **ADD** 檔案：`Assets/DeepAbyssHive/Core/Config/GameConfigSO.Economy.cs`
+--- C# START ---
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Config
+{
+    /// <summary>
+    /// 將經濟相關參數外掛到 GameConfig（partial），避免動到原檔。
+    /// </summary>
+    public sealed partial class GameConfigSO : ScriptableObject
+    {
+        [Header("Economy / Resources")]
+        [Tooltip("是否啟用資源系統（MVP 核心）。")]
+        public bool resourcesEnabled = true;
+
+        [Tooltip("初始 Biomass。")]
+        public int startBiomass = 200;
+
+        [Tooltip("初始 Energy。")]
+        public int startEnergy = 0;
+
+        [Tooltip("Dev：快捷鍵增加 Biomass（僅本地開發驗證）。")]
+        public KeyCode debugAddBiomassKey = KeyCode.F5;
+
+        [Tooltip("Dev：每次增加 Biomass 的數量。")]
+        public int debugAddBiomassAmount = 100;
+    }
+}
+--- C# END ---
+
+註解
+- 不碰 `ServiceManager` 注冊，避免引入新依賴；採 `RuntimeInitializeOnLoadMethod` 自行附掛（依規範：新增功能盡量不動既有流程）。
+- Logger 使用 `Debug.Log` 並加分類前綴以降低 API 依賴度；若專案 Logger API 可用，後續 T04 HUD 一併收斂。
+
+驗收步驟（DoD）
+1. 進入 Play：Console 第一屏看到 `[CONFIG] resourcesEnabled=... startBiomass=... startEnergy=... debugAddBiomassKey=F5`。
+2. 按下 **F5**：Console 出現 `[RESOURCES] Biomass +100 => <新值> (DevHotkey)`；連按多次數值累進。
+3. 關閉 `resourcesEnabled`（在 GameConfig 資產）：按 F5 不再有任何資源變化列印。
+
+回滾指引
+- 刪除檔案：
+  - `Assets/DeepAbyssHive/Core/Economy/ResourceService.cs`
+  - `Assets/DeepAbyssHive/Core/Config/GameConfigSO.Economy.cs`

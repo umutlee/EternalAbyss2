@@ -674,6 +674,22 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
   - `Assets/QA/Smoke/Dev/HUD/HealthHUD.cs`: 在 Refresh 和 Close 按鈕點擊後添加焦點釋放
 - **驗收**: HealthHUD 可以重複拖曳，按鈕功能正常
 
+#### M4-T99g: 建築模型切換功能完整修復 ✅ 已完成 (2025-09-24)
+- **問題**: Tab/BackQuote 按鍵無法切換建築模型，用戶按鍵後看不到模型變化
+- **根本原因**: BuildingCatalogBinder 在 autoApplyOnStart=false 時未進行基本的目錄初始化，導致切換功能失效
+- **解決方案**: 分離「目錄初始化」與「自動進入放置模式」邏輯
+  - 新增 InitializeCatalogOnly() 方法：只初始化目錄，不進入放置模式
+  - 修改 Start() 方法：autoApplyOnStart=false 時調用 InitializeCatalogOnly()
+  - 修改 CycleNext/CyclePrev 方法：切換時總是調用 SyncPreviewToPlacer() 進入放置模式
+- **修改文件**:
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 核心邏輯修復
+- **驗收**: Play 後正常狀態，B 鍵或 HUD 按鈕觸發放置模式，Tab/BackQuote 切換建築模型正常
+- **建築放置流程確認**: 
+  - 正常狀態：無預覽，無放置模式
+  - B 鍵/HUD 按鈕：進入放置模式，顯示綠色預覽
+  - Tab/BackQuote：切換建築模型，自動進入放置模式
+  - 左鍵：放置建築，ESC：退出放置模式
+
 
 
 
