@@ -269,18 +269,11 @@ namespace DeepAbyssHive.Buildings.Runtime
 
         /// <summary>
         /// 自動啟動：在場景載入後自動創建 BuildingCatalogBinder
+        /// 注意：組件總是啟動以支援按鍵切換，但是否自動進入放置模式由 placementAutoStart 控制
         /// </summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoStartup()
         {
-            // 檢查全域開關
-            var config = GameConfigProvider.Current;
-            if (!config.placementAutoStart)
-            {
-                DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] placementAutoStart=false，跳過自動啟動");
-                return;
-            }
-            
             // 檢查是否已存在
             if (FindObjectOfType<BuildingCatalogBinder>() != null)
             {
@@ -288,14 +281,18 @@ namespace DeepAbyssHive.Buildings.Runtime
                 return;
             }
             
-            // 創建新的 GameObject 並掛載組件
+            // 創建新的 GameObject 並掛載組件（總是創建以支援按鍵切換）
             var go = new GameObject("BuildingCatalogBinder");
-            go.AddComponent<BuildingCatalogBinder>();
+            var binder = go.AddComponent<BuildingCatalogBinder>();
+            
+            // 根據 placementAutoStart 設置是否自動進入放置模式
+            var config = GameConfigProvider.Current;
+            binder.autoApplyOnStart = config.placementAutoStart;
             
             // 設為 DontDestroyOnLoad 以便跨場景使用
             DontDestroyOnLoad(go);
             
-            DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] 自動啟動完成");
+            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 自動啟動完成，autoApplyOnStart={binder.autoApplyOnStart}");
         }
 
         /// <summary>

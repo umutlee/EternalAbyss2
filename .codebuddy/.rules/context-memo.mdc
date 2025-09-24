@@ -656,6 +656,24 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
   - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 新增 autoApplyOnStart 欄位，修改 AutoStartup() 和 Start() 方法加入安全檢查
 - **驗收**: 預設情況下進入遊戲不會自動觸發建築放置模式，需手動啟用相關開關
 
+#### M4-T99e: 建築模型切換功能修復 ✅ 已完成 (2025-09-24)
+- **問題**: M4-T99d 的修復過度限制了 BuildingCatalogBinder 的啟動，導致 Tab/BackQuote 按鍵無法切換建築模型
+- **根本原因**: AutoStartup() 方法被 placementAutoStart=false 完全阻止組件創建，Tab/BackQuote 按鍵處理失效
+- **解決方案**: 分離「組件啟動」和「自動進入放置模式」邏輯
+  - **組件總是啟動**: 移除 placementAutoStart 檢查阻止組件創建
+  - **放置模式可控**: 根據 placementAutoStart 設置 binder.autoApplyOnStart 屬性
+- **修改文件**:
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 修改 AutoStartup() 方法邏輯
+- **驗收**: Tab/BackQuote 按鍵能正確切換建築模型，同時保持自動放置模式的可控性
+
+#### M4-T99f: HealthHUD 拖曳功能修復 ✅ 已完成 (2025-09-24)
+- **問題**: HealthHUD 只能拖曳一次，其他 HUD 正常
+- **根本原因**: HealthHUD 包含互動按鈕 (Refresh/Close)，按鈕點擊後保持焦點，干擾後續拖曳
+- **解決方案**: 在按鈕點擊後調用 GUI.FocusControl(null) 釋放焦點
+- **修改文件**:
+  - `Assets/QA/Smoke/Dev/HUD/HealthHUD.cs`: 在 Refresh 和 Close 按鈕點擊後添加焦點釋放
+- **驗收**: HealthHUD 可以重複拖曳，按鈕功能正常
+
 
 
 
