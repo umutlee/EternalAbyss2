@@ -40,21 +40,18 @@ namespace DeepAbyssHive.Buildings.Runtime
             LoadCatalogFromConfig();
             InjectToBuildingPlacer();
             
-            // 檢查是否應該自動應用
-            if (!autoApplyOnStart)
+            if (_catalog != null && _catalog.Count > 0)
             {
-                DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] autoApplyOnStart=false，不自動進入放置模式");
-                if (_catalog != null && _catalog.Count > 0)
+                // 只有在 autoApplyOnStart=true 時才自動進入放置模式
+                if (autoApplyOnStart)
+                {
+                    SyncPreviewToPlacer();
+                    DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}（自動啟動）");
+                }
+                else
                 {
                     DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}（待手動啟動）");
                 }
-                return;
-            }
-            
-            if (_catalog != null && _catalog.Count > 0)
-            {
-                SyncPreviewToPlacer();
-                DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}");
             }
             else
             {
