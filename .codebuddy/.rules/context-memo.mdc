@@ -642,10 +642,90 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 ✅ **單位貼地系統**: 預算化貼地、走失保險、Foot Offset 自動偵測  
 ✅ **標準化工具包**: Editor 菜單統一、資產路徑規範、配置管理工具  
 ✅ **配置系統強化**: 四合一配置管理工具，統一日誌和錯誤處理  
+✅ **建築放置自動啟動殺死開關**: 雙重安全機制防止進入遊戲自動觸發放置模式 (M4-T99d) ✅ 已完成 (2025-09-24)
 ⏳ **待完成**: Units SMOKE 測試系統 (M4-T07)
 
+#### M4-T99d: 建築放置自動啟動殺死開關 ✅ 已完成 (2025-09-24)
+- **問題**: 進入遊戲時 BuildingCatalogBinder 自動啟動並觸發建築放置模式
+- **根本原因**: RuntimeInitializeOnLoadMethod 自動創建組件，Start() 方法無條件調用 SyncPreviewToPlacer()
+- **解決方案**: 雙重安全開關機制
+  - **全域開關**: GameConfigSO.placementAutoStart (預設 false)
+  - **實例開關**: BuildingCatalogBinder.autoApplyOnStart (預設 false)
+- **修改文件**:
+  - `Assets/DeepAbyssHive/Core/Config/GameConfigSO.cs`: 新增 placementAutoStart 欄位與日誌輸出
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 新增 autoApplyOnStart 欄位，修改 AutoStartup() 和 Start() 方法加入安全檢查
+- **驗收**: 預設情況下進入遊戲不會自動觸發建築放置模式，需手動啟用相關開關
+
+#### M4-T99e: 建築模型切換功能修復 ✅ 已完成 (2025-09-24)
+- **問題**: M4-T99d 的修復過度限制了 BuildingCatalogBinder 的啟動，導致 Tab/BackQuote 按鍵無法切換建築模型
+- **根本原因**: AutoStartup() 方法被 placementAutoStart=false 完全阻止組件創建，Tab/BackQuote 按鍵處理失效
+- **解決方案**: 分離「組件啟動」和「自動進入放置模式」邏輯
+  - **組件總是啟動**: 移除 placementAutoStart 檢查阻止組件創建
+  - **放置模式可控**: 根據 placementAutoStart 設置 binder.autoApplyOnStart 屬性
+- **修改文件**:
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 修改 AutoStartup() 方法邏輯
+- **驗收**: Tab/BackQuote 按鍵能正確切換建築模型，同時保持自動放置模式的可控性
+
+#### M4-T99f: HealthHUD 拖曳功能修復 ✅ 已完成 (2025-09-24)
+- **問題**: HealthHUD 只能拖曳一次，其他 HUD 正常
+- **根本原因**: HealthHUD 包含互動按鈕 (Refresh/Close)，按鈕點擊後保持焦點，干擾後續拖曳
+- **解決方案**: 在按鈕點擊後調用 GUI.FocusControl(null) 釋放焦點
+- **修改文件**:
+  - `Assets/QA/Smoke/Dev/HUD/HealthHUD.cs`: 在 Refresh 和 Close 按鈕點擊後添加焦點釋放
+- **驗收**: HealthHUD 可以重複拖曳，按鈕功能正常
+
+#### M4-T99g: 建築模型切換功能完整修復 ✅ 已完成 (2025-09-24)
+- **問題**: Tab/BackQuote 按鍵無法切換建築模型，用戶按鍵後看不到模型變化
+- **根本原因**: BuildingCatalogBinder 在 autoApplyOnStart=false 時未進行基本的目錄初始化，導致切換功能失效
+- **解決方案**: 分離「目錄初始化」與「自動進入放置模式」邏輯
+  - 新增 InitializeCatalogOnly() 方法：只初始化目錄，不進入放置模式
+  - 修改 Start() 方法：autoApplyOnStart=false 時調用 InitializeCatalogOnly()
+  - 修改 CycleNext/CyclePrev 方法：切換時總是調用 SyncPreviewToPlacer() 進入放置模式
+- **修改文件**:
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingCatalogBinder.cs`: 核心邏輯修復
+- **驗收**: Play 後正常狀態，B 鍵或 HUD 按鈕觸發放置模式，Tab/BackQuote 切換建築模型正常
+- **建築放置流程確認**: 
+  - 正常狀態：無預覽，無放置模式
+  - B 鍵/HUD 按鈕：進入放置模式，顯示綠色預覽
+  - Tab/BackQuote：切換建築模型，自動進入放置模式
+  - 左鍵：放置建築，ESC：退出放置模式
 
 
+## M5 階段：經濟系統與建築成本檢查 (2025-09-25 開始)
+
+### 目標與原則
+- **目標**: 實現建築放置成本檢查系統，整合資源管理與 Toast 通知
+- **原則**: 最小侵入修改，完整整合現有建築放置系統
+- **重點**: 成本驗證、Toast 通知、Smart Console 日誌、配置化設計
+
+#### M5-T02: 建築放置成本檢查系統 ✅ 已完成 (2025-09-25)
+- **BuildingCostTag.cs**: 建築成本配置組件，支援多種資源類型成本定義
+- **HUDToastRunner.cs**: Toast 通知系統，顯示資源不足等成本相關訊息
+- **ResourceServiceAdapter.cs**: 資源服務適配器，橋接 ResourceService API 差異
+- **ResourceType.cs**: 資源類型枚舉 (Energy, Materials, Credits, Biomass, Research)
+- **GameConfigSO.Economy.cs**: 經濟配置擴展，包含成本檢查開關與 Toast 設定
+- **PlacementValidator 整合**: 在現有驗證流程中加入成本檢查邏輯
+- **BuildingPlacer 整合**: 放置成功後自動扣除資源，失敗時顯示 Toast 通知
+- **Smart Console 整合**: 所有成本相關日誌走 ECONOMY/PLACEMENT 分類
+- **M5T02CostCheckTest.cs**: 成本檢查功能測試腳本，驗證完整流程
+- **GameConfigBootLogger 擴展**: 啟動時輸出經濟配置參數快照
+- **驗收**: 建築放置時正確檢查成本、扣除資源、顯示 Toast、記錄日誌
+
+### M5-T02 核心特性
+- **成本驗證**: 放置前檢查資源是否足夠，不足時阻止放置並顯示 Toast
+- **資源扣除**: 放置成功後自動扣除對應資源
+- **Toast 通知**: 資源不足時顯示紅色 Toast，包含具體缺少的資源類型和數量
+- **Smart Console**: 所有成本操作記錄到 Smart Console，支援分類過濾
+- **配置化**: 通過 GameConfig 控制成本檢查開關、Toast 顯示、日誌記錄
+- **API 適配**: 通過 ResourceServiceAdapter 適配現有 ResourceService API
+- **測試完備**: 包含完整的測試腳本驗證成本檢查功能
+
+### M5-T02 技術實現
+- **委派系統**: 使用 PlacementValidator 委派接口整合成本檢查
+- **錯誤碼擴展**: 新增 E_INSUFFICIENT_RESOURCES 錯誤碼
+- **UI 整合**: Toast 系統與現有 HUD 系統協調顯示
+- **性能優化**: 成本檢查僅在需要時執行，避免不必要的計算
+- **向後兼容**: 不影響現有建築放置流程，可通過配置開關控制
 
 ---
 ## 📌 附錄：2025-09-11 更新（M4 PathJobScheduler 診斷補丁完成）

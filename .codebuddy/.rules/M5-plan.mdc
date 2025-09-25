@@ -1,0 +1,79 @@
+
+
+# M5 詳細計劃（Resources & Gameplay Extensions）
+
+> 目標：在不打亂既有架構、嚴守「最小改動（MDC）」、「全部可調外放到 GameConfig、啟動一行 Log」的前提下，完成基礎經濟系統與後續玩法擴展。每一個 Task 僅提交一個 MDC。
+
+---
+
+## 總覽時間線（建議順序）
+
+- **M5-T01** Economy Bootstrap（本次提交的首個 MDC）  
+  建立核心資源服務（不與 Unity Resources 名稱衝突）、GameConfig 外放啟用/起始值/熱鍵、啟動一行 Log、Dev 快捷鍵驗證。
+- **M5-T02** 建築成本扣除／放置前檢查  
+  `BuildingPlacer` 進入放置與放置完成前：檢查 `ResourceService.CanAfford()`；不足則禁止放置並 HUD 給出提示；成功放置時 `TrySpend()`。
+- **M5-T03** 生產來源（Tick 產出）  
+  建築／菌毯覆蓋提供被動產出：以 Component `ResourceProducer`（rate/interval）掛在 Prefab 上，統一由 `ResourceService` 驅動。
+- **M5-T04** Resource HUD（UGUI）  
+  新增 `GameHUD/ResourceBar`：圖示＋數值；顏色顯示增減；可拖拽且位置持久化（沿用 DraggablePersistRect），支援 Solo/Toggle 類別顯示。
+- **M5-T05** 菌毯生命週期（擴張/收縮/淨化）  
+  將 Creep 覆蓋面積／權重接到 `ResourceService`（如每 N 單位面積產出/維護耗損），GameConfig 可開關與倍率。
+- **M5-T06** 建築升級（Level/Cost/Effect）  
+  新增 `UpgradeableBuilding`：等級表（ScriptableObject），升級消耗與效果外放；HUD 升級按鈕與可負擔狀態；與 T02/T03 互通。
+- **M5-T07** 單位生產（Hatchery/Spawner）  
+  生產佇列、成本扣除、完成入隊；批次派遣沿用現有單位系統；GameConfig 控制批次與間隔。
+- **M5-T08** LOD/性能（遲滯/閾值/指標）  
+  將 Terrain/Units 的 LOD 閾值外放並加 Health 指標；驗收 200 單位穩定 60 FPS（目標機）。
+- **M5-T09** 存讀與資產驗證（Economy 部分）  
+  Resource 值、Producer 狀態納入 Save/Load；資產檢查（Producer 未設 interval/rate 報黃）。
+- **M5-T10（可選）** 同步基礎（多人）  
+  對 `ResourceService`、放置指令、升級指令做最小可同步雛形（Command/Event 設計）。
+
+---
+
+## 每個 Task 的 DoD（摘錄）
+
+**T01**  
+- 進 Play：看到 `[CONFIG] resourcesEnabled=... startBiomass=... startEnergy=... economyTickInterval=... debugAddBiomassKey=F5`。  
+- 按 F5：Console `[RESOURCES] Biomass +100 => <新值>`。
+
+**T02**  
+- 放置前如果資源不足：放置預覽變紅且禁止放置；Console 一行 `[PLACEMENT] Not enough Biomass: need X, have Y`。  
+- 足夠時放置成功並扣款；刪除建築不退款（MVP）。
+
+**T03**  
+- 在 GameConfig 設定一棟 Producer（或 Prefab 上 `ResourceProducer`），運行 30s 後數值累進；關閉開關時不再增長。
+
+**T04**  
+- 資源列顯示當前值並可拖拽；重啟記住位置；值變化時有 +/- 動畫或顏色提示。
+
+**T05**  
+- 開啟 `creepEconomyEnabled`：覆蓋面積變化能反映在資源淨變化上；關閉則不影響。
+
+…（略，完整內容保留在每個 MDC 內）
+
+---
+
+## 分支命名
+
+- `feature/m5-t01-economy-bootstrap`
+- `feature/m5-t02-placement-cost-check`
+- `feature/m5-t03-resource-producer`
+- `feature/m5-t04-resource-hud`
+- `feature/m5-t05-creep-lifecycle-economy`
+- `feature/m5-t06-building-upgrades`
+- `feature/m5-t07-unit-production`
+- `feature/m5-t08-lod-perf`
+- `feature/m5-t09-save-validate`
+- `feature/m5-t10-net-mvp`
+
+---
+
+## 風險與緩解
+
+- **命名衝突**：避免使用 `Resources` 命名空間；統一在 `DeepAbyssHive.Core.Economy`。  
+- **依賴注入**：不改 `ServiceManager` 初始化；T01 採獨立 `Ensure()` 附掛 `DontDestroyOnLoad`，減少耦合。  
+- **改動面控制**：每一個 MDC <= 3 檔案；優先新增、少改既有檔。  
+- **可觀測性**：所有新參數外放 GameConfig 並在啟動列印；必要時提供 Dev Hotkey 與 HUD。
+
+

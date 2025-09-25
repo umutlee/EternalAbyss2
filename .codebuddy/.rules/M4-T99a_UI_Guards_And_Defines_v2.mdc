@@ -1,0 +1,46 @@
+M4-T99a_UI_Guards_And_Defines_v2.mdc
+======================================
+
+(同內容備援版本；若先前鏈接無法下載，請使用本檔案。)
+
+Header
+- 目的：為「開發用 HUD／Smart Console」加總開關與守門，避免與日後正式 UGUI 衝突；出包可一鍵關閉。
+- 風險：低（新增 1 檔、修改 ≤2 檔）；不改核心流程、不搬家。
+- 影響面：GameConfig 新增 devHudEnabled/smartConsoleEnabled；各 Dev HUD/Smart Console 在 Awake/Start 檢查開關。
+
+Diff / Patch（節選）
+1) ADD：Assets/DeepAbyssHive/Core/Config/GameConfigSO.UIFlags.cs
+--- C# START ---
+using UnityEngine;
+namespace DeepAbyssHive.Core.Config
+{
+    public sealed partial class GameConfigSO : ScriptableObject
+    {
+        [Header("UI / Dev Tools")] public bool devHudEnabled = true;
+        public bool smartConsoleEnabled = true;
+    }
+}
+--- C# END ---
+
+2) MODIFY：Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs
+--- C# PATCH ---
+private static void LogConfigOnLoad(GameConfigSO cfg)
+{
+    UnityEngine.Debug.Log($"[CONFIG] devHudEnabled={cfg.devHudEnabled} smartConsoleEnabled={cfg.smartConsoleEnabled}");
+}
+--- C# END PATCH ---
+
+3) MODIFY：任何 Dev HUD / Smart Console Awake/Start
+--- C# PATCH ---
+using DeepAbyssHive.Core.Config;
+private void Awake()
+{
+    var cfg = GameConfigProvider.Config;
+    if (cfg != null && (/*HUD*/ cfg.devHudEnabled == false /*或 Console*/ || cfg.smartConsoleEnabled == false))
+    { gameObject.SetActive(false); return; }
+}
+--- C# END PATCH ---
+
+附錄：Scripting Define（可選）
+- Player > Scripting Define Symbols：DEV_HUD / DEV_CONSOLE
+- 以 #if DEV_HUD / #endif 包住 Dev HUD 腳本即可在正式包排除。

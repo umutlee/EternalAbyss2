@@ -12,7 +12,8 @@ namespace DeepAbyssHive.Common.Placement
         E_PLACE_COLLISION = 1,
         E_OUT_OF_BOUNDS = 2,
         E_REQUIRE_CREEP = 3,
-        E_INVALID_TYPE = 4
+        E_INVALID_TYPE = 4,
+        E_INSUFFICIENT_RESOURCES = 5
     }
 
     /// <summary>
@@ -50,5 +51,6 @@ namespace DeepAbyssHive.Common.Placement
         public static Result<Bounds> OutOfBounds(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_OUT_OF_BOUNDS, msg);
         public static Result<Bounds> RequireCreep(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_REQUIRE_CREEP, msg);
         public static Result<Bounds> InvalidType(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_INVALID_TYPE, msg);
+        public static Result<Bounds> InsufficientResources(string msg = null) => Result<Bounds>.Fail(PlaceResultCode.E_INSUFFICIENT_RESOURCES, msg);
     }
 }

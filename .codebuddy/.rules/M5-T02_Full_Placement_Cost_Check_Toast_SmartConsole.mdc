@@ -1,0 +1,286 @@
+M5-T02_Full_Placement_Cost_Check_Toast_SmartConsole.mdc
+===========================================================
+
+Header
+- 目的：在建築放置前做資源檢查（不足阻止、足夠扣款），並提供畫面提示（Toast）+ Smart Console 分類化日誌。
+- 類型：MDC（Minimal Diff Change）。每一步盡量少檔案、少行數，不搬家。
+- 風險：低。新增 2 檔、修改 2 檔（或 3 檔，視 Logger 檔名而定）。
+- 影響面：放置流程（成本檢查/扣款）、UI 提示（IMGUI Toast）、啟動列印（Config）。
+
+Prerequisites
+- 已存在 GameConfigProvider 並在啟動時輸出設定。
+- 放置流程已有入口（例如 BuildingPlacerSelectionBridge 的 TryPlace/ConfirmPlacement/PerformPlace）。
+- 若專案 Logger（Smart Console 包裝）不可用，本補丁會自動 fallback 到 Debug.Log（保證不編譯炸裂）。
+
+------------------------------------------------------------------------
+
+Diff / Patch
+------------
+
+1) ADD 檔案：`Assets/DeepAbyssHive/Core/Economy/BuildingCostTag.cs`
+-------------------------------------------------------------------
+(掛在建築 Prefab 根物件；MVP 僅 Biomass / Energy 兩種成本)
+--- C# START ---
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Economy
+{
+    /// <summary>
+    /// 最小成本標記：掛在「建築 Prefab 根」上即可。
+    /// 單位：整數；MVP 僅 Biomass / Energy 兩項。
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class BuildingCostTag : MonoBehaviour
+    {
+        [Min(0)] public int biomassCost = 0;
+        [Min(0)] public int energyCost = 0;
+    }
+}
+--- C# END ---
+
+
+2) ADD 檔案（partial）：`Assets/DeepAbyssHive/Core/Config/GameConfigSO.Economy.Placement.cs`
+-----------------------------------------------------------------------------------------------
+(外掛到 GameConfig；預設啟用成本檢查與 Toast 提示)
+--- C# START ---
+using UnityEngine;
+
+namespace DeepAbyssHive.Core.Config
+{
+    /// <summary>
+    /// 將「放置成本檢查/提示」外掛到 GameConfig（避免動原檔）。
+    /// </summary>
+    public sealed partial class GameConfigSO : ScriptableObject
+    {
+        [Header("Economy / Placement Cost")]
+        [Tooltip("是否啟用建築放置的資源檢查與扣款（MVP 預設開啟）。")]
+        public bool placementCostEnabled = true;
+
+        [Tooltip("不足時在畫面顯示短暫提示（Toast）。")]
+        public bool placementCostToastEnabled = true;
+
+        [Tooltip("Toast 存活秒數。")]
+        [Min(0.25f)] public float placementCostToastSeconds = 2f;
+    }
+}
+--- C# END ---
+
+
+3) MODIFY：`Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs`
+--------------------------------------------------------------------
+(啟動列印一行，便於驗收與回歸)
+--- C# PATCH ---
+private static void LogConfigOnLoad(GameConfigSO cfg)
+{
+    // ...既有列印...
+    // 新增：
+    UnityEngine.Debug.Log($"[CONFIG] placementCostEnabled={cfg.placementCostEnabled} placementCostToast={cfg.placementCostToastEnabled} toastSec={cfg.placementCostToastSeconds}");
+}
+--- C# END PATCH ---
+
+
+4) ADD 檔案：`Assets/DeepAbyssHive/UI/HUD/HUDToastRunner.cs`
+------------------------------------------------------------
+(極小依賴、無需 Prefab；IMGUI 漂浮訊息，位置會記憶，可與其他 HUD 共存)
+--- C# START ---
+using System.Collections.Generic;
+using UnityEngine;
+using DeepAbyssHive.Core.Config;
+
+namespace DeepAbyssHive.UI.HUD
+{
+    /// <summary>
+    /// 簡易 Toast HUD（IMGUI）。無需 Prefab，自行掛載一次。
+    /// 透過 HUDToastRunner.Show("msg", seconds) 顯示短訊息。
+    /// 位置記憶（PlayerPrefs），避免擾動現有 UGUI HUD。
+    /// </summary>
+    [DefaultExecutionOrder(9999)]
+    public sealed class HUDToastRunner : MonoBehaviour
+    {
+        private struct Item { public string msg; public float until; }
+        private static HUDToastRunner _inst;
+        private readonly Queue<Item> _queue = new Queue<Item>();
+        private Rect _rect = new Rect(20, Screen.height - 140, 420, 40);
+        private GUIStyle _style;
+        private string _ppKey = "HUDToastRunner.Rect";
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Ensure()
+        {
+            if (_inst != null) return;
+            var go = new GameObject("HUDToastRunner"); DontDestroyOnLoad(go);
+            _inst = go.AddComponent<HUDToastRunner>();
+        }
+
+        public static void Show(string msg, float seconds = 2f)
+        {
+            if (_inst == null) Ensure();
+            if (_inst == null) return;
+            _inst._queue.Enqueue(new Item { msg = msg, until = Time.realtimeSinceStartup + Mathf.Max(0.25f, seconds) });
+        }
+
+        private void Awake()
+        {
+            // 讀取記憶位置
+            if (PlayerPrefs.HasKey(_ppKey))
+            {
+                var s = PlayerPrefs.GetString(_ppKey);
+                var p = s.Split(',');
+                if (p.Length == 4 &&
+                    float.TryParse(p[0], out var x) &&
+                    float.TryParse(p[1], out var y) &&
+                    float.TryParse(p[2], out var w) &&
+                    float.TryParse(p[3], out var h))
+                {
+                    _rect = new Rect(x,y,w,h);
+                }
+            }
+            _style = new GUIStyle(GUI.skin.box) { fontSize = 14, wordWrap = true, alignment = TextAnchor.MiddleLeft };
+        }
+
+        private void OnGUI()
+        {
+            // 僅在有訊息時繪製（避免干擾其他 IMGUI）
+            if (_queue.Count == 0) return;
+
+            // 取 Config 決定是否顯示
+            var cfg = GameConfigProvider.Config;
+            if (cfg != null && !cfg.placementCostToastEnabled) return;
+
+            // 清理過期
+            while (_queue.Count > 0 && _queue.Peek().until < Time.realtimeSinceStartup) _queue.Dequeue();
+            if (_queue.Count == 0) return;
+
+            // 合併顯示（取最舊一則）
+            var item = _queue.Peek();
+            GUI.DragWindow(new Rect(_rect.x, _rect.y, _rect.width, 20)); // 允許拖動上緣
+            _rect = GUI.Window(987654, _rect, id => {
+                GUILayout.Label(item.msg, _style, GUILayout.Height(30));
+                GUI.DragWindow(new Rect(0,0,_rect.width,20));
+            }, "Info");
+
+            // 記憶位置
+            PlayerPrefs.SetString(_ppKey, string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0},{1},{2},{3}", _rect.x, _rect.y, _rect.width, _rect.height));
+        }
+    }
+}
+--- C# END ---
+
+
+5) MODIFY（最小插點）：`Assets/DeepAbyssHive/Buildings/Runtime/BuildingPlacerSelectionBridge.cs`
+-------------------------------------------------------------------------------------------------
+(在「實際生成前」插入檢查與扣款；不足時彈 Toast 與分級日誌)
+--- C# PATCH ---
+using DeepAbyssHive.Core.Economy; // 新增
+using DeepAbyssHive.Core.Config;   // 新增
+using DeepAbyssHive.UI.HUD;        // 新增（Toast）
+using System;                      // 反射用（若需）
+
+// … 類內新增：
+private bool CheckAndSpendCostIfNeeded(GameObject prefab)
+{
+    var cfg = GameConfigProvider.Config;
+    if (cfg != null && !cfg.placementCostEnabled) return true;
+
+    var tag = prefab ? prefab.GetComponent<BuildingCostTag>() : null;
+    int biomCost = tag ? Mathf.Max(0, tag.biomassCost) : 0;
+    int enerCost = tag ? Mathf.Max(0, tag.energyCost)  : 0;
+    if (biomCost == 0 && enerCost == 0) return true;
+
+    var svc = ResourceService.Instance;
+    if (svc == null)
+    {
+        UnityEngine.Debug.LogWarning("[PLACEMENT] ResourceService not ready; skip cost check.");
+        return true;
+    }
+
+    bool ok = true;
+    if (!svc.CanAfford(ResourceId.Biomass, biomCost)) ok = false;
+    if (!svc.CanAfford(ResourceId.Energy,  enerCost)) ok = false;
+    if (!ok)
+    {
+        string msg = $"Not enough resources: Biomass need {biomCost}, have {svc.Get(ResourceId.Biomass)}; Energy need {enerCost}, have {svc.Get(ResourceId.Energy)}";
+        // Smart Console（若存在）
+        TrySmartConsoleWarn("PLACEMENT", msg);
+        // HUD Toast
+        float sec = cfg ? Mathf.Max(0.25f, cfg.placementCostToastSeconds) : 2f;
+        HUDToastRunner.Show(msg, sec);
+        return false;
+    }
+
+    // 先扣款（MVP：若後續生成失敗暫不退款；可在失敗分支補回）
+    if (biomCost > 0) svc.TrySpend(ResourceId.Biomass, biomCost, reason: "PlaceBuilding");
+    if (enerCost > 0) svc.TrySpend(ResourceId.Energy,  enerCost,  reason: "PlaceBuilding");
+    return true;
+}
+
+// （在實際放置入口前呼叫）例如：
+private bool ConfirmPlacement(GameObject prefab /*, 其他參數... */)
+{
+    if (!CheckAndSpendCostIfNeeded(prefab)) return false;
+    // ... 原本放置流程
+    return true;
+}
+
+// 反射呼叫 Smart Console（若存在 DeepAbyssHive.Core.Logging.DAHLog 與 LogCategory）
+private static void TrySmartConsoleWarn(string categoryName, string message)
+{
+    try
+    {
+        var asm = typeof(UnityEngine.Debug).Assembly;
+        var logAsm = AppDomain.CurrentDomain.GetAssemblies();
+        Type logCat = null;
+        Type dahLog = null;
+        foreach (var a in logAsm)
+        {
+            logCat = a.GetType("DeepAbyssHive.Core.Logging.LogCategory");
+            dahLog = a.GetType("DeepAbyssHive.Core.Logging.DAHLog");
+            if (logCat != null && dahLog != null) break;
+        }
+        if (logCat != null && dahLog != null)
+        {
+            var catField = logCat.GetField(categoryName) ?? logCat.GetField("PLACEMENT"); // 退而求其次
+            object cat = catField != null ? catField.GetValue(null) : null;
+            var warn = dahLog.GetMethod("Warn", new[] { logCat, typeof(string), typeof(UnityEngine.Object) });
+            if (warn != null && cat != null) { warn.Invoke(null, new object[] { cat, message, null }); return; }
+        }
+    }
+    catch { /* ignore */ }
+    UnityEngine.Debug.LogWarning($"[PLACEMENT] {message}");
+}
+--- C# END PATCH ---
+
+
+說明與設計取捨
+--------------
+- **Prefab 成本來源**：採 `BuildingCostTag` 掛在 Prefab 根，最直觀、改動最小；後續若有 `BuildingCatalogSO`，可在 T02x 做同步匯入。
+- **失敗不退款**：MVP 先滿足核心流程；若擔心玩家體驗，後續在實際生成失敗路徑補回。
+- **Smart Console 反射**：避免硬相依導致編譯炸裂；若專案不存在該 Logger，則降級到 `Debug.LogWarning`。
+- **Toast**：採 IMGUI 小元件，不建新 Canvas/Prefab，不干擾既有 UGUI HUD；位置記憶在 `PlayerPrefs`，可手動清除重置。
+
+驗收步驟（DoD）
+---------------
+1. 在任一建築 Prefab（根物件）掛 `BuildingCostTag`：`biomassCost=150, energyCost=0`。
+2. 進 Play：啟動 Console 應看到 `[CONFIG] placementCostEnabled=True placementCostToast=True toastSec=2`。
+3. 初始 Biomass（例如 200）→ 按 B 進入放置：
+   - 可以放置一次，放後 Biomass 變 50（Console 有 `[RESOURCES] Spend Biomass -150 => 50 (PlaceBuilding)`）。
+4. 再次嘗試放置：
+   - 預覽應變紅/不落地（取決於你們現有預覽邏輯），
+   - Console 有 `[PLACEMENT] Not enough resources...`（或 Smart Console 分類訊息），
+   - 左下角跳出 Toast 提示約 2 秒。
+5. 關閉 `placementCostEnabled` 後再試：不再檢查/扣款，開發階段可自由放置。
+
+回滾指引
+--------
+- 刪除：
+  - `Assets/DeepAbyssHive/Core/Economy/BuildingCostTag.cs`
+  - `Assets/DeepAbyssHive/Core/Config/GameConfigSO.Economy.Placement.cs`
+  - `Assets/DeepAbyssHive/UI/HUD/HUDToastRunner.cs`
+- 還原：
+  - `Assets/DeepAbyssHive/Core/Config/GameConfigBootLogger.cs` 本次新增列印
+  - `Assets/DeepAbyssHive/Buildings/Runtime/BuildingPlacerSelectionBridge.cs` 本次插入函式與呼叫
+
+備註（與後續 T03/T04 的銜接）
+------------------------------
+- T03 可在生產建築上加 `ResourceProducer`（rate/interval）並由 `ResourceService` 統一驅動，與本次不衝突。
+- T04 若要做資源列 HUD（UGUI），可直接訂閱 `ResourceService` 的改變事件（或在本次先不訂閱，改為輪詢顯示）。

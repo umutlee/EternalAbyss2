@@ -146,19 +146,35 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         {
             if (!_visible) return;
             
-            _rect = HudDragUtil.DraggableWindow("HUD.Health", _rect, "Health HUD", () =>
-            {
-                GUILayout.Label($"FPS: {_fps}");
-                GUILayout.Label($"Memory (MB): {_mem}");
-                GUILayout.Label($"Units: {_units}  |  Buildings: {_buildings}");
-                var remain = Mathf.Max(0f, _nextAt - Time.realtimeSinceStartup);
-                GUILayout.Label($"Next update in: {remain:0.0}s");
+            _rect = GUI.Window(0x0EA001, _rect, DrawHealthWindow, "Health HUD");
+            
+            // 保存位置到 HudDragUtil（保持兼容性）
+            HudDragUtil.SaveRect("HUD.Health", _rect);
+        }
 
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Refresh")) RefreshStats();
-                if (GUILayout.Button("Close")) { _visible = false; }
-                GUILayout.EndHorizontal();
-            });
+        private void DrawHealthWindow(int windowId)
+        {
+            GUILayout.Label($"FPS: {_fps}");
+            GUILayout.Label($"Memory (MB): {_mem}");
+            GUILayout.Label($"Units: {_units}  |  Buildings: {_buildings}");
+            var remain = Mathf.Max(0f, _nextAt - Time.realtimeSinceStartup);
+            GUILayout.Label($"Next update in: {remain:0.0}s");
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Refresh")) 
+            {
+                RefreshStats();
+                GUI.FocusControl(null); // 釋放焦點，避免干擾拖曳
+            }
+            if (GUILayout.Button("Close")) 
+            { 
+                _visible = false; 
+                GUI.FocusControl(null); // 釋放焦點，避免干擾拖曳
+            }
+            GUILayout.EndHorizontal();
+            
+            // 啟用拖拽功能
+            GUI.DragWindow();
         }
 
         public static void Toggle()

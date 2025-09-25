@@ -25,6 +25,9 @@ namespace DeepAbyssHive.Buildings.Runtime
         [SerializeField] private int _currentIndex = 0;
         [SerializeField] private BuildingCatalogSO _catalog;
         
+        [Header("Auto-Start Control")]
+        [SerializeField] private bool autoApplyOnStart = false;
+        
         // 反射快取
         private Component _buildingPlacer;
         private FieldInfo _prefabToPlaceField;
@@ -39,8 +42,19 @@ namespace DeepAbyssHive.Buildings.Runtime
             
             if (_catalog != null && _catalog.Count > 0)
             {
-                SyncPreviewToPlacer();
-                DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}");
+                // 總是進行基本的目錄初始化，確保 Tab/BackQuote 切換功能正常
+                // 但只有在 autoApplyOnStart=true 時才自動進入放置模式
+                if (autoApplyOnStart)
+                {
+                    SyncPreviewToPlacer(); // 自動進入放置模式
+                    DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}（自動啟動）");
+                }
+                else
+                {
+                    // 進行基本初始化但不進入放置模式
+                    InitializeCatalogOnly();
+                    DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已載入目錄：{_catalog.Count} 個建築，當前索引：{_currentIndex}（待手動啟動）");
+                }
             }
             else
             {
@@ -79,6 +93,8 @@ namespace DeepAbyssHive.Buildings.Runtime
             if (_catalog == null || _catalog.Count == 0) return;
             
             _currentIndex = (_currentIndex + 1) % _catalog.Count;
+            
+            // 切換時總是同步預覽並進入放置模式
             SyncPreviewToPlacer();
             
             var currentEntry = _catalog.Get(_currentIndex);
@@ -93,6 +109,8 @@ namespace DeepAbyssHive.Buildings.Runtime
             if (_catalog == null || _catalog.Count == 0) return;
             
             _currentIndex = (_currentIndex - 1 + _catalog.Count) % _catalog.Count;
+            
+            // 切換時總是同步預覽並進入放置模式
             SyncPreviewToPlacer();
             
             var currentEntry = _catalog.Get(_currentIndex);
@@ -173,6 +191,24 @@ namespace DeepAbyssHive.Buildings.Runtime
             
             _isInjected = true;
             DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 已成功注入到 {placer.name} 的 BuildingPlacer 組件");
+        }
+
+        /// <summary>
+        /// 僅初始化目錄，不進入放置模式（用於 autoApplyOnStart=false 的情況）
+        /// </summary>
+        private void InitializeCatalogOnly()
+        {
+            if (!_isInjected) return;
+            
+            var currentBuilding = GetCurrentBuilding();
+            if (currentBuilding != null)
+            {
+                // 只設置 prefab 到 BuildingPlacer，但不進入放置模式
+                TryApplyPrefabToPlacer(currentBuilding, null, _currentIndex);
+                
+                // 不調用 TryEnterPlacingMode()，保持正常狀態
+                DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 目錄初始化完成，當前建築：{currentBuilding.name}");
+            }
         }
 
         /// <summary>
@@ -258,6 +294,7 @@ namespace DeepAbyssHive.Buildings.Runtime
 
         /// <summary>
         /// 自動啟動：在場景載入後自動創建 BuildingCatalogBinder
+        /// 注意：組件總是啟動以支援按鍵切換，但是否自動進入放置模式由 placementAutoStart 控制
         /// </summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoStartup()
@@ -269,14 +306,18 @@ namespace DeepAbyssHive.Buildings.Runtime
                 return;
             }
             
-            // 創建新的 GameObject 並掛載組件
+            // 創建新的 GameObject 並掛載組件（總是創建以支援按鍵切換）
             var go = new GameObject("BuildingCatalogBinder");
-            go.AddComponent<BuildingCatalogBinder>();
+            var binder = go.AddComponent<BuildingCatalogBinder>();
+            
+            // 根據 placementAutoStart 設置是否自動進入放置模式
+            var config = GameConfigProvider.Current;
+            binder.autoApplyOnStart = config.placementAutoStart;
             
             // 設為 DontDestroyOnLoad 以便跨場景使用
             DontDestroyOnLoad(go);
             
-            DAHLog.Info(LogCategory.SERVICE, "[BuildingCatalogBinder] 自動啟動完成");
+            DAHLog.Info(LogCategory.SERVICE, $"[BuildingCatalogBinder] 自動啟動完成，autoApplyOnStart={binder.autoApplyOnStart}");
         }
 
         /// <summary>
