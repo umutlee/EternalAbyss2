@@ -7,7 +7,7 @@ namespace DeepAbyssHive.Core.Config
     /// 放置/驗證規則的全域設定（從 Resources/Configs/GameConfig.asset 讀取）
     /// </summary>
     [CreateAssetMenu(fileName = "GameConfig", menuName = "DeepAbyssHive/Configs/Game Config")]
-    public class GameConfigSO : ScriptableObject
+    public partial class GameConfigSO : ScriptableObject
     {
         [Header("Placement Validation")]
         [Tooltip("啟用並聯校驗：Physics 與 SpatialIndex 皆須通過才允許放置")]
