@@ -3,6 +3,8 @@ using UnityEngine;
 using DeepAbyssHive.Core.Config;          // GameConfigProvider
 using DeepAbyssHive.Common.Placement;     // Result<>, PlaceResultCode, PlacementResults
 using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Core.Economy;         // ResourceServiceAdapter
+using DeepAbyssHive.Buildings.Components; // BuildingCostTag
 
 namespace DeepAbyssHive.Common.Placement
 {
@@ -19,24 +21,35 @@ namespace DeepAbyssHive.Common.Placement
         public static Func<Bounds, bool> RequireCreepPredicate;
         /// <summary>邊界檢查：true=超界（不可放）</summary>
         public static Func<Bounds, bool> OutOfBoundsPredicate;
+        /// <summary>建築成本檢查：傳入建築 Prefab，回傳是否可負擔</summary>
+        public static Func<GameObject, bool> BuildingCostPredicate;
 
         /// <summary>最後一次驗證結果（供 HUD/Debug）</summary>
         public static Result<Bounds> LastResult { get; private set; }
+        /// <summary>最後一次成本檢查的建築 Prefab（供成本檢查使用）</summary>
+        public static GameObject LastBuildingPrefab { get; private set; }
 
         public static bool HasSpatialIndex => SpatialIndexPredicate != null;
         public static bool HasRequireCreep => RequireCreepPredicate != null;
         public static bool HasOutOfBounds => OutOfBoundsPredicate != null;
+        public static bool HasBuildingCost => BuildingCostPredicate != null;
 
         // 舊版：僅 AABB，保持相容
         public static Result<Bounds> ValidateByConfig(Bounds rawBounds, LayerMask blockMask, float extraMargin = 0f)
         {
-            return ValidateByConfig(rawBounds.center, rawBounds.extents, Quaternion.identity, blockMask, extraMargin);
+            return ValidateByConfig(rawBounds.center, rawBounds.extents, Quaternion.identity, blockMask, extraMargin, null);
+        }
+
+        // 新版：支援成本檢查的重載
+        public static Result<Bounds> ValidateByConfig(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask, float extraMargin = 0f)
+        {
+            return ValidateByConfig(center, halfExtents, rotation, blockMask, extraMargin, null);
         }
 
         /// <summary>
-        /// 新版：支援旋轉的放置驗證（Physics.OverlapBox 使用 rotation）
+        /// 新版：支援旋轉和成本檢查的放置驗證（Physics.OverlapBox 使用 rotation）
         /// </summary>
-        public static Result<Bounds> ValidateByConfig(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask, float extraMargin = 0f)
+        public static Result<Bounds> ValidateByConfig(Vector3 center, Vector3 halfExtents, Quaternion rotation, LayerMask blockMask, float extraMargin = 0f, GameObject buildingPrefab = null)
         {
             var cfg = GameConfigProvider.Current;
             float margin = Mathf.Max(cfg.margin, extraMargin);
@@ -102,6 +115,36 @@ namespace DeepAbyssHive.Common.Placement
                 {
                     LastResult = PlacementResults.RequireCreep("[Placement] Require creep");
                     return LastResult;
+                }
+            }
+
+            // 5) 建築成本檢查（可選）
+            LastBuildingPrefab = buildingPrefab; // 記錄供其他系統使用
+            if (cfg.placementCostCheckEnabled && buildingPrefab != null)
+            {
+                if (BuildingCostPredicate != null)
+                {
+                    bool canAfford = BuildingCostPredicate(buildingPrefab);
+                    if (!canAfford)
+                    {
+                        LastResult = PlacementResults.Collision("[Placement] Insufficient resources");
+                        return LastResult;
+                    }
+                }
+                else
+                {
+                    // 使用內建的成本檢查邏輯
+                    string shortageInfo;
+                    bool canAfford = ResourceServiceAdapter.CanAffordBuilding(buildingPrefab, out shortageInfo);
+                    if (!canAfford)
+                    {
+                        if (cfg.placementCostVerboseLog)
+                        {
+                            DAHLog.Info(LogCategory.ECONOMY, $"[Placement] 資源不足: {shortageInfo}");
+                        }
+                        LastResult = PlacementResults.Collision($"[Placement] Insufficient resources: {shortageInfo}");
+                        return LastResult;
+                    }
                 }
             }
 

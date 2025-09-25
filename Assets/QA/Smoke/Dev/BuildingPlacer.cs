@@ -3,6 +3,9 @@ using System.Reflection;
 using DeepAbyssHive.Creep.Managers; // 若沒有這命名空間可刪掉這行
 using DeepAbyssHive.Common.Placement;
 using DeepAbyssHive.Core.Config;
+using DeepAbyssHive.Core.Economy;
+using DeepAbyssHive.Buildings.Components;
+using QA.Smoke.Dev.HUD;
 
 namespace DeepAbyssHive.Dev
 {
@@ -13,6 +16,7 @@ namespace DeepAbyssHive.Dev
         private Quaternion _lastPreviewRotation;
         private Bounds _lastPreviewBounds;
         private Result<Bounds> _lastPreviewResult;
+        
         [Header("Basics")]
         [SerializeField] private Camera sceneCamera;                 // 不填就用 Camera.main
         [SerializeField] private LayerMask groundMask;               // 指定「Ground」Layer
@@ -43,13 +47,16 @@ namespace DeepAbyssHive.Dev
         [SerializeField] private KeyCode cancelKeyAlt = KeyCode.C;
         [SerializeField] private float rotateStep = 90f;
 
-
         private GameObject previewInstance;
         private Material previewRuntimeMat;
         private Quaternion rotation = Quaternion.identity;
         private bool isPlacing;
         private Vector3 lastValidPos;
         private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
+        
+        // M5-T02: Cost checking components
+        private ResourceServiceAdapter _resourceAdapter;
+        private HUDToastRunner _toastRunner;
 
         void Awake()
         {
@@ -63,6 +70,16 @@ namespace DeepAbyssHive.Dev
                 mat.SetFloat("_Mode", 2); // Fade
                 mat.EnableKeyword("_ALPHABLEND_ON");
                 previewMaterial = mat;
+            }
+            
+            // M5-T02: Initialize cost checking components
+            _resourceAdapter = new ResourceServiceAdapter();
+            _toastRunner = FindObjectOfType<HUDToastRunner>();
+            if (_toastRunner == null)
+            {
+                var toastGO = new GameObject("HUDToastRunner");
+                _toastRunner = toastGO.AddComponent<HUDToastRunner>();
+                DontDestroyOnLoad(toastGO);
             }
         }
 
@@ -103,7 +120,7 @@ namespace DeepAbyssHive.Dev
                 var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
                 
                 // 預覽即時驗證（有向版；旋轉參與 OverlapBox）
-                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding);
+                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
 
                 // 記錄給 PlaceNow() 重用，避免再次計算造成微差
                 _lastPreviewCenter = worldBounds.center;
@@ -195,13 +212,27 @@ namespace DeepAbyssHive.Dev
                 var half = CalcHalfExtents();
                 // 與 Update() 預覽一致：驗證時將中心向下偏移 previewHeight，貼地檢查
                 worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
-                cached = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding);
+                cached = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
             }
 
             if (!cached.ok)
             {
                 Debug.Log($"[PLACE] blocked: {cached.code} {cached.message}");
+                
+                // M5-T02: Show toast notification for cost-related failures
+                if (cached.code == PlaceResultCode.E_INSUFFICIENT_RESOURCES && _toastRunner != null)
+                {
+                    // Extract resource info from message if available
+                    HUDToastRunner.ShowInsufficientResourcesToast("Energy", 0, 0);
+                }
                 return;
+            }
+
+            // M5-T02: Deduct resources after successful placement
+            var costTag = placePrefab.GetComponent<BuildingCostTag>();
+            if (costTag != null)
+            {
+                ResourceServiceAdapter.DeductResources(costTag.GetCosts());
             }
 
             // 實例化放置物（在 center/rotation 生成建築實例）
@@ -266,10 +297,6 @@ namespace DeepAbyssHive.Dev
             previewRuntimeMat = null;
         }
 
-
-
-
-
         private Bounds CalcWorldBounds(GameObject go, bool preferCollider)
         {
             var cols = go.GetComponentsInChildren<Collider>(true);
@@ -333,8 +360,6 @@ namespace DeepAbyssHive.Dev
             
             return bounds.extents;
         }
-
-        // （顏色邏輯改由 PlacementUiUtil 統一管理）
 
         // 將整棵樹設為指定層
         private static void SetLayerRecursively(GameObject root, int layer)

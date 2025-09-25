@@ -76,6 +76,16 @@ namespace DeepAbyssHive.Core.Config
         [Tooltip("健康監測輸出間隔（秒）。")]
         public float healthLogInterval = 10f;
 
+        [Header("Economy & Placement Cost")]
+        [Tooltip("是否啟用建築放置成本檢查")]
+        public bool placementCostCheckEnabled = true;
+        [Tooltip("資源不足時是否顯示 Toast 通知")]
+        public bool showResourceShortageToast = true;
+        [Tooltip("建築放置成功時是否顯示 Toast 通知")]
+        public bool showPlacementSuccessToast = true;
+        [Tooltip("成本檢查的詳細日誌輸出")]
+        public bool placementCostVerboseLog = false;
+
         // -------- Pathfinding / Budget --------
         [Header("Pathfinding / Budget")]
         [Tooltip("每幀最多啟動的算路任務數（<=0 表示使用預設值 8）。")]

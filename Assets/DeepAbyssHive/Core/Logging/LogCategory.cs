@@ -27,6 +27,7 @@ namespace DeepAbyssHive.Core.Logging
         TEST,           // 測試系統
         PERF,           // 性能監測
         BOOT,           // 啟動系統
-        COMMON          // 通用系統
+        COMMON,         // 通用系統
+        ECONOMY         // 經濟系統
     }
 }

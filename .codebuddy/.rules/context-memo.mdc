@@ -691,7 +691,41 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
   - 左鍵：放置建築，ESC：退出放置模式
 
 
+## M5 階段：經濟系統與建築成本檢查 (2025-09-25 開始)
 
+### 目標與原則
+- **目標**: 實現建築放置成本檢查系統，整合資源管理與 Toast 通知
+- **原則**: 最小侵入修改，完整整合現有建築放置系統
+- **重點**: 成本驗證、Toast 通知、Smart Console 日誌、配置化設計
+
+#### M5-T02: 建築放置成本檢查系統 ✅ 已完成 (2025-09-25)
+- **BuildingCostTag.cs**: 建築成本配置組件，支援多種資源類型成本定義
+- **HUDToastRunner.cs**: Toast 通知系統，顯示資源不足等成本相關訊息
+- **ResourceServiceAdapter.cs**: 資源服務適配器，橋接 ResourceService API 差異
+- **ResourceType.cs**: 資源類型枚舉 (Energy, Materials, Credits, Biomass, Research)
+- **GameConfigSO.Economy.cs**: 經濟配置擴展，包含成本檢查開關與 Toast 設定
+- **PlacementValidator 整合**: 在現有驗證流程中加入成本檢查邏輯
+- **BuildingPlacer 整合**: 放置成功後自動扣除資源，失敗時顯示 Toast 通知
+- **Smart Console 整合**: 所有成本相關日誌走 ECONOMY/PLACEMENT 分類
+- **M5T02CostCheckTest.cs**: 成本檢查功能測試腳本，驗證完整流程
+- **GameConfigBootLogger 擴展**: 啟動時輸出經濟配置參數快照
+- **驗收**: 建築放置時正確檢查成本、扣除資源、顯示 Toast、記錄日誌
+
+### M5-T02 核心特性
+- **成本驗證**: 放置前檢查資源是否足夠，不足時阻止放置並顯示 Toast
+- **資源扣除**: 放置成功後自動扣除對應資源
+- **Toast 通知**: 資源不足時顯示紅色 Toast，包含具體缺少的資源類型和數量
+- **Smart Console**: 所有成本操作記錄到 Smart Console，支援分類過濾
+- **配置化**: 通過 GameConfig 控制成本檢查開關、Toast 顯示、日誌記錄
+- **API 適配**: 通過 ResourceServiceAdapter 適配現有 ResourceService API
+- **測試完備**: 包含完整的測試腳本驗證成本檢查功能
+
+### M5-T02 技術實現
+- **委派系統**: 使用 PlacementValidator 委派接口整合成本檢查
+- **錯誤碼擴展**: 新增 E_INSUFFICIENT_RESOURCES 錯誤碼
+- **UI 整合**: Toast 系統與現有 HUD 系統協調顯示
+- **性能優化**: 成本檢查僅在需要時執行，避免不必要的計算
+- **向後兼容**: 不影響現有建築放置流程，可通過配置開關控制
 
 ---
 ## 📌 附錄：2025-09-11 更新（M4 PathJobScheduler 診斷補丁完成）

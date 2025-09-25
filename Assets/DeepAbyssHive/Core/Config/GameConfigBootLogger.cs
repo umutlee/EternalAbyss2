@@ -61,7 +61,9 @@ namespace DeepAbyssHive.Core.Config
                 $"rmbLock={Get(cfg, "rmbLock","rightMouseLock")}, " +
                 $"healthLoggingEnabled={Get(cfg, "healthLoggingEnabled")}, healthLogInterval={Get(cfg, "healthLogInterval")}, " +
                 $"unitBatchSize={Get(cfg, "unitBatchSize")}, unitBatchInterval={Get(cfg, "unitBatchInterval")}, " +
-                $"verboseLogs={Get(cfg, "verboseLogs")}";
+                $"verboseLogs={Get(cfg, "verboseLogs")}, " +
+                $"enableCostChecking={Get(cfg, "enableCostChecking")}, showToastOnInsufficientResources={Get(cfg, "showToastOnInsufficientResources")}, " +
+                $"logPlacementAttempts={Get(cfg, "logPlacementAttempts")}";
 
             DAHLog.Info(LogCategory.CONFIG, $"GameConfig snapshot → {line}");
         }
