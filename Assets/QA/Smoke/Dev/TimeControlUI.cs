@@ -2,6 +2,7 @@ using UnityEngine;
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Core.Interfaces;
 using DeepAbyssHive.Core.Services;
+using DeepAbyssHive.Core.Time;
 
 namespace DeepAbyssHive.QA.Smoke.Dev
 {
