@@ -22,6 +22,7 @@ namespace DeepAbyssHive.Dev
         private Material previewRuntimeMat;
         private bool isPlacing;
         private RaycastHit lastHit;
+        private Quaternion rotation = Quaternion.identity;
         
         // Cost checking components
         private HUDToastRunner _toastRunner;
@@ -55,28 +56,43 @@ namespace DeepAbyssHive.Dev
             if (!isPlacing || !placePrefab || !sceneCamera)
                 return;
 
+            // Get GameConfig once for the entire method
+            var cfg = GameConfigProvider.Current;
+            
+            // Handle rotation input from GameConfig
+            if (cfg != null)
+            {
+                if (cfg.buildingRotateLeftKey != KeyCode.None && Input.GetKeyDown(cfg.buildingRotateLeftKey))
+                {
+                    rotation *= Quaternion.Euler(0, -90f, 0);
+                }
+                if (cfg.buildingRotateRightKey != KeyCode.None && Input.GetKeyDown(cfg.buildingRotateRightKey))
+                {
+                    rotation *= Quaternion.Euler(0, 90f, 0);
+                }
+            }
+
             // Raycast to ground
             var ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hit, 5000f, groundMask))
             {
                 lastHit = hit;
                 
-                var cfg = GameConfigProvider.Current;
-                var center = SnapXZ(hit.point, cfg.snapSize);
+                var center = SnapXZ(hit.point, cfg?.snapSize ?? 0f);
                 
                 // Sample terrain height
                 var terrainHeight = SampleTerrainHeight(center);
                 center.y = terrainHeight + previewHeight;
                 
-                // Validate placement
+                // Validate placement with rotation
                 var half = CalcHalfExtents();
                 var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
                 int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
-                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, Quaternion.identity, includeMask, blockPadding, placePrefab);
+                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
                 
-                // Update preview
+                // Update preview with rotation
                 EnsurePreview();
-                previewInstance.transform.position = center;
+                previewInstance.transform.SetPositionAndRotation(center, rotation);
                 SetPreviewTint(result.ok ? Color.green : Color.red);
                 
                 // Place building on left click
@@ -103,19 +119,19 @@ namespace DeepAbyssHive.Dev
                 return;
             }
 
-            // Create building
-            var placed = Instantiate(placePrefab, center, Quaternion.identity);
+            // Since prefab pivot is at bottom, just place at terrain height + small padding
+            var finalY = terrainHeight + 0.02f;
+            var finalPosition = new Vector3(center.x, finalY, center.z);
+            
+            // Create building at the calculated position with rotation
+            var placed = Instantiate(placePrefab, finalPosition, rotation);
             
             // Set to Building layer
             int buildingLayer = LayerMask.NameToLayer("Building");
             if (buildingLayer >= 0) 
                 SetLayerRecursively(placed, buildingLayer);
             
-            // Ground the building properly
-            var placedBounds = GetBounds(placed);
-            var bottomOffset = placedBounds.center.y - placedBounds.min.y;
-            var finalY = terrainHeight + bottomOffset + 0.02f;
-            placed.transform.position = new Vector3(center.x, finalY, center.z);
+            Debug.Log($"[PLACE] Building placed: prefab={placePrefab.name}, terrainHeight={terrainHeight:F2}, finalPosition={finalPosition}");
             
             // Deduct cost
             if (costTag != null)
@@ -207,6 +223,8 @@ namespace DeepAbyssHive.Dev
             }
             return new Bounds(go.transform.position, Vector3.one * 0.5f);
         }
+
+
 
         private void SetLayerRecursively(GameObject obj, int layer)
         {
