@@ -11,6 +11,9 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
     /// </summary>
     public sealed class BuildingCatalogHUD : MonoBehaviour
     {
+        private const string PrefKeyRect = "DAH.BuildingCatalogHUD.Rect";
+        private const string PrefKeyVisible = "DAH.BuildingCatalogHUD.Visible";
+        
         private Rect _rect = new Rect(12, 12, 600, 200);
         private bool _visible = false;
         private KeyCode _toggle = KeyCode.Z;
@@ -30,6 +33,8 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
 
         private void Awake()
         {
+            LoadSettings();
+            
             var config = GameConfigProvider.Current;
             _catalog = config?.buildingCatalog;
             
@@ -40,7 +45,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                 return;
             }
             
-            Debug.Log($"[BuildingCatalogHUD] Ready: {_catalog.Count} buildings, toggle={_toggle}");
+            Debug.Log($"[BuildingCatalogHUD] Ready: {_catalog.Count} buildings, toggle={_toggle}, visible={_visible}");
         }
 
         private void Update()
@@ -48,6 +53,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (Input.GetKeyDown(_toggle))
             {
                 _visible = !_visible;
+                SaveSettings();
             }
         }
 
@@ -55,7 +61,14 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
         {
             if (!_visible || _catalog == null || _catalog.Count == 0) return;
             
-            _rect = GUI.Window(0x17001, _rect, DrawWindow, "Building Catalog");
+            var newRect = GUI.Window(0x17001, _rect, DrawWindow, "Building Catalog");
+            
+            // 如果窗口位置改變了，保存新位置
+            if (newRect != _rect)
+            {
+                _rect = newRect;
+                SaveSettings();
+            }
         }
 
         private void DrawWindow(int windowID)
@@ -109,6 +122,7 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
             if (GUILayout.Button("Close", GUILayout.Width(80)))
             {
                 _visible = false;
+                SaveSettings();
             }
             GUILayout.FlexibleSpace();
             GUILayout.Label($"Selected: {(_current >= 0 ? _catalog.Get(_current)?.id : "None")}");
@@ -142,6 +156,63 @@ namespace DeepAbyssHive.QA.Smoke.Dev.HUD
                 // 直接調用靜態方法
                 BuildingCatalogBinder.ApplyPrefabToPlacer(entry.prefab, entry.id, index);
             }
+        }
+
+        private void LoadSettings()
+        {
+            // 載入窗口位置
+            if (PlayerPrefs.HasKey(PrefKeyRect))
+            {
+                var rectStr = PlayerPrefs.GetString(PrefKeyRect);
+                if (TryParseRect(rectStr, out var savedRect))
+                {
+                    _rect = savedRect;
+                }
+            }
+            
+            // 載入顯示狀態
+            _visible = PlayerPrefs.GetInt(PrefKeyVisible, 0) == 1;
+        }
+
+        private void SaveSettings()
+        {
+            // 保存窗口位置
+            var rectStr = $"{_rect.x},{_rect.y},{_rect.width},{_rect.height}";
+            PlayerPrefs.SetString(PrefKeyRect, rectStr);
+            
+            // 保存顯示狀態
+            PlayerPrefs.SetInt(PrefKeyVisible, _visible ? 1 : 0);
+            
+            PlayerPrefs.Save();
+        }
+
+        private bool TryParseRect(string rectStr, out Rect rect)
+        {
+            rect = new Rect();
+            try
+            {
+                var parts = rectStr.Split(',');
+                if (parts.Length == 4)
+                {
+                    rect = new Rect(
+                        float.Parse(parts[0]),
+                        float.Parse(parts[1]),
+                        float.Parse(parts[2]),
+                        float.Parse(parts[3])
+                    );
+                    return true;
+                }
+            }
+            catch (System.Exception)
+            {
+                // 解析失敗，使用默認值
+            }
+            return false;
+        }
+
+        private void OnDestroy()
+        {
+            SaveSettings();
         }
     }
 }
