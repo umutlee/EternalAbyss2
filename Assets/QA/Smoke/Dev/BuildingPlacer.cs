@@ -318,8 +318,12 @@ namespace DeepAbyssHive.Dev
                 return new Bounds(go.transform.position, Vector3.one * 0.5f);
             }
 
+            // 建築貼地邏輯：重新進行地形採樣確保準確貼地
             var half = CalcHalfExtents();
-            var terrainResult = SampleTerrainMultiPoint(new Vector3(center.x, 0, center.z), half);
+            var groundCenter = new Vector3(center.x, 0, center.z);
+            var terrainResult = SampleTerrainMultiPoint(groundCenter, half);
+            
+            Debug.Log($"[PLACE] 開始貼地處理：中心=({groundCenter.x:F2}, {groundCenter.y:F2}, {groundCenter.z:F2})");
             
             if (terrainResult.isValid)
             {
@@ -328,10 +332,11 @@ namespace DeepAbyssHive.Dev
                 const float padding = 0.02f; // 稍微離地避免 z-fight
                 
                 // 使用地形採樣的最高點作為基準，確保建築不會埋入地下或懸浮
-                Vector3 up = terrainResult.groundNormal;
-                placed.transform.position = new Vector3(center.x, terrainResult.groundHeight + halfHeight + padding, center.z);
+                var finalY = terrainResult.groundHeight + halfHeight + padding;
+                var finalPosition = new Vector3(groundCenter.x, finalY, groundCenter.z);
+                placed.transform.position = finalPosition;
                 
-                Debug.Log($"[PLACE] 建築貼地：地形高度={terrainResult.groundHeight:F2}m, 高度差={terrainResult.heightDifference:F2}m, 最終位置Y={placed.transform.position.y:F2}m");
+                Debug.Log($"[PLACE] 建築貼地成功：地形高度={terrainResult.groundHeight:F2}m, 建築半高={halfHeight:F2}m, 最終Y={finalY:F2}m, 位置={finalPosition}");
             }
             else
             {
@@ -344,6 +349,11 @@ namespace DeepAbyssHive.Dev
                 
                 Debug.LogWarning("[PLACE] 地形採樣失敗，使用回退邏輯");
             }
+            
+            // 放置完成後退出放置狀態（單次放置模式）
+            Debug.Log("[PLACE] 建築放置完成，退出放置狀態");
+            isPlacing = false;
+            DestroyPreview();
         }
 
         private void CancelPlacing()
@@ -434,8 +444,17 @@ namespace DeepAbyssHive.Dev
                 // 回退到單點採樣
                 if (Physics.Raycast(center + Vector3.up * terrainSampleHeight, Vector3.down, out var hit, terrainSampleHeight * 2f, groundMask))
                 {
-                    return new TerrainSampleResult { isValid = true, groundHeight = hit.point.y, minHeight = hit.point.y, maxHeight = hit.point.y, groundNormal = hit.normal };
+                    Debug.Log($"[TERRAIN] 單點採樣成功：位置={hit.point}, 高度={hit.point.y:F2}m");
+                    return new TerrainSampleResult { 
+                        isValid = true, 
+                        groundHeight = hit.point.y, 
+                        minHeight = hit.point.y, 
+                        maxHeight = hit.point.y, 
+                        groundNormal = hit.normal,
+                        heightDifference = 0f
+                    };
                 }
+                Debug.LogWarning($"[TERRAIN] 單點採樣失敗：中心={center}, 射線起點={center + Vector3.up * terrainSampleHeight}, groundMask={groundMask}");
                 return new TerrainSampleResult { isValid = false };
             }
 
@@ -467,6 +486,7 @@ namespace DeepAbyssHive.Dev
 
             if (validHits == 0)
             {
+                Debug.LogWarning($"[TERRAIN] 多點採樣失敗：所有採樣點都沒有命中地形，中心={center}, groundMask={groundMask}");
                 return new TerrainSampleResult { isValid = false };
             }
 
@@ -474,6 +494,9 @@ namespace DeepAbyssHive.Dev
             
             // 使用最高點作為建築底部高度，避免埋入地下
             float groundHeight = maxHeight;
+            float heightDiff = maxHeight - minHeight;
+
+            Debug.Log($"[TERRAIN] 多點採樣成功：有效點={validHits}/5, 最低={minHeight:F2}m, 最高={maxHeight:F2}m, 高度差={heightDiff:F2}m, 使用高度={groundHeight:F2}m");
 
             return new TerrainSampleResult 
             { 
@@ -482,7 +505,7 @@ namespace DeepAbyssHive.Dev
                 minHeight = minHeight, 
                 maxHeight = maxHeight, 
                 groundNormal = avgNormal,
-                heightDifference = maxHeight - minHeight
+                heightDifference = heightDiff
             };
         }
 
