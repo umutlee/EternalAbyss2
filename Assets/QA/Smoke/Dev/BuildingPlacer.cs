@@ -122,14 +122,17 @@ namespace DeepAbyssHive.Dev
                 var terrainResult = SampleTerrainMultiPoint(center, half);
                 
                 Result<Bounds> result;
+                Bounds worldBounds; // 提前聲明，避免作用域問題
                 
                 if (!terrainResult.isValid)
                 {
                     result = PlacementResults.OutOfBounds("無法檢測到地形");
+                    worldBounds = new Bounds(center, half * 2f); // 提供默認值
                 }
                 else if (!IsTerrainSuitableForBuilding(terrainResult))
                 {
                     result = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainResult.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
+                    worldBounds = new Bounds(center, half * 2f); // 提供默認值
                 }
                 else
                 {
@@ -140,7 +143,7 @@ namespace DeepAbyssHive.Dev
                     int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
 
                     // 建立 Bounds（以量化後中心/半徑）
-                    var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                    worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
                     
                     // 預覽即時驗證（有向版；旋轉參與 OverlapBox）
                     result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
@@ -232,23 +235,26 @@ namespace DeepAbyssHive.Dev
                 rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
 
                 // 使用與 Update() 相同的地形採樣邏輯
-                var half = CalcHalfExtents();
-                var terrainResult = SampleTerrainMultiPoint(center, half);
+                var halfExtents = CalcHalfExtents();
+                var terrainSample = SampleTerrainMultiPoint(center, halfExtents);
                 
-                if (!terrainResult.isValid)
+                if (!terrainSample.isValid)
                 {
                     cached = PlacementResults.OutOfBounds("無法檢測到地形");
+                    worldBounds = new Bounds(center, halfExtents * 2f); // 提供默認值
                 }
-                else if (!IsTerrainSuitableForBuilding(terrainResult))
+                else if (!IsTerrainSuitableForBuilding(terrainSample))
                 {
-                    cached = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainResult.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
+                    cached = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainSample.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
+                    worldBounds = new Bounds(center, halfExtents * 2f); // 提供默認值
                 }
                 else
                 {
-                    center.y = terrainResult.groundHeight + previewHeight;
+                    center.y = terrainSample.groundHeight + previewHeight;
                     int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
-                    worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
-                    cached = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
+                    var bounds = new Bounds(center - new Vector3(0, previewHeight, 0), halfExtents * 2f);
+                    cached = PlacementValidator.ValidateByConfig(bounds.center, halfExtents, rotation, includeMask, blockPadding, placePrefab);
+                    worldBounds = bounds; // 設置 worldBounds 供後續使用
                 }
             }
 
@@ -292,31 +298,31 @@ namespace DeepAbyssHive.Dev
             else Debug.LogWarning("[Placement] 'Building' layer not found — delete tool may not hit.");
 
             // —— 改進的貼地邏輯：使用多點地形採樣結果 —— 
+            // 取 Collider 或 Renderer bounds（以 Collider 為優先）
+            Bounds GetBounds(GameObject go)
+            {
+                var cols = go.GetComponentsInChildren<Collider>();
+                if (cols != null && cols.Length > 0)
+                {
+                    var b = cols[0].bounds;
+                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                    return b;
+                }
+                var rends = go.GetComponentsInChildren<Renderer>();
+                if (rends != null && rends.Length > 0)
+                {
+                    var b = rends[0].bounds;
+                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                    return b;
+                }
+                return new Bounds(go.transform.position, Vector3.one * 0.5f);
+            }
+
             var half = CalcHalfExtents();
             var terrainResult = SampleTerrainMultiPoint(new Vector3(center.x, 0, center.z), half);
             
             if (terrainResult.isValid)
             {
-                // 取 Collider 或 Renderer bounds（以 Collider 為優先）
-                Bounds GetBounds(GameObject go)
-                {
-                    var cols = go.GetComponentsInChildren<Collider>();
-                    if (cols != null && cols.Length > 0)
-                    {
-                        var b = cols[0].bounds;
-                        for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
-                        return b;
-                    }
-                    var rends = go.GetComponentsInChildren<Renderer>();
-                    if (rends != null && rends.Length > 0)
-                    {
-                        var b = rends[0].bounds;
-                        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-                        return b;
-                    }
-                    return new Bounds(go.transform.position, Vector3.one * 0.5f);
-                }
-
                 var placedBounds = GetBounds(placed);
                 var halfHeight = placedBounds.extents.y;
                 const float padding = 0.02f; // 稍微離地避免 z-fight
