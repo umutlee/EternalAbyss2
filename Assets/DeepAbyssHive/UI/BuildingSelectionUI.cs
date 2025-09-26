@@ -1,28 +1,21 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using DeepAbyssHive.Buildings.Config;
 using DeepAbyssHive.Core.Config;
-using DeepAbyssHive.Core.Logging;
+using DeepAbyssHive.Buildings.Runtime;
 
 namespace DeepAbyssHive.UI
 {
     /// <summary>
-    /// 基於 uGUI 的建築選擇 UI
-    /// 替代 IMGUI 版本，提供更好的遊戲體驗
+    /// 簡化的建築選擇 UI
     /// </summary>
     public class BuildingSelectionUI : MonoBehaviour
     {
         [Header("UI References")]
         [SerializeField] private GameObject buttonPrefab;
         [SerializeField] private Transform buttonContainer;
-        [SerializeField] private ScrollRect scrollRect;
         [SerializeField] private Button closeButton;
-        
-        [Header("Settings")]
-        [SerializeField] private int buttonsPerRow = 4;
-        [SerializeField] private float buttonSpacing = 10f;
         
         private BuildingCatalogSO _catalog;
         private List<BuildingButton> _buttons = new List<BuildingButton>();
@@ -43,7 +36,6 @@ namespace DeepAbyssHive.UI
                 return;
             }
             
-            // 初始化 UI
             if (closeButton != null)
                 closeButton.onClick.AddListener(Hide);
         }
@@ -57,7 +49,6 @@ namespace DeepAbyssHive.UI
         
         private void Update()
         {
-            // 熱鍵控制
             var config = GameConfigProvider.Current;
             if (config != null && Input.GetKeyDown(config.buildingHudToggleKey))
             {
@@ -72,7 +63,7 @@ namespace DeepAbyssHive.UI
             
             if (_catalog == null)
             {
-                DAHLog.Warn(LogCategory.UI, "BuildingSelectionUI: No catalog found in GameConfig");
+                Debug.LogWarning("[BuildingSelectionUI] No catalog found in GameConfig");
             }
         }
         
@@ -105,7 +96,7 @@ namespace DeepAbyssHive.UI
                 _buttons.Add(buildingButton);
             }
             
-            DAHLog.Info(LogCategory.UI, $"BuildingSelectionUI: Created {_buttons.Count} building buttons");
+            Debug.Log($"[BuildingSelectionUI] Created {_buttons.Count} building buttons");
         }
         
         private void OnBuildingSelected(int index)
@@ -122,34 +113,8 @@ namespace DeepAbyssHive.UI
             var entry = _catalog.Get(index);
             if (entry?.prefab != null)
             {
-                ApplyToPlacer(entry.prefab, entry.id, index);
-            }
-            
-            DAHLog.Info(LogCategory.PLACEMENT, $"BuildingSelectionUI: Selected building {index} - {entry?.id}");
-        }
-        
-        private void ApplyToPlacer(GameObject prefab, string id, int index)
-        {
-            // 使用與 IMGUI 版本相同的邏輯
-            try
-            {
-                var binderType = Type.GetType("DeepAbyssHive.Buildings.Runtime.BuildingCatalogBinder, Assembly-CSharp");
-                if (binderType != null)
-                {
-                    var method = binderType.GetMethod("ApplyPrefabToPlacer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    if (method != null)
-                    {
-                        method.Invoke(null, new object[] { prefab, id, index });
-                        return;
-                    }
-                }
-                
-                // 回退到直接設置
-                DAHLog.Warn(LogCategory.PLACEMENT, "BuildingSelectionUI: BuildingCatalogBinder not found, using fallback");
-            }
-            catch (Exception e)
-            {
-                DAHLog.Error(LogCategory.PLACEMENT, $"BuildingSelectionUI: Failed to apply prefab - {e.Message}");
+                BuildingCatalogBinder.ApplyPrefabToPlacer(entry.prefab, entry.id, index);
+                Debug.Log($"[BuildingSelectionUI] Selected building {index} - {entry.id}");
             }
         }
         
@@ -182,7 +147,7 @@ namespace DeepAbyssHive.UI
         private Text _label;
         private BuildingCatalogEntry _entry;
         private int _index;
-        private Action<int> _onSelected;
+        private System.Action<int> _onSelected;
         
         [Header("Visual Settings")]
         [SerializeField] private Color normalColor = Color.white;
@@ -198,7 +163,7 @@ namespace DeepAbyssHive.UI
                 _button.onClick.AddListener(OnClick);
         }
         
-        public void Initialize(BuildingCatalogEntry entry, int index, Action<int> onSelected)
+        public void Initialize(BuildingCatalogEntry entry, int index, System.Action<int> onSelected)
         {
             _entry = entry;
             _index = index;
@@ -207,8 +172,6 @@ namespace DeepAbyssHive.UI
             // 設置按鈕文字
             if (_label != null)
                 _label.text = $"{index:00}\n{entry.id}";
-            
-            // TODO: 設置建築圖標（如果有的話）
         }
         
         public void SetSelected(bool selected)
