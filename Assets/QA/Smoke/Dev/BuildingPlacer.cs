@@ -328,26 +328,32 @@ namespace DeepAbyssHive.Dev
             if (terrainResult.isValid)
             {
                 var placedBounds = GetBounds(placed);
-                var halfHeight = placedBounds.extents.y;
                 const float padding = 0.02f; // 稍微離地避免 z-fight
                 
-                // 使用地形採樣的最高點作為基準，確保建築不會埋入地下或懸浮
-                var finalY = terrainResult.groundHeight + halfHeight + padding;
+                // 計算建築底部到中心點的距離
+                var bottomOffset = placedBounds.center.y - placedBounds.min.y;
+                
+                // 建築底部應該貼地，所以建築中心點的Y座標 = 地面高度 + 底部到中心的距離
+                var finalY = terrainResult.groundHeight + bottomOffset + padding;
                 var finalPosition = new Vector3(groundCenter.x, finalY, groundCenter.z);
                 placed.transform.position = finalPosition;
                 
-                Debug.Log($"[PLACE] 建築貼地成功：地形高度={terrainResult.groundHeight:F2}m, 建築半高={halfHeight:F2}m, 最終Y={finalY:F2}m, 位置={finalPosition}");
+                Debug.Log($"[PLACE] 建築貼地成功：地形高度={terrainResult.groundHeight:F2}m, 底部偏移={bottomOffset:F2}m, 最終Y={finalY:F2}m, 位置={finalPosition}");
+                Debug.Log($"[PLACE] 建築邊界：中心={placedBounds.center}, 最小={placedBounds.min}, 最大={placedBounds.max}");
             }
             else
             {
                 // 回退到原始邏輯
                 var placedBounds = GetBounds(placed);
-                var halfHeight = placedBounds.extents.y;
                 const float padding = 0.02f;
-                Vector3 up = lastHit.normal.normalized;
-                placed.transform.position = lastHit.point + up * (halfHeight + padding);
                 
-                Debug.LogWarning("[PLACE] 地形採樣失敗，使用回退邏輯");
+                // 計算建築底部到中心點的距離
+                var bottomOffset = placedBounds.center.y - placedBounds.min.y;
+                
+                Vector3 up = lastHit.normal.normalized;
+                placed.transform.position = lastHit.point + up * (bottomOffset + padding);
+                
+                Debug.LogWarning($"[PLACE] 地形採樣失敗，使用回退邏輯：hit點={lastHit.point}, 底部偏移={bottomOffset:F2}m");
             }
             
             // 放置完成後退出放置狀態（單次放置模式）
