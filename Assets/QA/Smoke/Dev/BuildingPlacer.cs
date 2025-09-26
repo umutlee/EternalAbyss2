@@ -1,6 +1,4 @@
 using UnityEngine;
-using System.Reflection;
-using DeepAbyssHive.Creep.Managers; // 若沒有這命名空間可刪掉這行
 using DeepAbyssHive.Common.Placement;
 using DeepAbyssHive.Core.Config;
 using DeepAbyssHive.Core.Economy;
@@ -11,74 +9,39 @@ namespace DeepAbyssHive.Dev
 {
     public class BuildingPlacer : MonoBehaviour
     {
-        // --- T07: 預覽/放置一致性快取 ---
-        private Vector3 _lastPreviewCenter;
-        private Quaternion _lastPreviewRotation;
-        private Bounds _lastPreviewBounds;
-        private Result<Bounds> _lastPreviewResult;
-        
-        [Header("Basics")]
-        [SerializeField] private Camera sceneCamera;                 // 不填就用 Camera.main
-        [SerializeField] private LayerMask groundMask;               // 指定「Ground」Layer
-        [SerializeField] private GameObject placePrefab;             // 要放置的預製物
-        [SerializeField] private Material previewMaterial;           // 預覽用透明材質（可空）
-
-        [Header("Footprint / Grid")]
-        [SerializeField, Min(1)] private int footprintSize = 1;      // 格子尺寸（單位：公尺）
-
-        [Header("Preview")]
-        [SerializeField] private float previewHeight = 0.5f;         // 預覽抬高一點避免穿地
-        [SerializeField] private Vector3 placedScale = Vector3.one;  // 放下去後的縮放
-        [SerializeField] private bool requireCreep = false;          // 勾選時，只允許在菌毯上放置（IsOnCreep）
-        
-        // 放置尺寸倍率（可於 Inspector 調整，預設 1 = 不變）
-        [SerializeField] private float spawnScale = 1f;
-
-        [Header("Terrain Sampling")]
-        [SerializeField] private bool enableMultiPointSampling = true;  // 啟用多點地形採樣
-        [SerializeField] private bool enableSlopeCheck = true;          // 啟用坡度檢查
-        [SerializeField] private float maxTerrainSlope = 2.0f;          // 最大允許地形高度差（米）
-        [SerializeField] private float terrainSampleHeight = 100f;      // 地形採樣射線起始高度
-
-        [Header("Blocking Settings")]
-        [Tooltip("擋重疊時優先使用 Collider.bounds；若 prefab 沒有 Collider 才退回 Renderer.bounds")]
-        [SerializeField] private bool useColliderBoundsForBlocking = true;
-        [Tooltip("額外外擴/縮小的邊界（世界單位）。正值＝更寬鬆容易擋，負值＝允許更靠近。")]
+        [Header("Basic Settings")]
+        [SerializeField] private Camera sceneCamera;
+        [SerializeField] private LayerMask groundMask;
+        [SerializeField] private GameObject placePrefab;
+        [SerializeField] private Material previewMaterial;
+        [SerializeField] private float previewHeight = 0.5f;
+        [SerializeField] private float terrainSampleHeight = 100f;
         [SerializeField] private float blockPadding = 0.02f;
-
-        [SerializeField] private KeyCode toggleKey = KeyCode.B;
-        [SerializeField] private KeyCode rotateCWKey = KeyCode.E;
-        [SerializeField] private KeyCode rotateCCWKey = KeyCode.Q;
-        [SerializeField] private KeyCode cancelKeyPrimary = KeyCode.Escape;
-        [SerializeField] private KeyCode cancelKeyAlt = KeyCode.C;
-        [SerializeField] private float rotateStep = 90f;
 
         private GameObject previewInstance;
         private Material previewRuntimeMat;
-        private Quaternion rotation = Quaternion.identity;
         private bool isPlacing;
-        private Vector3 lastValidPos;
-        private RaycastHit lastHit; // 保存最後一次有效的射線命中資訊
+        private RaycastHit lastHit;
         
-        // M5-T02: Cost checking components
+        // Cost checking components
         private ResourceServiceAdapter _resourceAdapter;
         private HUDToastRunner _toastRunner;
 
         void Awake()
         {
             if (!sceneCamera) sceneCamera = Camera.main;
+            
+            // Create default preview material if not set
             if (!previewMaterial)
             {
-                // 動態做一個半透明材質（Standard/Fade）
                 var mat = new Material(Shader.Find("Standard"));
-                var col = new Color(0f, 1f, 0f, 0.35f);
-                mat.SetColor("_Color", col);
+                mat.SetColor("_Color", new Color(0f, 1f, 0f, 0.35f));
                 mat.SetFloat("_Mode", 2); // Fade
                 mat.EnableKeyword("_ALPHABLEND_ON");
                 previewMaterial = mat;
             }
             
-            // M5-T02: Initialize cost checking components
+            // Initialize cost checking
             _resourceAdapter = new ResourceServiceAdapter();
             _toastRunner = FindObjectOfType<HUDToastRunner>();
             if (_toastRunner == null)
@@ -91,92 +54,90 @@ namespace DeepAbyssHive.Dev
 
         void Update()
         {
-            // 進出建築模式
-            if (Input.GetKeyDown(toggleKey))
-                TogglePlacing();
-
             if (!isPlacing || !placePrefab || !sceneCamera)
                 return;
 
-            // 旋轉（Shift 變成 15° 微調）＋滑鼠滾輪也可旋轉
-            float step = Input.GetKey(KeyCode.LeftShift) ? 15f : rotateStep;
-            if (Input.GetKeyDown(rotateCCWKey)) { rotation *= Quaternion.Euler(0, -step, 0); }
-            if (Input.GetKeyDown(rotateCWKey))  { rotation *= Quaternion.Euler(0,  step, 0); }
-            float wheel = Input.mouseScrollDelta.y;
-            if (Mathf.Abs(wheel) > 0.01f)       { rotation *= Quaternion.Euler(0, wheel * step, 0); }
-
-            // 射線打地面（Ground Mask）
+            // Raycast to ground
             var ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out var hit, 5000f, groundMask))
             {
-                lastHit = hit; // 保存 hit 資訊供 PlaceNow() 使用
+                lastHit = hit;
                 
                 var cfg = GameConfigProvider.Current;
-                var worldPoint = hit.point;
-                // 先量化中心與旋轉（與放置相同順序）
-                var center = SnapXZ(worldPoint, cfg.snapSize);
-                rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
-
-                // 多點地形採樣
+                var center = SnapXZ(hit.point, cfg.snapSize);
+                
+                // Sample terrain height
+                var terrainHeight = SampleTerrainHeight(center);
+                center.y = terrainHeight + previewHeight;
+                
+                // Validate placement
                 var half = CalcHalfExtents();
-                var terrainResult = SampleTerrainMultiPoint(center, half);
+                var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
+                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, Quaternion.identity, includeMask, blockPadding, placePrefab);
                 
-                Result<Bounds> result;
-                Bounds worldBounds; // 提前聲明，避免作用域問題
-                
-                if (!terrainResult.isValid)
-                {
-                    result = PlacementResults.OutOfBounds("無法檢測到地形");
-                    worldBounds = new Bounds(center, half * 2f); // 提供默認值
-                }
-                else if (!IsTerrainSuitableForBuilding(terrainResult))
-                {
-                    result = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainResult.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
-                    worldBounds = new Bounds(center, half * 2f); // 提供默認值
-                }
-                else
-                {
-                    // 使用地形採樣的結果設置建築高度
-                    center.y = terrainResult.groundHeight + previewHeight;
-
-                    // 統一遮罩：使用工具方法，避免各處手寫不一致
-                    int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
-
-                    // 建立 Bounds（以量化後中心/半徑）
-                    worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
-                    
-                    // 預覽即時驗證（有向版；旋轉參與 OverlapBox）
-                    result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
-                }
-
-                // 記錄給 PlaceNow() 重用，避免再次計算造成微差
-                _lastPreviewCenter = worldBounds.center;
-                _lastPreviewRotation = rotation;
-                _lastPreviewBounds = worldBounds;
-                _lastPreviewResult = result;
-
-                // 依結果上色（共用色表/透明度）
-                SetPreviewTint(PlacementUiUtil.ColorFor(result, true));
-
+                // Update preview
                 EnsurePreview();
-                previewInstance.transform.SetPositionAndRotation(center, rotation);
-                lastValidPos = center;
+                previewInstance.transform.position = center;
+                SetPreviewTint(result.ok ? Color.green : Color.red);
                 
-                if (Input.GetMouseButtonDown(0))
-                    PlaceNow();
+                // Place building on left click
+                if (Input.GetMouseButtonDown(0) && result.ok)
+                {
+                    PlaceBuilding(center, terrainHeight);
+                }
             }
 
-            // 取消（右鍵 或 Esc 或 C）
-            if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(cancelKeyPrimary) || Input.GetKeyDown(cancelKeyAlt))
+            // Cancel on right click or escape
+            if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
             {
                 CancelPlacing();
             }
         }
 
-        private void TogglePlacing()
+        private void PlaceBuilding(Vector3 center, float terrainHeight)
         {
-            isPlacing = !isPlacing;
-            if (!isPlacing) DestroyPreview();
+            // Check cost
+            var costTag = placePrefab.GetComponent<BuildingCostTag>();
+            if (costTag != null && !_resourceAdapter.CanAfford(costTag.GetCosts()))
+            {
+                HUDToastRunner.ShowInsufficientResourcesToast("Energy", 0, 0);
+                return;
+            }
+
+            // Create building
+            var placed = Instantiate(placePrefab, center, Quaternion.identity);
+            
+            // Set to Building layer
+            int buildingLayer = LayerMask.NameToLayer("Building");
+            if (buildingLayer >= 0) 
+                SetLayerRecursively(placed, buildingLayer);
+            
+            // Ground the building properly
+            var placedBounds = GetBounds(placed);
+            var bottomOffset = placedBounds.center.y - placedBounds.min.y;
+            var finalY = terrainHeight + bottomOffset + 0.02f;
+            placed.transform.position = new Vector3(center.x, finalY, center.z);
+            
+            // Deduct cost
+            if (costTag != null)
+                _resourceAdapter.DeductResources(costTag.GetCosts());
+            
+            Debug.Log($"[PLACE] Building placed: {placePrefab.name} at {placed.transform.position}");
+            
+            // Exit placing mode (single placement)
+            isPlacing = false;
+            DestroyPreview();
+        }
+
+        private float SampleTerrainHeight(Vector3 center)
+        {
+            var rayStart = new Vector3(center.x, center.y + terrainSampleHeight, center.z);
+            if (Physics.Raycast(rayStart, Vector3.down, out var hit, terrainSampleHeight * 2f, groundMask))
+            {
+                return hit.point.y;
+            }
+            return center.y; // Fallback
         }
 
         private void EnsurePreview()
@@ -186,180 +147,26 @@ namespace DeepAbyssHive.Dev
             previewInstance = Instantiate(placePrefab);
             previewInstance.name = "[Preview] " + placePrefab.name;
 
-            // 預覽體一律放到 Ignore Raycast（整樹），避免被 Ray/Physics 命中
-            int ignore = LayerMask.NameToLayer("Ignore Raycast");
-            if (ignore >= 0) SetLayerRecursively(previewInstance, ignore);
-            // 以 prefab 原始縮放為基礎，再乘上倍率（placedScale × spawnScale），與放置/驗證一致
-            {
-                var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
-                var s = new Vector3(
-                    baseScale.x * placedScale.x * spawnScale,
-                    baseScale.y * placedScale.y * spawnScale,
-                    baseScale.z * placedScale.z * spawnScale
-                );
-                previewInstance.transform.localScale = s;
-            }
+            // Set to Ignore Raycast layer
+            int ignoreLayer = LayerMask.NameToLayer("Ignore Raycast");
+            if (ignoreLayer >= 0) 
+                SetLayerRecursively(previewInstance, ignoreLayer);
+        }
 
-            // 關碰撞 + 套透明材質
-            foreach (var col in previewInstance.GetComponentsInChildren<Collider>(true))
-                col.enabled = false;
+        private void SetPreviewTint(Color color)
+        {
+            if (!previewInstance) return;
 
-            foreach (var r in previewInstance.GetComponentsInChildren<Renderer>(true))
+            var renderers = previewInstance.GetComponentsInChildren<Renderer>();
+            foreach (var r in renderers)
             {
                 if (!previewRuntimeMat)
-                    previewRuntimeMat = new Material(previewMaterial); // 各自一份，改色不影響資產
-                r.sharedMaterial = previewRuntimeMat;
-            }
-        }
-
-        private void SetPreviewTint(Color c)
-        {
-            if (previewRuntimeMat)
-                previewRuntimeMat.color = c;
-        }
-
-        private void PlaceNow()
-        {
-            // 優先重用預覽快取；確保與 Update() 完全一致
-            Vector3 center = _lastPreviewCenter;
-            Quaternion rotation = _lastPreviewRotation;
-            Bounds worldBounds = _lastPreviewBounds;
-            var cached = _lastPreviewResult;
-
-            // 若快取尚未建立（或外部呼叫 PlaceNow），才重算一次（與預覽一致的順序與 Y 偏移）
-            if (cached == null)
-            {
-                var cfg = GameConfigProvider.Current;
-                var worldPoint = lastHit.point;
-                center = SnapXZ(worldPoint, cfg.snapSize);
-                rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
-
-                // 使用與 Update() 相同的地形採樣邏輯
-                var halfExtents = CalcHalfExtents();
-                var terrainSample = SampleTerrainMultiPoint(center, halfExtents);
-                
-                if (!terrainSample.isValid)
                 {
-                    cached = PlacementResults.OutOfBounds("無法檢測到地形");
-                    worldBounds = new Bounds(center, halfExtents * 2f); // 提供默認值
+                    previewRuntimeMat = new Material(previewMaterial);
                 }
-                else if (!IsTerrainSuitableForBuilding(terrainSample))
-                {
-                    cached = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainSample.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
-                    worldBounds = new Bounds(center, halfExtents * 2f); // 提供默認值
-                }
-                else
-                {
-                    center.y = terrainSample.groundHeight + previewHeight;
-                    int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
-                    var bounds = new Bounds(center - new Vector3(0, previewHeight, 0), halfExtents * 2f);
-                    cached = PlacementValidator.ValidateByConfig(bounds.center, halfExtents, rotation, includeMask, blockPadding, placePrefab);
-                    worldBounds = bounds; // 設置 worldBounds 供後續使用
-                }
+                previewRuntimeMat.color = color;
+                r.material = previewRuntimeMat;
             }
-
-            if (!cached.ok)
-            {
-                Debug.Log($"[PLACE] blocked: {cached.code} {cached.message}");
-                
-                // M5-T02: Show toast notification for cost-related failures
-                if (cached.code == PlaceResultCode.E_INSUFFICIENT_RESOURCES && _toastRunner != null)
-                {
-                    // Extract resource info from message if available
-                    HUDToastRunner.ShowInsufficientResourcesToast("Energy", 0, 0);
-                }
-                return;
-            }
-
-            // M5-T02: Deduct resources after successful placement
-            var costTag = placePrefab.GetComponent<BuildingCostTag>();
-            if (costTag != null)
-            {
-                ResourceServiceAdapter.DeductResources(costTag.GetCosts());
-            }
-
-            // 實例化放置物（在 center/rotation 生成建築實例）
-            var placed = Instantiate(placePrefab, center, rotation);
-            // 放置實體同樣採用「原比例 × 倍率」
-            {
-                var baseScale = placePrefab ? placePrefab.transform.localScale : Vector3.one;
-                placed.transform.localScale = new Vector3(
-                    baseScale.x * placedScale.x,
-                    baseScale.y * placedScale.y,
-                    baseScale.z * placedScale.z
-                );
-            }
-            // 放大/縮小新放置的物件，便於辨識（1 = 不變）
-            placed.transform.localScale *= spawnScale;
-
-            // 成品一律放到 Building 層（整樹），使刪除/碰撞/查詢規則一致
-            int building = LayerMask.NameToLayer("Building");
-            if (building >= 0) SetLayerRecursively(placed, building);
-            else Debug.LogWarning("[Placement] 'Building' layer not found — delete tool may not hit.");
-
-            // —— 改進的貼地邏輯：使用多點地形採樣結果 —— 
-            // 取 Collider 或 Renderer bounds（以 Collider 為優先）
-            Bounds GetBounds(GameObject go)
-            {
-                var cols = go.GetComponentsInChildren<Collider>();
-                if (cols != null && cols.Length > 0)
-                {
-                    var b = cols[0].bounds;
-                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
-                    return b;
-                }
-                var rends = go.GetComponentsInChildren<Renderer>();
-                if (rends != null && rends.Length > 0)
-                {
-                    var b = rends[0].bounds;
-                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-                    return b;
-                }
-                return new Bounds(go.transform.position, Vector3.one * 0.5f);
-            }
-
-            // 建築貼地邏輯：重新進行地形採樣確保準確貼地
-            var half = CalcHalfExtents();
-            var groundCenter = new Vector3(center.x, 0, center.z);
-            var terrainResult = SampleTerrainMultiPoint(groundCenter, half);
-            
-            Debug.Log($"[PLACE] 開始貼地處理：中心=({groundCenter.x:F2}, {groundCenter.y:F2}, {groundCenter.z:F2})");
-            
-            if (terrainResult.isValid)
-            {
-                var placedBounds = GetBounds(placed);
-                const float padding = 0.02f; // 稍微離地避免 z-fight
-                
-                // 計算建築底部到中心點的距離
-                var bottomOffset = placedBounds.center.y - placedBounds.min.y;
-                
-                // 建築底部應該貼地，所以建築中心點的Y座標 = 地面高度 + 底部到中心的距離
-                var finalY = terrainResult.groundHeight + bottomOffset + padding;
-                var finalPosition = new Vector3(groundCenter.x, finalY, groundCenter.z);
-                placed.transform.position = finalPosition;
-                
-                Debug.Log($"[PLACE] 建築貼地成功：地形高度={terrainResult.groundHeight:F2}m, 底部偏移={bottomOffset:F2}m, 最終Y={finalY:F2}m, 位置={finalPosition}");
-                Debug.Log($"[PLACE] 建築邊界：中心={placedBounds.center}, 最小={placedBounds.min}, 最大={placedBounds.max}");
-            }
-            else
-            {
-                // 回退到原始邏輯
-                var placedBounds = GetBounds(placed);
-                const float padding = 0.02f;
-                
-                // 計算建築底部到中心點的距離
-                var bottomOffset = placedBounds.center.y - placedBounds.min.y;
-                
-                Vector3 up = lastHit.normal.normalized;
-                placed.transform.position = lastHit.point + up * (bottomOffset + padding);
-                
-                Debug.LogWarning($"[PLACE] 地形採樣失敗，使用回退邏輯：hit點={lastHit.point}, 底部偏移={bottomOffset:F2}m");
-            }
-            
-            // 放置完成後退出放置狀態（單次放置模式）
-            Debug.Log("[PLACE] 建築放置完成，退出放置狀態");
-            isPlacing = false;
-            DestroyPreview();
         }
 
         private void CancelPlacing()
@@ -376,179 +183,72 @@ namespace DeepAbyssHive.Dev
             previewRuntimeMat = null;
         }
 
-        private Bounds CalcWorldBounds(GameObject go, bool preferCollider)
+        private Vector3 CalcHalfExtents()
         {
-            var cols = go.GetComponentsInChildren<Collider>(true);
-            var rends = go.GetComponentsInChildren<Renderer>(true);
-            if (preferCollider && cols != null && cols.Length > 0)
+            var temp = Instantiate(placePrefab);
+            var bounds = GetBounds(temp);
+            Destroy(temp);
+            return bounds.extents;
+        }
+
+        private Bounds GetBounds(GameObject go)
+        {
+            var cols = go.GetComponentsInChildren<Collider>();
+            if (cols != null && cols.Length > 0)
             {
                 var b = cols[0].bounds;
                 for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
                 return b;
             }
+            var rends = go.GetComponentsInChildren<Renderer>();
             if (rends != null && rends.Length > 0)
             {
                 var b = rends[0].bounds;
                 for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
                 return b;
             }
-            if (!preferCollider && cols != null && cols.Length > 0)
-            {
-                var b = cols[0].bounds;
-                for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
-                return b;
-            }
             return new Bounds(go.transform.position, Vector3.one * 0.5f);
         }
 
-        private static Vector3 SnapXZ(Vector3 v, float step)
+        private void SetLayerRecursively(GameObject obj, int layer)
         {
-            if (step <= 0f) return v;
-            float sx = Mathf.Round(v.x / step) * step;
-            float sz = Mathf.Round(v.z / step) * step;
-            return new Vector3(sx, v.y, sz);
-        }
-
-        private static Quaternion SnapRotationY(Quaternion rot, float stepDeg)
-        {
-            if (stepDeg <= 0f) return rot;
-            var e = rot.eulerAngles;
-            e.x = 0f; // 直立建築：避免意外傾斜
-            e.z = 0f;
-            e.y = Mathf.Round(e.y / stepDeg) * stepDeg;
-            return Quaternion.Euler(e);
-        }
-
-        private Vector3 CalcHalfExtents()
-        {
-            if (!placePrefab) return Vector3.one * 0.5f;
-            
-            // 建立臨時物件來計算 bounds
-            var temp = Instantiate(placePrefab);
-            // 統一縮放：以 prefab 原始比例 × placedScale × spawnScale
+            obj.layer = layer;
+            foreach (Transform child in obj.transform)
             {
-                var bs = temp.transform.localScale;
-                temp.transform.localScale = new Vector3(
-                    bs.x * placedScale.x * spawnScale,
-                    bs.y * placedScale.y * spawnScale,
-                    bs.z * placedScale.z * spawnScale
-                );
+                SetLayerRecursively(child.gameObject, layer);
             }
-            var bounds = CalcWorldBounds(temp, useColliderBoundsForBlocking);
-            Destroy(temp);
-            
-            return bounds.extents;
         }
 
-        /// <summary>
-        /// 多點地形採樣：對建築四個角+中心點進行raycast，返回地形信息
-        /// </summary>
-        private TerrainSampleResult SampleTerrainMultiPoint(Vector3 center, Vector3 halfExtents)
+        private Vector3 SnapXZ(Vector3 pos, float snapSize)
         {
-            if (!enableMultiPointSampling)
-            {
-                // 回退到單點採樣
-                if (Physics.Raycast(center + Vector3.up * terrainSampleHeight, Vector3.down, out var hit, terrainSampleHeight * 2f, groundMask))
-                {
-                    Debug.Log($"[TERRAIN] 單點採樣成功：位置={hit.point}, 高度={hit.point.y:F2}m");
-                    return new TerrainSampleResult { 
-                        isValid = true, 
-                        groundHeight = hit.point.y, 
-                        minHeight = hit.point.y, 
-                        maxHeight = hit.point.y, 
-                        groundNormal = hit.normal,
-                        heightDifference = 0f
-                    };
-                }
-                Debug.LogWarning($"[TERRAIN] 單點採樣失敗：中心={center}, 射線起點={center + Vector3.up * terrainSampleHeight}, groundMask={groundMask}");
-                return new TerrainSampleResult { isValid = false };
-            }
-
-            // 多點採樣：四個角 + 中心點
-            Vector3[] samplePoints = {
-                center + new Vector3(-halfExtents.x, 0, -halfExtents.z), // 左下角
-                center + new Vector3(halfExtents.x, 0, -halfExtents.z),  // 右下角
-                center + new Vector3(-halfExtents.x, 0, halfExtents.z),  // 左上角
-                center + new Vector3(halfExtents.x, 0, halfExtents.z),   // 右上角
-                center                                                   // 中心點
-            };
-
-            float minHeight = float.MaxValue;
-            float maxHeight = float.MinValue;
-            Vector3 avgNormal = Vector3.zero;
-            int validHits = 0;
-
-            foreach (var point in samplePoints)
-            {
-                Vector3 rayStart = point + Vector3.up * terrainSampleHeight;
-                if (Physics.Raycast(rayStart, Vector3.down, out var hit, terrainSampleHeight * 2f, groundMask))
-                {
-                    minHeight = Mathf.Min(minHeight, hit.point.y);
-                    maxHeight = Mathf.Max(maxHeight, hit.point.y);
-                    avgNormal += hit.normal;
-                    validHits++;
-                }
-            }
-
-            if (validHits == 0)
-            {
-                Debug.LogWarning($"[TERRAIN] 多點採樣失敗：所有採樣點都沒有命中地形，中心={center}, groundMask={groundMask}");
-                return new TerrainSampleResult { isValid = false };
-            }
-
-            avgNormal = (avgNormal / validHits).normalized;
-            
-            // 使用最高點作為建築底部高度，避免埋入地下
-            float groundHeight = maxHeight;
-            float heightDiff = maxHeight - minHeight;
-
-            Debug.Log($"[TERRAIN] 多點採樣成功：有效點={validHits}/5, 最低={minHeight:F2}m, 最高={maxHeight:F2}m, 高度差={heightDiff:F2}m, 使用高度={groundHeight:F2}m");
-
-            return new TerrainSampleResult 
-            { 
-                isValid = true, 
-                groundHeight = groundHeight, 
-                minHeight = minHeight, 
-                maxHeight = maxHeight, 
-                groundNormal = avgNormal,
-                heightDifference = heightDiff
-            };
+            if (snapSize <= 0) return pos;
+            return new Vector3(
+                Mathf.Round(pos.x / snapSize) * snapSize,
+                pos.y,
+                Mathf.Round(pos.z / snapSize) * snapSize
+            );
         }
 
-        /// <summary>
-        /// 檢查地形坡度是否適合建築放置
-        /// </summary>
-        private bool IsTerrainSuitableForBuilding(TerrainSampleResult terrainResult)
+        // Public API for external systems to trigger placement
+        public void StartPlacing()
         {
-            if (!terrainResult.isValid) return false;
-            
-            if (enableSlopeCheck && terrainResult.heightDifference > maxTerrainSlope)
+            if (placePrefab != null)
             {
-                return false;
+                isPlacing = true;
+                Debug.Log($"[PLACE] Started placing: {placePrefab.name}");
             }
-            
-            return true;
         }
 
-        /// <summary>
-        /// 地形採樣結果
-        /// </summary>
-        private struct TerrainSampleResult
+        public void SetPrefab(GameObject prefab)
         {
-            public bool isValid;
-            public float groundHeight;      // 建築應該放置的高度（通常是最高點）
-            public float minHeight;         // 採樣區域最低點
-            public float maxHeight;         // 採樣區域最高點
-            public Vector3 groundNormal;    // 平均地面法線
-            public float heightDifference;  // 高度差 (maxHeight - minHeight)
+            placePrefab = prefab;
         }
 
-        // 將整棵樹設為指定層
-        private static void SetLayerRecursively(GameObject root, int layer)
-        {
-            if (!root) return;
-            var trs = root.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < trs.Length; i++) trs[i].gameObject.layer = layer;
+        // Property for external access
+        public GameObject PrefabToPlace 
+        { 
+            get => placePrefab; 
+            set => placePrefab = value; 
         }
     }
 }
