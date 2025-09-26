@@ -760,7 +760,7 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 
 ### B) 放置驗證「行為契約」總結（以程式為準）
 - **Result 型別**：`Result<T> { bool ok; PlaceResultCode code; T data?; string message? }`
-- **錯誤碼**：`OK / E_PLACE_COLLISION / E_OUT_OF_BOUNDS / E_REQUIRE_CREEP / E_INVALID_TYPE`
+- **錯誤碼**：`OK / E_PLACE_COLLISION / E_OUT_OF_BOUNDS / E_REQUIRE_CREEP / E_INVALID_TYPE / E_TERRAIN_TOO_STEEP`
 - **統一入口**：`PlacementValidator.ValidateByConfig(center, halfExtents, rotation, blockMask, extraMargin)`
   - Physics：**有向** `OverlapBox`（rotation 生效）
   - SpatialIndex 並聯（開關 `GameConfig.useSpatialIndexForPlacement`）→ 任一失敗即 `E_PLACE_COLLISION`
@@ -813,3 +813,24 @@ public static Func<Bounds, bool> OutOfBoundsPredicate;
 - 單次求路 < 1.5ms（PC）；fail < 2%  
 - 生成 200 隻，持續 10 秒不卡頓；SMOKE 綠燈  
 - 與 M3 放置規則協作：新建築 → 可繞行；刪除 → 路徑恢復
+---
+
+#
+# 📌 附錄：2025-09-26 建築放置地形採樣系統修復
+
+### 建築放置多點地形採樣和坡度檢查系統 ✅ 2025-09-26
+- **問題**: 建築放置後懸浮在空中，單點raycast無法處理地形不平整情況
+- **方案1：多點採樣**: 對建築四個角+中心點進行raycast，取最高點作為建築底部避免埋入地下
+- **方案2：坡度檢查**: 檢查地形高度差，超過maxTerrainSlope閾值則禁止放置並顯示E_TERRAIN_TOO_STEEP錯誤
+- **貼地修復**: 使用地形採樣結果正確設置建築高度，徹底解決懸浮問題
+- **配置參數**: enableMultiPointSampling/enableSlopeCheck/maxTerrainSlope/terrainSampleHeight
+- **UI增強**: 新增橙色顯示坡度過大錯誤，完善錯誤碼處理
+- **調試支援**: 詳細的地形採樣日誌輸出，便於問題診斷
+- **回退機制**: 地形採樣失敗時自動回退到原始單點邏輯，確保系統穩定性
+
+### 技術實現亮點
+- **TerrainSampleResult結構**: 封裝地形採樣結果，包含高度信息、法線、坡度數據
+- **SampleTerrainMultiPoint方法**: 智能多點採樣，支援單點回退模式
+- **IsTerrainSuitableForBuilding檢查**: 統一的地形適宜性判斷邏輯
+- **預覽/放置一致性**: Update()和PlaceNow()使用相同的地形採樣邏輯
+- **性能優化**: 可配置的採樣開關，避免不必要的性能開銷

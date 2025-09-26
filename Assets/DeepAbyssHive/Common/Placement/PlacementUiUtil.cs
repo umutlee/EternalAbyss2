@@ -26,6 +26,7 @@ namespace DeepAbyssHive.Common.Placement
                     case PlaceResultCode.E_REQUIRE_CREEP:   c = Color.yellow; break;
                     case PlaceResultCode.E_OUT_OF_BOUNDS:   c = new Color(1f, 0f, 1f); break; // magenta
                     case PlaceResultCode.E_INVALID_TYPE:    c = Color.cyan; break;
+                    case PlaceResultCode.E_TERRAIN_TOO_STEEP: c = new Color(1f, 0.5f, 0f); break; // orange
                     default:                                c = Color.white; break;
                 }
             }

@@ -34,6 +34,12 @@ namespace DeepAbyssHive.Dev
         // 放置尺寸倍率（可於 Inspector 調整，預設 1 = 不變）
         [SerializeField] private float spawnScale = 1f;
 
+        [Header("Terrain Sampling")]
+        [SerializeField] private bool enableMultiPointSampling = true;  // 啟用多點地形採樣
+        [SerializeField] private bool enableSlopeCheck = true;          // 啟用坡度檢查
+        [SerializeField] private float maxTerrainSlope = 2.0f;          // 最大允許地形高度差（米）
+        [SerializeField] private float terrainSampleHeight = 100f;      // 地形採樣射線起始高度
+
         [Header("Blocking Settings")]
         [Tooltip("擋重疊時優先使用 Collider.bounds；若 prefab 沒有 Collider 才退回 Renderer.bounds")]
         [SerializeField] private bool useColliderBoundsForBlocking = true;
@@ -110,17 +116,35 @@ namespace DeepAbyssHive.Dev
                 // 先量化中心與旋轉（與放置相同順序）
                 var center = SnapXZ(worldPoint, cfg.snapSize);
                 rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
-                center.y = hit.point.y + previewHeight;
 
-                // 統一遮罩：使用工具方法，避免各處手寫不一致
-                int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
-
-                // 建立 Bounds（以量化後中心/半徑）
+                // 多點地形採樣
                 var half = CalcHalfExtents();
-                var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                var terrainResult = SampleTerrainMultiPoint(center, half);
                 
-                // 預覽即時驗證（有向版；旋轉參與 OverlapBox）
-                var result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
+                Result<Bounds> result;
+                
+                if (!terrainResult.isValid)
+                {
+                    result = PlacementResults.OutOfBounds("無法檢測到地形");
+                }
+                else if (!IsTerrainSuitableForBuilding(terrainResult))
+                {
+                    result = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainResult.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
+                }
+                else
+                {
+                    // 使用地形採樣的結果設置建築高度
+                    center.y = terrainResult.groundHeight + previewHeight;
+
+                    // 統一遮罩：使用工具方法，避免各處手寫不一致
+                    int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
+
+                    // 建立 Bounds（以量化後中心/半徑）
+                    var worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                    
+                    // 預覽即時驗證（有向版；旋轉參與 OverlapBox）
+                    result = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
+                }
 
                 // 記錄給 PlaceNow() 重用，避免再次計算造成微差
                 _lastPreviewCenter = worldBounds.center;
@@ -207,12 +231,25 @@ namespace DeepAbyssHive.Dev
                 center = SnapXZ(worldPoint, cfg.snapSize);
                 rotation = SnapRotationY(rotation, cfg.rotationStepDegrees);
 
-                int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
-
+                // 使用與 Update() 相同的地形採樣邏輯
                 var half = CalcHalfExtents();
-                // 與 Update() 預覽一致：驗證時將中心向下偏移 previewHeight，貼地檢查
-                worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
-                cached = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
+                var terrainResult = SampleTerrainMultiPoint(center, half);
+                
+                if (!terrainResult.isValid)
+                {
+                    cached = PlacementResults.OutOfBounds("無法檢測到地形");
+                }
+                else if (!IsTerrainSuitableForBuilding(terrainResult))
+                {
+                    cached = PlacementResults.TerrainTooSteep($"地形坡度過大 ({terrainResult.heightDifference:F2}m > {maxTerrainSlope:F2}m)");
+                }
+                else
+                {
+                    center.y = terrainResult.groundHeight + previewHeight;
+                    int includeMask = PlacementLayerUtil.GetPlacementBlockMask();
+                    worldBounds = new Bounds(center - new Vector3(0, previewHeight, 0), half * 2f);
+                    cached = PlacementValidator.ValidateByConfig(worldBounds.center, half, rotation, includeMask, blockPadding, placePrefab);
+                }
             }
 
             if (!cached.ok)
@@ -254,33 +291,53 @@ namespace DeepAbyssHive.Dev
             if (building >= 0) SetLayerRecursively(placed, building);
             else Debug.LogWarning("[Placement] 'Building' layer not found — delete tool may not hit.");
 
-            // —— 最小修補：用放置物的實際高度把它「頂到」地表上，避免埋進去 —— 
-            // 取 Collider 或 Renderer bounds（以 Collider 為優先）
-            Bounds GetBounds(GameObject go)
+            // —— 改進的貼地邏輯：使用多點地形採樣結果 —— 
+            var half = CalcHalfExtents();
+            var terrainResult = SampleTerrainMultiPoint(new Vector3(center.x, 0, center.z), half);
+            
+            if (terrainResult.isValid)
             {
-                var cols = go.GetComponentsInChildren<Collider>();
-                if (cols != null && cols.Length > 0)
+                // 取 Collider 或 Renderer bounds（以 Collider 為優先）
+                Bounds GetBounds(GameObject go)
                 {
-                    var b = cols[0].bounds;
-                    for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
-                    return b;
+                    var cols = go.GetComponentsInChildren<Collider>();
+                    if (cols != null && cols.Length > 0)
+                    {
+                        var b = cols[0].bounds;
+                        for (int i = 1; i < cols.Length; i++) b.Encapsulate(cols[i].bounds);
+                        return b;
+                    }
+                    var rends = go.GetComponentsInChildren<Renderer>();
+                    if (rends != null && rends.Length > 0)
+                    {
+                        var b = rends[0].bounds;
+                        for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                        return b;
+                    }
+                    return new Bounds(go.transform.position, Vector3.one * 0.5f);
                 }
-                var rends = go.GetComponentsInChildren<Renderer>();
-                if (rends != null && rends.Length > 0)
-                {
-                    var b = rends[0].bounds;
-                    for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-                    return b;
-                }
-                return new Bounds(go.transform.position, Vector3.one * 0.5f);
-            }
 
-            var placedBounds = GetBounds(placed);
-            // extents 是世界座標的一半尺寸；我們沿著命中的法線（一般為 Vector3.up）把物件抬出地表
-            var halfHeight = placedBounds.extents.y;
-            const float padding = 0.02f; // 稍微離地避免 z-fight
-            Vector3 up = lastHit.normal.normalized;
-            placed.transform.position = lastHit.point + up * (halfHeight + padding);
+                var placedBounds = GetBounds(placed);
+                var halfHeight = placedBounds.extents.y;
+                const float padding = 0.02f; // 稍微離地避免 z-fight
+                
+                // 使用地形採樣的最高點作為基準，確保建築不會埋入地下或懸浮
+                Vector3 up = terrainResult.groundNormal;
+                placed.transform.position = new Vector3(center.x, terrainResult.groundHeight + halfHeight + padding, center.z);
+                
+                Debug.Log($"[PLACE] 建築貼地：地形高度={terrainResult.groundHeight:F2}m, 高度差={terrainResult.heightDifference:F2}m, 最終位置Y={placed.transform.position.y:F2}m");
+            }
+            else
+            {
+                // 回退到原始邏輯
+                var placedBounds = GetBounds(placed);
+                var halfHeight = placedBounds.extents.y;
+                const float padding = 0.02f;
+                Vector3 up = lastHit.normal.normalized;
+                placed.transform.position = lastHit.point + up * (halfHeight + padding);
+                
+                Debug.LogWarning("[PLACE] 地形採樣失敗，使用回退邏輯");
+            }
         }
 
         private void CancelPlacing()
@@ -359,6 +416,96 @@ namespace DeepAbyssHive.Dev
             Destroy(temp);
             
             return bounds.extents;
+        }
+
+        /// <summary>
+        /// 多點地形採樣：對建築四個角+中心點進行raycast，返回地形信息
+        /// </summary>
+        private TerrainSampleResult SampleTerrainMultiPoint(Vector3 center, Vector3 halfExtents)
+        {
+            if (!enableMultiPointSampling)
+            {
+                // 回退到單點採樣
+                if (Physics.Raycast(center + Vector3.up * terrainSampleHeight, Vector3.down, out var hit, terrainSampleHeight * 2f, groundMask))
+                {
+                    return new TerrainSampleResult { isValid = true, groundHeight = hit.point.y, minHeight = hit.point.y, maxHeight = hit.point.y, groundNormal = hit.normal };
+                }
+                return new TerrainSampleResult { isValid = false };
+            }
+
+            // 多點採樣：四個角 + 中心點
+            Vector3[] samplePoints = {
+                center + new Vector3(-halfExtents.x, 0, -halfExtents.z), // 左下角
+                center + new Vector3(halfExtents.x, 0, -halfExtents.z),  // 右下角
+                center + new Vector3(-halfExtents.x, 0, halfExtents.z),  // 左上角
+                center + new Vector3(halfExtents.x, 0, halfExtents.z),   // 右上角
+                center                                                   // 中心點
+            };
+
+            float minHeight = float.MaxValue;
+            float maxHeight = float.MinValue;
+            Vector3 avgNormal = Vector3.zero;
+            int validHits = 0;
+
+            foreach (var point in samplePoints)
+            {
+                Vector3 rayStart = point + Vector3.up * terrainSampleHeight;
+                if (Physics.Raycast(rayStart, Vector3.down, out var hit, terrainSampleHeight * 2f, groundMask))
+                {
+                    minHeight = Mathf.Min(minHeight, hit.point.y);
+                    maxHeight = Mathf.Max(maxHeight, hit.point.y);
+                    avgNormal += hit.normal;
+                    validHits++;
+                }
+            }
+
+            if (validHits == 0)
+            {
+                return new TerrainSampleResult { isValid = false };
+            }
+
+            avgNormal = (avgNormal / validHits).normalized;
+            
+            // 使用最高點作為建築底部高度，避免埋入地下
+            float groundHeight = maxHeight;
+
+            return new TerrainSampleResult 
+            { 
+                isValid = true, 
+                groundHeight = groundHeight, 
+                minHeight = minHeight, 
+                maxHeight = maxHeight, 
+                groundNormal = avgNormal,
+                heightDifference = maxHeight - minHeight
+            };
+        }
+
+        /// <summary>
+        /// 檢查地形坡度是否適合建築放置
+        /// </summary>
+        private bool IsTerrainSuitableForBuilding(TerrainSampleResult terrainResult)
+        {
+            if (!terrainResult.isValid) return false;
+            
+            if (enableSlopeCheck && terrainResult.heightDifference > maxTerrainSlope)
+            {
+                return false;
+            }
+            
+            return true;
+        }
+
+        /// <summary>
+        /// 地形採樣結果
+        /// </summary>
+        private struct TerrainSampleResult
+        {
+            public bool isValid;
+            public float groundHeight;      // 建築應該放置的高度（通常是最高點）
+            public float minHeight;         // 採樣區域最低點
+            public float maxHeight;         // 採樣區域最高點
+            public Vector3 groundNormal;    // 平均地面法線
+            public float heightDifference;  // 高度差 (maxHeight - minHeight)
         }
 
         // 將整棵樹設為指定層
