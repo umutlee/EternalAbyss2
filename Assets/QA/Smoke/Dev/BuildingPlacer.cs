@@ -24,7 +24,6 @@ namespace DeepAbyssHive.Dev
         private RaycastHit lastHit;
         
         // Cost checking components
-        private ResourceServiceAdapter _resourceAdapter;
         private HUDToastRunner _toastRunner;
 
         void Awake()
@@ -42,7 +41,6 @@ namespace DeepAbyssHive.Dev
             }
             
             // Initialize cost checking
-            _resourceAdapter = new ResourceServiceAdapter();
             _toastRunner = FindObjectOfType<HUDToastRunner>();
             if (_toastRunner == null)
             {
@@ -99,7 +97,7 @@ namespace DeepAbyssHive.Dev
         {
             // Check cost
             var costTag = placePrefab.GetComponent<BuildingCostTag>();
-            if (costTag != null && !_resourceAdapter.CanAfford(costTag.GetCosts()))
+            if (costTag != null && !ResourceServiceAdapter.CanAfford(costTag.GetCosts()))
             {
                 HUDToastRunner.ShowInsufficientResourcesToast("Energy", 0, 0);
                 return;
@@ -121,7 +119,7 @@ namespace DeepAbyssHive.Dev
             
             // Deduct cost
             if (costTag != null)
-                _resourceAdapter.DeductResources(costTag.GetCosts());
+                ResourceServiceAdapter.DeductResources(costTag.GetCosts());
             
             Debug.Log($"[PLACE] Building placed: {placePrefab.name} at {placed.transform.position}");
             
