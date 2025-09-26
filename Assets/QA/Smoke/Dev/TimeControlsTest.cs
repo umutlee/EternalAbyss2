@@ -93,13 +93,6 @@ namespace DeepAbyssHive.QA.Smoke.Dev
             }
         }
 
-        private void OnGUI()
-        {
-            var rect = new Rect(10, 10, 300, 60);
-            var timeScale = _timeService?.TimeScale ?? Time.timeScale;
-            var isPaused = _timeService?.IsPaused ?? (Time.timeScale == 0f);
-            
-            GUI.Label(rect, $"Time: {(isPaused ? "Paused" : $"{timeScale:F1}x")}\nSpace=Pause, T=Speed");
-        }
+
     }
 }
